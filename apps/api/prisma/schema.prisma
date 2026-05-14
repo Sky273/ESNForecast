@@ -1,0 +1,471 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum EmployeeStatus {
+  consultant
+  sales
+  administrative
+  management
+  support
+  other
+}
+
+enum MissionStatus {
+  draft
+  planned
+  active
+  completed
+  suspended
+  cancelled
+}
+
+enum MissionType {
+  time_material
+  fixed_price
+  technical_assistance
+  service_center
+  other
+}
+
+enum ResourceType {
+  employee
+  partner
+  freelancer
+}
+
+enum RecurrenceType {
+  monthly
+  quarterly
+  annual
+  one_time
+}
+
+enum AssignmentCalculationMode {
+  business_days
+  fixed_days_monthly
+  fixed_monthly_amount
+}
+
+enum RevenueRecognitionMode {
+  billing
+  estimated_collection
+}
+
+enum UserRole {
+  admin
+  direction
+  finance
+  commercial
+  readonly
+}
+
+enum ScenarioType {
+  reference
+  pessimistic
+  realistic
+  optimistic
+  custom
+}
+
+enum RiskLevel {
+  low
+  medium
+  high
+  critical
+}
+
+enum InvoiceStatus {
+  planned
+  issued
+  paid
+  late
+  cancelled
+}
+
+enum CashStatus {
+  planned
+  paid
+  late
+  cancelled
+}
+
+enum AlertSeverity {
+  info
+  warning
+  critical
+}
+
+enum AlertStatus {
+  new
+  seen
+  resolved
+  ignored
+}
+
+enum CashInSourceType {
+  invoice
+  manual
+  other
+}
+
+enum CashOutSourceType {
+  salary
+  employer_tax
+  freelancer_invoice
+  partner_invoice
+  fixed_cost
+  variable_cost
+  tax
+  manual
+  other
+}
+
+model Company {
+  id                              String   @id @default(cuid())
+  name                            String
+  currency                        String   @default("EUR")
+  defaultEmployeeSocialRate       Float    @default(0.22)
+  defaultEmployerRate             Float    @default(0.45)
+  defaultOverheadRate             Float?
+  projectionStartMonth            String
+  defaultProjectionHorizonMonths  Int      @default(12)
+  createdAt                       DateTime @default(now())
+  updatedAt                       DateTime @updatedAt
+}
+
+model Employee {
+  id                      String         @id @default(cuid())
+  firstName               String
+  lastName                String
+  position                String
+  status                  EmployeeStatus
+  assignable              Boolean        @default(true)
+  startDate               DateTime
+  endDate                 DateTime?
+  monthlyGrossSalary      Float
+  monthlyEmployerCharges  Float?
+  employerChargeRate      Float?
+  benefitsMonthly         Float          @default(0)
+  notes                   String?
+  assignments             MissionAssignment[]
+  createdAt               DateTime       @default(now())
+  updatedAt               DateTime       @updatedAt
+}
+
+model Partner {
+  id        String            @id @default(cuid())
+  name      String
+  notes     String?
+  resources PartnerResource[]
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+}
+
+model PartnerResource {
+  id            String              @id @default(cuid())
+  partnerId     String
+  partner       Partner             @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  firstName     String
+  lastName      String
+  role          String
+  dailyCost     Float
+  monthlyFees   Float               @default(0)
+  availableFrom DateTime
+  availableTo   DateTime?
+  notes         String?
+  assignments   MissionAssignment[]
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+}
+
+model Freelancer {
+  id            String              @id @default(cuid())
+  firstName     String
+  lastName      String
+  specialty     String
+  dailyCost     Float
+  monthlyFees   Float               @default(0)
+  paymentTerms  String?
+  availableFrom DateTime
+  availableTo   DateTime?
+  notes         String?
+  assignments   MissionAssignment[]
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+}
+
+model Client {
+  id             String    @id @default(cuid())
+  name           String
+  sector         String
+  primaryContact String?
+  contactEmail   String?
+  paymentDelayDays Int     @default(30)
+  notes          String?
+  missions       Mission[]
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+}
+
+model Mission {
+  id                    String                @id @default(cuid())
+  title                 String
+  clientId              String
+  client                Client                @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  status                MissionStatus
+  type                  MissionType
+  startDate             DateTime
+  estimatedEndDate      DateTime?
+  actualEndDate         DateTime?
+  defaultDailyRate      Float
+  fixedPriceAmount      Float?
+  signatureProbability  Float                 @default(1)
+  paymentDelayDays      Int?
+  notes                 String?
+  assignments           MissionAssignment[]
+  variableCosts         VariableCost[]
+  invoiceForecasts      InvoiceForecast[]
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+}
+
+model MissionAssignment {
+  id                    String                    @id @default(cuid())
+  missionId             String
+  mission               Mission                   @relation(fields: [missionId], references: [id], onDelete: Cascade)
+  resourceType          ResourceType
+  resourceId            String
+  employee              Employee?                 @relation(fields: [employeeId], references: [id])
+  employeeId            String?
+  partnerResource       PartnerResource?          @relation(fields: [partnerResourceId], references: [id])
+  partnerResourceId     String?
+  freelancer            Freelancer?               @relation(fields: [freelancerId], references: [id])
+  freelancerId          String?
+  startDate             DateTime
+  estimatedEndDate      DateTime?
+  specificDailyRate     Float?
+  specificDailyCost     Float?
+  occupancyRate         Float
+  billedDaysPerMonth    Float?
+  calculationMode       AssignmentCalculationMode
+  fixedMonthlyAmount    Float?
+  notes                 String?
+  createdAt             DateTime                  @default(now())
+  updatedAt             DateTime                  @updatedAt
+}
+
+model FixedCost {
+  id            String         @id @default(cuid())
+  label         String
+  category      String
+  monthlyAmount Float
+  startDate     DateTime
+  endDate       DateTime?
+  recurrence    RecurrenceType
+  notes         String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+}
+
+model VariableCost {
+  id          String          @id @default(cuid())
+  label       String
+  category    String
+  amount      Float
+  date        DateTime
+  recurrence  RecurrenceType?
+  missionId   String?
+  mission     Mission?        @relation(fields: [missionId], references: [id], onDelete: SetNull)
+  resourceId  String?
+  notes       String?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+}
+
+model ProjectionSettings {
+  id                                  String                 @id @default(cuid())
+  horizonMonths                       Int                    @default(12)
+  averageBusinessDaysPerMonth         Float                  @default(20)
+  defaultEmployeeChargeRate           Float                  @default(0.45)
+  overheadRate                        Float                  @default(0)
+  simplifiedTaxRate                   Float                  @default(0.12)
+  revenueRecognitionMode              RevenueRecognitionMode @default(billing)
+  defaultPaymentDelayDays             Int                    @default(30)
+  defaultSupplierPaymentDelayDays     Int                    @default(30)
+  applyProbabilityToPlannedMissions   Boolean                @default(true)
+  minimumMarginRate                   Float                  @default(0.2)
+  initialCash                         Float                  @default(50000)
+  criticalCashThreshold               Float                  @default(15000)
+  minimumUtilizationRate              Float                  @default(0.75)
+  employeeCostMode                    String                 @default("full_monthly")
+  createdAt                           DateTime               @default(now())
+  updatedAt                           DateTime               @updatedAt
+}
+
+model MonthlyProjectionCache {
+  id        String   @id @default(cuid())
+  month     String   @unique
+  payload   Json
+  createdAt DateTime @default(now())
+}
+
+model User {
+  id           String     @id @default(cuid())
+  email        String     @unique
+  name         String
+  role         UserRole   @default(readonly)
+  passwordHash String?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  auditLogs    AuditLog[]
+}
+
+model Scenario {
+  id               String            @id @default(cuid())
+  name             String
+  type             ScenarioType
+  isActive         Boolean           @default(false)
+  riskLevel        RiskLevel         @default(medium)
+  author           String?
+  notes            String?
+  archivedAt       DateTime?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  invoiceForecasts InvoiceForecast[]
+  cashInForecasts  CashInForecast[]
+  cashOutForecasts CashOutForecast[]
+  simulationEvents SimulationEvent[]
+  alerts           Alert[]
+}
+
+model ScenarioOverride {
+  id         String   @id @default(cuid())
+  scenarioId String
+  entityType String
+  entityId   String
+  field      String
+  value      Json
+  createdAt  DateTime @default(now())
+}
+
+model SimulationEvent {
+  id               String    @id @default(cuid())
+  scenarioId       String
+  scenario         Scenario  @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
+  type             String
+  label            String
+  startDate        DateTime
+  endDate          DateTime?
+  amount           Float?
+  percentage       Float?
+  relatedMissionId String?
+  relatedResourceId String?
+  parameters       Json      @default("{}")
+  isActive         Boolean   @default(true)
+  notes            String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  @@index([scenarioId])
+}
+
+model InvoiceForecast {
+  id                  String        @id @default(cuid())
+  missionId           String
+  mission             Mission       @relation(fields: [missionId], references: [id], onDelete: Cascade)
+  scenarioId          String
+  scenario            Scenario      @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
+  invoiceDate         DateTime
+  dueDate             DateTime
+  expectedPaymentDate DateTime
+  amountHT            Float
+  vatRate             Float?
+  amountTTC           Float?
+  status              InvoiceStatus @default(planned)
+  probability         Float         @default(1)
+  notes               String?
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+  @@index([scenarioId])
+  @@index([missionId])
+  @@index([invoiceDate])
+}
+
+model CashInForecast {
+  id             String           @id @default(cuid())
+  scenarioId     String
+  scenario       Scenario         @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
+  sourceType     CashInSourceType
+  sourceId       String?
+  expectedDate   DateTime
+  amount         Float
+  probability    Float            @default(1)
+  weightedAmount Float
+  status         CashStatus       @default(planned)
+  notes          String?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  @@index([scenarioId])
+  @@index([expectedDate])
+}
+
+model CashOutForecast {
+  id           String            @id @default(cuid())
+  scenarioId   String
+  scenario     Scenario          @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
+  sourceType   CashOutSourceType
+  sourceId     String?
+  expectedDate DateTime
+  amount       Float
+  status       CashStatus        @default(planned)
+  notes        String?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  @@index([scenarioId])
+  @@index([expectedDate])
+}
+
+model Alert {
+  id                String        @id @default(cuid())
+  scenarioId        String?
+  scenario          Scenario?     @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
+  type              String
+  severity          AlertSeverity
+  message           String
+  entityType        String?
+  entityId          String?
+  month             String?
+  recommendedAction String?
+  status            AlertStatus   @default(new)
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  @@index([scenarioId])
+  @@index([status])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  entityType String
+  entityId   String
+  action     String
+  before     Json?
+  after      Json?
+  createdAt  DateTime @default(now())
+  @@index([entityType, entityId])
+}
+
+model ReportExport {
+  id        String   @id @default(cuid())
+  type      String
+  scenarioId String?
+  format    String
+  payload   Json?
+  createdAt DateTime @default(now())
+}

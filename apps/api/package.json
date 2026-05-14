@@ -1,0 +1,30 @@
+{
+  "name": "@esn-forecast/api",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/server.js",
+    "seed": "tsx prisma/seed.ts",
+    "prisma:generate": "prisma generate",
+    "db:push": "prisma db push"
+  },
+  "dependencies": {
+    "@esn-forecast/shared": "0.1.0",
+    "@prisma/client": "^6.8.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.5.0",
+    "express": "^5.1.0",
+    "zod": "^3.25.28"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.18",
+    "@types/express": "^5.0.2",
+    "@types/node": "^22.15.21",
+    "prisma": "^6.8.2",
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3"
+  }
+}

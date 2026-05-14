@@ -1,0 +1,24 @@
+{
+  "name": "esn-forecast",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "node scripts/run-workspace.mjs --parallel apps/api:dev apps/web:dev",
+    "dev:api": "node scripts/run-workspace.mjs apps/api dev",
+    "dev:web": "node scripts/run-workspace.mjs apps/web dev",
+    "build": "node scripts/run-workspace.mjs --serial apps/api:build apps/web:build packages/shared:build",
+    "test": "node scripts/run-workspace.mjs --serial packages/shared:test",
+    "seed": "node scripts/run-workspace.mjs apps/api seed",
+    "prisma:generate": "node scripts/run-workspace.mjs apps/api prisma:generate",
+    "db:push": "node scripts/run-workspace.mjs apps/api db:push"
+  },
+  "devDependencies": {
+    "npm-run-all": "^4.1.5",
+    "typescript": "^5.8.3",
+    "vitest": "^3.1.4"
+  }
+}
