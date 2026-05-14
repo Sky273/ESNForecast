@@ -184,15 +184,6 @@ const navGroups: NavGroup[] = [
 
 const allItems = navGroups.flatMap((group) => group.items.map((item) => ({ ...item, group: group.label, groupId: group.id })));
 
-function getStoredGroups() {
-  try {
-    const stored = localStorage.getItem("esn-forecast-open-nav-groups");
-    return stored ? JSON.parse(stored) as Record<string, boolean> : {};
-  } catch {
-    return {};
-  }
-}
-
 export function App() {
   const [page, setPage] = useState("dashboard");
   const [horizon, setHorizon] = useState(12);
@@ -200,7 +191,7 @@ export function App() {
   const [scenarioId, setScenarioId] = useState("");
   const [compact, setCompact] = useState(() => localStorage.getItem("esn-forecast-compact-nav") === "true");
   const [query, setQuery] = useState("");
-  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => ({ pilotage: true, forecasts: true, ...getStoredGroups() }));
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
   const searchRef = useRef<HTMLInputElement>(null);
   const cfg = configs[page];
   const activeItem = allItems.find((item) => item.id === page) ?? allItems[0];
@@ -276,7 +267,7 @@ export function App() {
         <nav className="min-h-0 flex-1 overflow-y-auto px-2 py-3">
           {filteredGroups.map((group) => {
             const GroupIcon = group.icon;
-            const isOpen = compact || query || (openGroups[group.id] ?? true);
+            const isOpen = compact || Boolean(query) || Boolean(openGroups[group.id]);
             return (
               <div key={group.id} className="mb-2">
                 <button className={`flex w-full items-center gap-2 rounded-md px-2 py-2 text-xs font-semibold uppercase text-muted hover:bg-surface ${compact ? "justify-center" : "justify-between"}`} onClick={() => toggleGroup(group.id)} title={compact ? group.label : undefined}>
