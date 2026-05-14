@@ -1,4 +1,4 @@
-import { AlertTriangle, BarChart3, Bell, BookOpenCheck, Building2, Calculator, ChartNoAxesCombined, Contact, Euro, FileText, Handshake, History, LayoutDashboard, Receipt, Settings as SettingsIcon, Shield, Sparkles, TrendingUp, Users, WalletCards } from "lucide-react";
+import { AlertTriangle, BarChart3, Bell, BookOpenCheck, Building2, Calculator, ChartNoAxesCombined, Contact, Euro, FileText, Handshake, History, Landmark, LayoutDashboard, Receipt, Settings as SettingsIcon, Shield, Sparkles, TrendingUp, Users, WalletCards } from "lucide-react";
 import { useEffect, useState } from "react";
 import { api } from "./api";
 import { CrudPage } from "./components/CrudPage";
@@ -8,14 +8,18 @@ import { Projections } from "./pages/Projections";
 import { Settings } from "./pages/Settings";
 import { AdminPage, AlertsPage, AuditPage, BenchPage, BillingPage, CashInPage, CashOutPage, ProfitabilityMissionsPage, ProfitabilityResourcesPage, ReportsPage, ScenariosPage, SimulationsPage, TreasuryPage } from "./pages/V1Pages";
 import { ActualsVariancesPage, AiAnalysisPage, CapacityPage, ExecutiveCockpitPage, MonthlyClosePage, MonteCarloPage, PaymentsPage, RealInvoicesPage, ReconciliationPage, StrategicRisksPage, TimesheetsPage, V2CrudPage } from "./pages/V2Pages";
+import { BankAccountsPage, BankConsentsPage, BankReconciliationPage, BankTransactionsPage, ClientPaymentProfilesPage, CodirReportPage, ConnectedFinanceDashboard, ConnectorSupervisionPage, DataQualityPage, FinancialAnomaliesPage, FinancialAuditPage, FinancialRulesPage, ForecastReliabilityPage, ImportedAccountingPage, RealTreasuryPage, RunwayPage } from "./pages/V3Pages";
 import { configs } from "./pages/crudConfigs";
 
 const nav = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
   { id: "executiveV2", label: "Cockpit V2", icon: Sparkles },
+  { id: "connectedFinance", label: "Dashboard V3", icon: Landmark },
   { id: "projections", label: "Projections", icon: ChartNoAxesCombined },
   { id: "actuals", label: "Reel / ecarts", icon: BarChart3 },
   { id: "treasury", label: "Tresorerie", icon: TrendingUp },
+  { id: "realTreasury", label: "Tresorerie reelle", icon: TrendingUp },
+  { id: "runway", label: "Runway", icon: AlertTriangle },
   { id: "timesheets", label: "CRA", icon: BookOpenCheck },
   { id: "monthlyClose", label: "Cloture", icon: Shield },
   { id: "scenarios", label: "Scenarios", icon: BarChart3 },
@@ -37,12 +41,25 @@ const nav = [
   { id: "variableCosts", label: "Frais variables", icon: Euro },
   { id: "billing", label: "Facturation prevue", icon: Receipt },
   { id: "realInvoices", label: "Factures reelles", icon: Receipt },
+  { id: "bankAccounts", label: "Banque", icon: Landmark },
+  { id: "bankTransactions", label: "Transactions", icon: Receipt },
+  { id: "bankReconciliation", label: "Rapprochement bancaire", icon: Calculator },
+  { id: "importedAccounting", label: "Compta importee", icon: FileText },
   { id: "payments", label: "Paiements", icon: Euro },
   { id: "reconciliation", label: "Rapprochement", icon: Calculator },
   { id: "cashIn", label: "Encaissements", icon: TrendingUp },
   { id: "cashOut", label: "Decaissements", icon: Euro },
   { id: "plannedHires", label: "Recrutements", icon: Users },
   { id: "strategicRisks", label: "Risques strategiques", icon: AlertTriangle },
+  { id: "forecastReliability", label: "Fiabilite prevision", icon: BarChart3 },
+  { id: "clientPaymentProfiles", label: "Paiements clients", icon: Users },
+  { id: "financialAnomalies", label: "Anomalies financieres", icon: AlertTriangle },
+  { id: "dataQuality", label: "Sante donnees", icon: Shield },
+  { id: "connectorSupervision", label: "Supervision connecteurs", icon: Handshake },
+  { id: "bankConsents", label: "Consentements", icon: Shield },
+  { id: "financialRules", label: "Regles bancaires", icon: SettingsIcon },
+  { id: "codirReport", label: "Rapport CODIR", icon: FileText },
+  { id: "financialAudit", label: "Audit financier", icon: History },
   { id: "aiAnalysis", label: "Analyse IA", icon: Sparkles },
   { id: "rules", label: "Regles", icon: SettingsIcon },
   { id: "notifications", label: "Notifications", icon: Bell },
@@ -102,11 +119,14 @@ export function App() {
 
         {page === "dashboard" ? <Dashboard horizon={horizon} setHorizon={setHorizon} /> : null}
         {page === "executiveV2" ? <ExecutiveCockpitPage scenarioId={scenarioId} horizon={horizon} /> : null}
+        {page === "connectedFinance" ? <ConnectedFinanceDashboard scenarioId={scenarioId} horizon={horizon} /> : null}
         {page === "projections" ? <Projections horizon={horizon} /> : null}
         {page === "actuals" ? <ActualsVariancesPage scenarioId={scenarioId} horizon={horizon} /> : null}
         {page === "timesheets" ? <TimesheetsPage /> : null}
         {page === "monthlyClose" ? <MonthlyClosePage /> : null}
         {page === "treasury" ? <TreasuryPage scenarioId={scenarioId} horizon={horizon} /> : null}
+        {page === "realTreasury" ? <RealTreasuryPage scenarioId={scenarioId} horizon={horizon} /> : null}
+        {page === "runway" ? <RunwayPage scenarioId={scenarioId} horizon={horizon} /> : null}
         {page === "scenarios" ? <ScenariosPage scenarioId={scenarioId} horizon={horizon} /> : null}
         {page === "simulations" ? <SimulationsPage /> : null}
         {page === "monteCarlo" ? <MonteCarloPage scenarioId={scenarioId} horizon={horizon} /> : null}
@@ -118,12 +138,25 @@ export function App() {
         {page === "bench" ? <BenchPage scenarioId={scenarioId} horizon={horizon} /> : null}
         {page === "billing" ? <BillingPage /> : null}
         {page === "realInvoices" ? <RealInvoicesPage /> : null}
+        {page === "bankAccounts" ? <BankAccountsPage /> : null}
+        {page === "bankTransactions" ? <BankTransactionsPage /> : null}
+        {page === "bankReconciliation" ? <BankReconciliationPage /> : null}
+        {page === "importedAccounting" ? <ImportedAccountingPage /> : null}
         {page === "payments" ? <PaymentsPage /> : null}
         {page === "reconciliation" ? <ReconciliationPage /> : null}
         {page === "cashIn" ? <CashInPage /> : null}
         {page === "cashOut" ? <CashOutPage /> : null}
         {page === "plannedHires" ? <V2CrudPage kind="plannedHires" /> : null}
         {page === "strategicRisks" ? <StrategicRisksPage scenarioId={scenarioId} horizon={horizon} /> : null}
+        {page === "forecastReliability" ? <ForecastReliabilityPage /> : null}
+        {page === "clientPaymentProfiles" ? <ClientPaymentProfilesPage /> : null}
+        {page === "financialAnomalies" ? <FinancialAnomaliesPage /> : null}
+        {page === "dataQuality" ? <DataQualityPage /> : null}
+        {page === "connectorSupervision" ? <ConnectorSupervisionPage /> : null}
+        {page === "bankConsents" ? <BankConsentsPage /> : null}
+        {page === "financialRules" ? <FinancialRulesPage /> : null}
+        {page === "codirReport" ? <CodirReportPage scenarioId={scenarioId} horizon={horizon} /> : null}
+        {page === "financialAudit" ? <FinancialAuditPage /> : null}
         {page === "aiAnalysis" ? <AiAnalysisPage scenarioId={scenarioId} horizon={horizon} /> : null}
         {page === "rules" ? <V2CrudPage kind="rules" /> : null}
         {page === "notifications" ? <V2CrudPage kind="notifications" /> : null}

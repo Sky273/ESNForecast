@@ -910,3 +910,363 @@ model OfferLine {
   updatedAt      DateTime @updatedAt
   @@index([offerId])
 }
+
+model Connector {
+  id             String   @id @default(cuid())
+  organizationId String
+  companyId      String
+  type           String
+  provider       String
+  name           String
+  status         String   @default("inactive")
+  configuration  Json?
+  lastSyncAt     DateTime?
+  nextSyncAt     DateTime?
+  errorMessage   String?
+  createdBy      String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  @@index([organizationId])
+  @@index([companyId])
+  @@index([type, provider])
+  @@index([status])
+}
+
+model ConnectorSyncRun {
+  id            String   @id @default(cuid())
+  connectorId   String
+  startedAt     DateTime @default(now())
+  finishedAt    DateTime?
+  status        String
+  importedCount Int      @default(0)
+  updatedCount  Int      @default(0)
+  skippedCount  Int      @default(0)
+  errorCount    Int      @default(0)
+  errors        Json?
+  logs          Json?
+  @@index([connectorId])
+  @@index([status])
+}
+
+model BankConnection {
+  id                   String   @id @default(cuid())
+  organizationId       String
+  companyId            String
+  connectorId          String
+  provider             String
+  externalConnectionId String?
+  status               String   @default("pending_consent")
+  consentExpiresAt     DateTime?
+  lastSyncAt           DateTime?
+  createdBy            String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  @@index([organizationId])
+  @@index([companyId])
+  @@index([connectorId])
+  @@index([status])
+}
+
+model BankConsent {
+  id               String   @id @default(cuid())
+  organizationId   String
+  bankConnectionId String
+  provider         String
+  status           String
+  grantedBy        String?
+  grantedAt        DateTime?
+  expiresAt        DateTime?
+  revokedAt        DateTime?
+  scopes           Json
+  metadata         Json?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  @@index([organizationId])
+  @@index([bankConnectionId])
+  @@index([status])
+}
+
+model BankAccount {
+  id                String   @id @default(cuid())
+  organizationId    String
+  companyId         String
+  bankConnectionId  String
+  externalAccountId String
+  name              String
+  ibanMasked        String
+  currency          String   @default("EUR")
+  type              String
+  currentBalance    Float
+  availableBalance  Float
+  balanceDate       DateTime
+  isActive          Boolean  @default(true)
+  rawPayload        Json?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  @@unique([bankConnectionId, externalAccountId])
+  @@index([organizationId])
+  @@index([companyId])
+}
+
+model BankTransaction {
+  id                     String   @id @default(cuid())
+  organizationId         String
+  companyId              String
+  bankAccountId          String
+  externalTransactionId  String
+  transactionDate        DateTime
+  bookingDate            DateTime
+  valueDate              DateTime?
+  label                  String
+  counterpartyName       String?
+  counterpartyIbanMasked String?
+  amount                 Float
+  currency               String   @default("EUR")
+  direction              String
+  status                 String   @default("booked")
+  categoryId             String?
+  categorizationStatus   String   @default("uncategorized")
+  reconciliationStatus   String   @default("unreconciled")
+  confidenceScore        Float    @default(0)
+  rawPayload             Json?
+  importedAt             DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+  @@unique([bankAccountId, externalTransactionId])
+  @@index([organizationId])
+  @@index([companyId])
+  @@index([bankAccountId])
+  @@index([transactionDate])
+  @@index([categorizationStatus])
+  @@index([reconciliationStatus])
+}
+
+model FinancialCategory {
+  id             String   @id @default(cuid())
+  organizationId String
+  name           String
+  type           String
+  parentId       String?
+  isSystem       Boolean  @default(false)
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  @@index([organizationId])
+  @@index([type])
+}
+
+model BankCategorizationRule {
+  id                 String   @id @default(cuid())
+  organizationId     String
+  name               String
+  priority           Int      @default(100)
+  isActive           Boolean  @default(true)
+  condition          Json
+  targetCategoryId   String
+  targetEntityType   String?
+  targetEntityId     String?
+  autoApply          String   @default("if_high_confidence")
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  @@index([organizationId])
+  @@index([priority])
+}
+
+model RuleEvaluationLog {
+  id              String   @id @default(cuid())
+  ruleId          String
+  transactionId   String
+  matched         Boolean
+  applied         Boolean
+  confidenceScore Float
+  explanation     String
+  evaluatedAt     DateTime @default(now())
+  @@index([ruleId])
+  @@index([transactionId])
+}
+
+model ReconciliationSuggestion {
+  id              String   @id @default(cuid())
+  organizationId  String
+  transactionId   String
+  targetType      String
+  targetId        String?
+  confidenceScore Float
+  reason          String
+  status          String   @default("pending")
+  createdAt       DateTime @default(now())
+  resolvedBy      String?
+  resolvedAt      DateTime?
+  @@index([organizationId])
+  @@index([transactionId])
+  @@index([status])
+}
+
+model FinancialReconciliation {
+  id              String   @id @default(cuid())
+  organizationId  String
+  transactionId   String
+  targetType      String
+  targetId        String?
+  amountMatched   Float
+  dateVarianceDays Int
+  amountVariance  Float
+  confidenceScore Float
+  matchedBy       String
+  status          String   @default("reconciled")
+  notes           String?
+  createdAt       DateTime @default(now())
+  cancelledAt     DateTime?
+  @@index([organizationId])
+  @@index([transactionId])
+  @@index([targetType, targetId])
+  @@index([status])
+}
+
+model AccountingInvoiceImport {
+  id                   String   @id @default(cuid())
+  connectorId           String
+  externalId            String
+  invoiceNumber         String
+  type                  String
+  clientOrSupplierName  String
+  clientId              String?
+  supplierName          String?
+  missionId             String?
+  invoiceDate           DateTime
+  dueDate               DateTime?
+  amountHT              Float
+  vatAmount             Float
+  amountTTC             Float
+  paidAmount            Float    @default(0)
+  status                String
+  rawPayload            Json?
+  importedAt            DateTime @default(now())
+  @@unique([connectorId, externalId])
+  @@index([connectorId])
+  @@index([invoiceNumber])
+}
+
+model AccountingPaymentImport {
+  id                String   @id @default(cuid())
+  connectorId        String
+  externalId         String
+  invoiceExternalId  String?
+  paymentDate        DateTime
+  amount             Float
+  payerOrPayeeName   String
+  paymentMethod      String?
+  rawPayload         Json?
+  importedAt         DateTime @default(now())
+  @@unique([connectorId, externalId])
+  @@index([connectorId])
+}
+
+model ClientPaymentProfile {
+  id                          String   @id @default(cuid())
+  clientId                    String
+  averagePaymentDelayDays      Float
+  medianPaymentDelayDays       Float
+  averageLateDays              Float
+  latePaymentRate              Float
+  totalLateAmount              Float
+  reliabilityScore             Float
+  recommendedForecastDelayDays Int
+  lastCalculatedAt             DateTime @default(now())
+  @@unique([clientId])
+}
+
+model ReforecastSuggestion {
+  id              String   @id @default(cuid())
+  organizationId  String
+  scenarioId      String
+  type            String
+  targetType      String
+  targetId        String?
+  currentValue    Json?
+  suggestedValue  Json?
+  impactAmount    Float
+  impactMonth     String
+  explanation     String
+  confidenceScore Float
+  status          String   @default("pending")
+  createdAt       DateTime @default(now())
+  resolvedBy      String?
+  resolvedAt      DateTime?
+  @@index([organizationId])
+  @@index([scenarioId])
+  @@index([status])
+}
+
+model ForecastReliabilityScore {
+  id              String   @id @default(cuid())
+  scenarioId      String
+  month           String
+  score           Float
+  confidenceLevel String
+  factors         Json
+  explanation     String
+  calculatedAt    DateTime @default(now())
+  @@unique([scenarioId, month])
+}
+
+model FinancialAnomaly {
+  id              String   @id @default(cuid())
+  organizationId  String
+  type            String
+  severity        String
+  entityType      String
+  entityId        String
+  amount          Float
+  detectedAt      DateTime @default(now())
+  explanation     String
+  suggestedAction String
+  status          String   @default("new")
+  resolvedBy      String?
+  resolvedAt      DateTime?
+  @@index([organizationId])
+  @@index([severity])
+  @@index([status])
+}
+
+model DataQualityIssue {
+  id           String   @id @default(cuid())
+  organizationId String
+  type         String
+  severity     String
+  entityType   String
+  entityId     String
+  message      String
+  suggestedFix String
+  status       String   @default("open")
+  createdAt    DateTime @default(now())
+  resolvedAt   DateTime?
+  @@index([organizationId])
+  @@index([status])
+}
+
+model CodirReport {
+  id             String   @id @default(cuid())
+  organizationId String
+  companyId      String
+  scenarioId     String?
+  month          String
+  format         String
+  payload        Json
+  generatedBy    String?
+  generatedAt    DateTime @default(now())
+  @@index([organizationId])
+  @@index([month])
+}
+
+model FinancialExportLog {
+  id               String   @id @default(cuid())
+  organizationId   String
+  companyId        String
+  userId           String?
+  exportType       String
+  filters          Json?
+  sensitivityLevel String   @default("financial")
+  createdAt        DateTime @default(now())
+  @@index([organizationId])
+  @@index([createdAt])
+}

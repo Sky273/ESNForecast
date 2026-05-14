@@ -135,3 +135,89 @@ Les tests couvrent V1 et V2 via `npm run test`.
 ## Limites V2
 
 La V2 reste volontairement un cockpit de pilotage. Les connecteurs externes sont prepares et simules via tables/imports CSV, mais les integrations completes HubSpot, Pennylane, Lucca ou Salesforce ne sont pas implementees. L'analyse IA ne modifie aucune donnee et ne doit pas etre traitee comme une expertise comptable.
+
+## V3 - Connexion au reel financier
+
+La V3 ferme la boucle `prevision -> reel bancaire/comptable -> rapprochement -> ecarts -> recalibrage -> decision`.
+
+Modules ajoutes :
+
+- architecture generique de connecteurs avec `connectors` et `connector_sync_runs` ;
+- provider bancaire mock et connecteur comptable mock pour demonstration et tests ;
+- comptes bancaires, consentements, soldes et transactions bancaires ;
+- imports CSV bancaire et comptable via endpoints robustes avec detection basique des lignes invalides ;
+- categories financieres et regles de categorisation bancaire ;
+- suggestions de rapprochement bancaire avec score de confiance ;
+- rapprochements financiers validables et annulables ;
+- chaine facture prevue / facture reelle / paiement / transaction ;
+- profils de paiement clients et analyse des retards ;
+- tresorerie reelle vs previsionnelle et projection recalibree ;
+- cash runway base sur cash bancaire et burn importe ;
+- suggestions de reforecast ;
+- score de fiabilite previsionnelle ;
+- detection d'anomalies financieres ;
+- sante des donnees ;
+- supervision connecteurs et gouvernance des consentements ;
+- rapport CODIR JSON/PDF simple ;
+- assistant IA V3 base sur donnees internes calculees.
+
+## API V3 principale
+
+- `GET /api/financial/situation`
+- `GET|POST /api/connectors`
+- `POST /api/connectors/:id/sync`
+- `POST /api/connectors/:id/disconnect`
+- `GET /api/connectors/:id/sync-runs`
+- `GET|POST /api/bank/connections`
+- `POST /api/bank/connections/:id/refresh-consent`
+- `POST /api/bank/connections/:id/revoke`
+- `GET /api/bank/accounts`
+- `GET /api/bank/accounts/:id/transactions`
+- `GET /api/bank/transactions`
+- `PUT /api/bank/transactions/:id/category`
+- `POST /api/bank/transactions/import-csv`
+- `POST /api/accounting/import-csv`
+- `GET /api/accounting/imports/invoices`
+- `GET /api/accounting/imports/payments`
+- `GET|POST /api/financial-categories`
+- `GET|POST /api/bank/categorization-rules`
+- `POST /api/bank/categorization-rules/evaluate`
+- `GET /api/reconciliation/suggestions`
+- `POST /api/reconciliation/suggestions/:id/accept`
+- `POST /api/reconciliation/suggestions/:id/reject`
+- `GET /api/reconciliation/financial`
+- `POST /api/reconciliation/financial/:id/cancel`
+- `GET /api/reconciliation/chains`
+- `GET /api/client-payment-profiles`
+- `POST /api/client-payment-profiles/recalculate`
+- `GET /api/forecast-reliability`
+- `POST /api/forecast-reliability/recalculate`
+- `GET /api/treasury/actual-vs-forecast`
+- `GET /api/treasury/runway`
+- `GET /api/financial-anomalies`
+- `POST /api/financial-anomalies/detect`
+- `GET /api/data-quality`
+- `POST /api/data-quality/recalculate`
+- `GET /api/reports/codir.json`
+- `GET /api/reports/codir.pdf`
+- `POST /api/ai/analyze/cash-variance`
+- `POST /api/ai/analyze/connector-health`
+- `POST /api/ai/analyze/codir`
+
+## Moteur V3
+
+Le package partage expose :
+
+- `categorizeTransactions` ;
+- `generateReconciliationSuggestions` ;
+- `calculateClientPaymentProfiles` ;
+- `calculateForecastReliability` ;
+- `calculateTreasuryActualVsForecast` ;
+- `calculateRunway` ;
+- `detectFinancialAnomalies` ;
+- `calculateDataQualityIssues` ;
+- `buildV3FinancialSituation`.
+
+## Limites V3
+
+La V3 ne stocke pas d'identifiants bancaires et n'initie aucun paiement. Les providers bancaire et comptable livres sont mock/CSV : ils preparent l'integration d'agregateurs type Bridge, Powens, Tink ou Plaid, mais aucune connexion bancaire reelle OAuth/API n'est active sans credentials et contrat fournisseur. ESN Forecast reste un cockpit de pilotage, pas un logiciel comptable certifie.

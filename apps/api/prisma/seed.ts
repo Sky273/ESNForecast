@@ -9,6 +9,26 @@ const hashPassword = (password: string) => {
 };
 
 async function main() {
+  await prisma.financialExportLog.deleteMany();
+  await prisma.codirReport.deleteMany();
+  await prisma.dataQualityIssue.deleteMany();
+  await prisma.financialAnomaly.deleteMany();
+  await prisma.forecastReliabilityScore.deleteMany();
+  await prisma.reforecastSuggestion.deleteMany();
+  await prisma.clientPaymentProfile.deleteMany();
+  await prisma.accountingPaymentImport.deleteMany();
+  await prisma.accountingInvoiceImport.deleteMany();
+  await prisma.financialReconciliation.deleteMany();
+  await prisma.reconciliationSuggestion.deleteMany();
+  await prisma.ruleEvaluationLog.deleteMany();
+  await prisma.bankCategorizationRule.deleteMany();
+  await prisma.financialCategory.deleteMany();
+  await prisma.bankTransaction.deleteMany();
+  await prisma.bankAccount.deleteMany();
+  await prisma.bankConsent.deleteMany();
+  await prisma.bankConnection.deleteMany();
+  await prisma.connectorSyncRun.deleteMany();
+  await prisma.connector.deleteMany();
   await prisma.offerLine.deleteMany();
   await prisma.offer.deleteMany();
   await prisma.businessRule.deleteMany();
@@ -325,6 +345,101 @@ async function main() {
   await prisma.offerLine.create({ data: { offerId: offer.id, label: "Equipe cloud et run", role: "Cloud engineer", skillNeeds: { cloud: 2 }, quantity: 2, durationDays: 120, tjmSale: 825, estimatedCost: 134000, expectedMargin: 64000 } });
 
   await prisma.auditLog.create({ data: { entityType: "seed", entityId: "v2", action: "create_demo_data", after: { timesheets: 3, invoices: 1, skills: 3, rules: 2 } } });
+
+  const [bankConnector, accountingConnector, expiredConnector] = await Promise.all([
+    prisma.connector.create({ data: { organizationId: organization.id, companyId: company.id, type: "banking", provider: "mock_bank_provider", name: "Banque mock principale", status: "connected", configuration: { mode: "mock" }, lastSyncAt: d("2026-07-01"), nextSyncAt: d("2026-07-02"), createdBy: "admin@esnforecast.local" } }),
+    prisma.connector.create({ data: { organizationId: organization.id, companyId: company.id, type: "accounting", provider: "mock_accounting_provider", name: "Compta mock", status: "connected", configuration: { mode: "mock" }, lastSyncAt: d("2026-07-01"), nextSyncAt: d("2026-07-02"), createdBy: "finance@esnforecast.local" } }),
+    prisma.connector.create({ data: { organizationId: organization.id, companyId: company.id, type: "banking", provider: "csv_bank_import", name: "Import bancaire secondaire", status: "expired", errorMessage: "Consentement expire", lastSyncAt: d("2026-06-15"), createdBy: "finance@esnforecast.local" } })
+  ]);
+
+  await Promise.all([
+    prisma.connectorSyncRun.create({ data: { connectorId: bankConnector.id, startedAt: d("2026-07-01"), finishedAt: d("2026-07-01"), status: "success", importedCount: 6, updatedCount: 1, skippedCount: 0, errorCount: 0, logs: { provider: "mock_bank_provider" } } }),
+    prisma.connectorSyncRun.create({ data: { connectorId: accountingConnector.id, startedAt: d("2026-07-01"), finishedAt: d("2026-07-01"), status: "partial_success", importedCount: 3, updatedCount: 1, skippedCount: 1, errorCount: 1, errors: [{ line: 4, message: "Client non mappe" }] } }),
+    prisma.connectorSyncRun.create({ data: { connectorId: expiredConnector.id, startedAt: d("2026-06-15"), finishedAt: d("2026-06-15"), status: "failed", errorCount: 1, errors: [{ message: "Consentement expire" }] } })
+  ]);
+
+  const bankConnection = await prisma.bankConnection.create({
+    data: {
+      organizationId: organization.id,
+      companyId: company.id,
+      connectorId: bankConnector.id,
+      provider: "mock_bank_provider",
+      externalConnectionId: "mock-connection-001",
+      status: "active",
+      consentExpiresAt: d("2026-08-20"),
+      lastSyncAt: d("2026-07-01"),
+      createdBy: "admin@esnforecast.local"
+    }
+  });
+  await prisma.bankConsent.create({ data: { organizationId: organization.id, bankConnectionId: bankConnection.id, provider: "mock_bank_provider", status: "active", grantedBy: "admin@esnforecast.local", grantedAt: d("2026-06-01"), expiresAt: d("2026-08-20"), scopes: ["accounts", "balances", "transactions"], metadata: { mock: true } } });
+
+  const bankAccount = await prisma.bankAccount.create({
+    data: {
+      organizationId: organization.id,
+      companyId: company.id,
+      bankConnectionId: bankConnection.id,
+      externalAccountId: "mock-account-main",
+      name: "Compte courant principal",
+      ibanMasked: "FR76************1234",
+      currency: "EUR",
+      type: "checking",
+      currentBalance: 77000,
+      availableBalance: 76000,
+      balanceDate: d("2026-06-30"),
+      isActive: true,
+      rawPayload: { provider: "mock" }
+    }
+  });
+
+  const [revenueCategory, urssafCategory, softwareCategory, rentCategory, unknownCategory] = await Promise.all([
+    prisma.financialCategory.create({ data: { organizationId: organization.id, name: "Encaissements clients", type: "revenue", isSystem: true, isActive: true } }),
+    prisma.financialCategory.create({ data: { organizationId: organization.id, name: "Charges sociales", type: "employer_charges", isSystem: true, isActive: true } }),
+    prisma.financialCategory.create({ data: { organizationId: organization.id, name: "Logiciels et infrastructure", type: "software", isSystem: true, isActive: true } }),
+    prisma.financialCategory.create({ data: { organizationId: organization.id, name: "Loyer et locaux", type: "rent", isSystem: true, isActive: true } }),
+    prisma.financialCategory.create({ data: { organizationId: organization.id, name: "A qualifier", type: "other_expense", isSystem: false, isActive: true } })
+  ]);
+
+  await Promise.all([
+    prisma.bankCategorizationRule.create({ data: { organizationId: organization.id, name: "URSSAF", priority: 1, isActive: true, condition: { labelContains: "URSSAF", direction: "debit" }, targetCategoryId: urssafCategory.id, autoApply: "always" } }),
+    prisma.bankCategorizationRule.create({ data: { organizationId: organization.id, name: "OVH", priority: 5, isActive: true, condition: { labelContains: "OVH", direction: "debit" }, targetCategoryId: softwareCategory.id, autoApply: "always" } }),
+    prisma.bankCategorizationRule.create({ data: { organizationId: organization.id, name: "LOYER", priority: 10, isActive: true, condition: { labelContains: "LOYER", direction: "debit" }, targetCategoryId: rentCategory.id, autoApply: "if_high_confidence" } }),
+    prisma.bankCategorizationRule.create({ data: { organizationId: organization.id, name: "Client Banque Horizon", priority: 20, isActive: true, condition: { counterpartyContains: "Banque Horizon", direction: "credit" }, targetCategoryId: revenueCategory.id, autoApply: "if_high_confidence" } })
+  ]);
+
+  const tx1 = await prisma.bankTransaction.create({ data: { organizationId: organization.id, companyId: company.id, bankAccountId: bankAccount.id, externalTransactionId: "bank-tx-001", transactionDate: d("2026-06-28"), bookingDate: d("2026-06-28"), label: "VIR Banque Horizon F-2026-0001", counterpartyName: "Banque Horizon", amount: 28000, currency: "EUR", direction: "credit", status: "booked", categoryId: revenueCategory.id, categorizationStatus: "auto_categorized", reconciliationStatus: "reconciled", confidenceScore: 0.96, rawPayload: { mock: true } } });
+  const tx2 = await prisma.bankTransaction.create({ data: { organizationId: organization.id, companyId: company.id, bankAccountId: bankAccount.id, externalTransactionId: "bank-tx-002", transactionDate: d("2026-06-12"), bookingDate: d("2026-06-12"), label: "PRLV URSSAF JUIN", counterpartyName: "URSSAF", amount: -9000, currency: "EUR", direction: "debit", status: "booked", categoryId: urssafCategory.id, categorizationStatus: "rule_categorized", reconciliationStatus: "unreconciled", confidenceScore: 0.95 } });
+  const tx3 = await prisma.bankTransaction.create({ data: { organizationId: organization.id, companyId: company.id, bankAccountId: bankAccount.id, externalTransactionId: "bank-tx-003", transactionDate: d("2026-06-13"), bookingDate: d("2026-06-13"), label: "PRLV URSSAF REGUL", counterpartyName: "URSSAF", amount: -9000, currency: "EUR", direction: "debit", status: "booked", categoryId: urssafCategory.id, categorizationStatus: "rule_categorized", reconciliationStatus: "unreconciled", confidenceScore: 0.94 } });
+  const tx4 = await prisma.bankTransaction.create({ data: { organizationId: organization.id, companyId: company.id, bankAccountId: bankAccount.id, externalTransactionId: "bank-tx-004", transactionDate: d("2026-06-05"), bookingDate: d("2026-06-05"), label: "OVH CLOUD", counterpartyName: "OVH", amount: -1260, currency: "EUR", direction: "debit", status: "booked", categoryId: softwareCategory.id, categorizationStatus: "rule_categorized", reconciliationStatus: "unreconciled", confidenceScore: 0.93 } });
+  const tx5 = await prisma.bankTransaction.create({ data: { organizationId: organization.id, companyId: company.id, bankAccountId: bankAccount.id, externalTransactionId: "bank-tx-005", transactionDate: d("2026-06-02"), bookingDate: d("2026-06-02"), label: "LOYER BUREAUX", counterpartyName: "SCI Bureau", amount: -6200, currency: "EUR", direction: "debit", status: "booked", categoryId: rentCategory.id, categorizationStatus: "rule_categorized", reconciliationStatus: "unreconciled", confidenceScore: 0.9 } });
+  await prisma.bankTransaction.create({ data: { organizationId: organization.id, companyId: company.id, bankAccountId: bankAccount.id, externalTransactionId: "bank-tx-006", transactionDate: d("2026-06-24"), bookingDate: d("2026-06-24"), label: "CB ACHAT INCONNU", counterpartyName: "Unknown", amount: -4800, currency: "EUR", direction: "debit", status: "booked", categoryId: unknownCategory.id, categorizationStatus: "uncategorized", reconciliationStatus: "unreconciled", confidenceScore: 0.1 } });
+
+  await Promise.all([
+    prisma.financialReconciliation.create({ data: { organizationId: organization.id, transactionId: tx1.id, targetType: "invoice", targetId: realInvoice.id, amountMatched: 28000, dateVarianceDays: -47, amountVariance: -19040, confidenceScore: 0.96, matchedBy: "auto", status: "partially_reconciled", notes: "Paiement partiel bancaire rapproche automatiquement" } }),
+    prisma.reconciliationSuggestion.create({ data: { organizationId: organization.id, transactionId: tx2.id, targetType: "tax", confidenceScore: 0.82, reason: "Libelle URSSAF et montant recurrent", status: "pending" } }),
+    prisma.reconciliationSuggestion.create({ data: { organizationId: organization.id, transactionId: tx4.id, targetType: "fixed_cost", confidenceScore: 0.78, reason: "Libelle OVH proche des couts logiciels", status: "pending" } }),
+    prisma.ruleEvaluationLog.create({ data: { ruleId: (await prisma.bankCategorizationRule.findFirstOrThrow({ where: { name: "URSSAF" } })).id, transactionId: tx2.id, matched: true, applied: true, confidenceScore: 0.95, explanation: "Libelle contient URSSAF" } })
+  ]);
+
+  await Promise.all([
+    prisma.accountingInvoiceImport.create({ data: { connectorId: accountingConnector.id, externalId: "acc-inv-001", invoiceNumber: "F-2026-0001", type: "customer_invoice", clientOrSupplierName: "Banque Horizon", clientId: clients[0].id, missionId: missions[0].id, invoiceDate: d("2026-06-30"), dueDate: d("2026-08-14"), amountHT: 39200, vatAmount: 7840, amountTTC: 47040, paidAmount: 28000, status: "partially_paid", rawPayload: { mock: true } } }),
+    prisma.accountingInvoiceImport.create({ data: { connectorId: accountingConnector.id, externalId: "acc-inv-002", invoiceNumber: "F-2026-0002", type: "customer_invoice", clientOrSupplierName: "HealthLink", clientId: clients[3].id, missionId: missions[3].id, invoiceDate: d("2026-06-30"), dueDate: d("2026-08-29"), amountHT: 36000, vatAmount: 7200, amountTTC: 43200, paidAmount: 0, status: "late", rawPayload: { mock: true } } }),
+    prisma.accountingPaymentImport.create({ data: { connectorId: accountingConnector.id, externalId: "acc-pay-001", invoiceExternalId: "acc-inv-001", paymentDate: d("2026-06-28"), amount: 28000, payerOrPayeeName: "Banque Horizon", paymentMethod: "wire", rawPayload: { mock: true } } })
+  ]);
+
+  await Promise.all([
+    prisma.clientPaymentProfile.create({ data: { clientId: clients[0].id, averagePaymentDelayDays: 28, medianPaymentDelayDays: 28, averageLateDays: 0, latePaymentRate: 0, totalLateAmount: 0, reliabilityScore: 94, recommendedForecastDelayDays: 30 } }),
+    prisma.clientPaymentProfile.create({ data: { clientId: clients[3].id, averagePaymentDelayDays: 72, medianPaymentDelayDays: 70, averageLateDays: 18, latePaymentRate: 0.66, totalLateAmount: 43200, reliabilityScore: 42, recommendedForecastDelayDays: 75 } }),
+    prisma.reforecastSuggestion.create({ data: { organizationId: organization.id, scenarioId: referenceScenario.id, type: "adjust_payment_delay", targetType: "client", targetId: clients[3].id, currentValue: { delay: 60 }, suggestedValue: { delay: 75 }, impactAmount: -43200, impactMonth: "2026-08", explanation: "HealthLink paie historiquement plus tard que le delai contractuel.", confidenceScore: 0.82, status: "pending" } }),
+    prisma.forecastReliabilityScore.create({ data: { scenarioId: referenceScenario.id, month: "2026-06", score: 71, confidenceLevel: "medium", factors: { cashVarianceRate: 0.08, unreconciledTransactions: 5, connectorIssues: 1 }, explanation: "Fiabilite penalisee par des transactions non rapprochees et un connecteur expire." } }),
+    prisma.financialAnomaly.create({ data: { organizationId: organization.id, type: "duplicate_payment", severity: "warning", entityType: "bank_transaction", entityId: tx3.id, amount: 9000, explanation: "Deux prelevements URSSAF tres proches ont le meme montant.", suggestedAction: "Verifier s'il s'agit d'une regularisation ou d'un double paiement.", status: "new" } }),
+    prisma.financialAnomaly.create({ data: { organizationId: organization.id, type: "uncategorized_large_transaction", severity: "warning", entityType: "bank_transaction", entityId: tx5.id, amount: 6200, explanation: "Transaction significative a valider dans les couts fixes.", suggestedAction: "Confirmer la categorie et rapprocher avec le loyer prevu.", status: "new" } }),
+    prisma.dataQualityIssue.create({ data: { organizationId: organization.id, type: "uncategorized_transactions", severity: "warning", entityType: "bank_transaction", entityId: "multiple", message: "1 transaction bancaire reste non categorisee.", suggestedFix: "Creer une regle ou categoriser manuellement.", status: "open" } }),
+    prisma.dataQualityIssue.create({ data: { organizationId: organization.id, type: "connector_health", severity: "critical", entityType: "connector", entityId: expiredConnector.id, message: "Un consentement bancaire est expire.", suggestedFix: "Renouveler ou revoquer le consentement.", status: "open" } }),
+    prisma.codirReport.create({ data: { organizationId: organization.id, companyId: company.id, scenarioId: referenceScenario.id, month: "2026-06", format: "json", payload: { cash: 77000, runway: "fragile", anomalies: 2, recommendations: ["Rapprocher les transactions URSSAF", "Relancer HealthLink"] }, generatedBy: "direction@esnforecast.local" } }),
+    prisma.financialExportLog.create({ data: { organizationId: organization.id, companyId: company.id, userId: "direction@esnforecast.local", exportType: "codir_report", filters: { month: "2026-06" }, sensitivityLevel: "financial" } })
+  ]);
+
+  await prisma.auditLog.create({ data: { entityType: "financial_v3", entityId: "seed", action: "create_connected_finance_demo", after: { connectors: 3, bankTransactions: 6, reconciliations: 1, anomalies: 2 } } });
 }
 
 main()
