@@ -1445,3 +1445,299 @@ model DataSourcePolicy {
   updatedAt          DateTime @updatedAt
   @@unique([organizationId, domain])
 }
+
+model JobRun {
+  id                String   @id @default(cuid())
+  organizationId    String?
+  companyId         String?
+  type              String
+  status            String   @default("queued")
+  startedAt         DateTime?
+  finishedAt        DateTime?
+  durationMs        Int?
+  progressPercent   Int      @default(0)
+  inputSummary      Json?
+  resultSummary     Json?
+  errorMessage      String?
+  errorDetails      Json?
+  triggeredBy       String   @default("system")
+  triggeredByUserId String?
+  correlationId     String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  @@index([organizationId])
+  @@index([companyId])
+  @@index([type, status])
+  @@index([createdAt])
+}
+
+model SystemEvent {
+  id             String   @id @default(cuid())
+  organizationId String?
+  companyId      String?
+  level          String
+  module         String
+  message        String
+  metadata       Json?
+  correlationId  String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  @@index([organizationId])
+  @@index([level])
+  @@index([createdAt])
+}
+
+model ApplicationLog {
+  id            String   @id @default(cuid())
+  timestamp     DateTime @default(now())
+  level         String
+  service       String
+  route         String?
+  userId        String?
+  organizationId String?
+  companyId     String?
+  correlationId String?
+  requestId     String?
+  connectorId   String?
+  scenarioId    String?
+  durationMs    Int?
+  errorCode     String?
+  message       String
+  metadata      Json?
+  @@index([organizationId])
+  @@index([level])
+  @@index([timestamp])
+}
+
+model ErrorReport {
+  id             String   @id @default(cuid())
+  organizationId String?
+  companyId      String?
+  code           String
+  message        String
+  technicalDetails Json?
+  userAction     String?
+  status         String   @default("open")
+  severity       String   @default("warning")
+  correlationId  String?
+  createdAt      DateTime @default(now())
+  resolvedAt     DateTime?
+  updatedAt      DateTime @updatedAt
+  @@index([organizationId])
+  @@index([code])
+  @@index([status])
+}
+
+model BackupRun {
+  id             String   @id @default(cuid())
+  organizationId String
+  companyId      String?
+  type           String
+  status         String   @default("queued")
+  filePath       String?
+  sizeBytes      Int?
+  createdBy      String?
+  createdAt      DateTime @default(now())
+  completedAt    DateTime?
+  error          String?
+  updatedAt      DateTime @updatedAt
+  @@index([organizationId])
+  @@index([status])
+}
+
+model RestoreRun {
+  id             String   @id @default(cuid())
+  organizationId String
+  sourceBackupId String?
+  mode           String
+  status         String   @default("queued")
+  resultSummary  Json?
+  createdBy      String?
+  createdAt      DateTime @default(now())
+  completedAt    DateTime?
+  error          String?
+  updatedAt      DateTime @updatedAt
+  @@index([organizationId])
+  @@index([status])
+}
+
+model ExportRun {
+  id             String   @id @default(cuid())
+  organizationId String
+  companyId      String?
+  type           String
+  format         String
+  status         String   @default("queued")
+  filePath       String?
+  sizeBytes      Int?
+  filters        Json?
+  createdBy      String?
+  createdAt      DateTime @default(now())
+  completedAt    DateTime?
+  error          String?
+  updatedAt      DateTime @updatedAt
+  @@index([organizationId])
+  @@index([type, status])
+}
+
+model RetentionPolicy {
+  id             String   @id @default(cuid())
+  organizationId String
+  domain         String
+  retentionDays  Int
+  action         String
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  @@unique([organizationId, domain])
+}
+
+model PurgeRun {
+  id             String   @id @default(cuid())
+  organizationId String
+  domain         String
+  status         String   @default("queued")
+  deletedCount   Int      @default(0)
+  anonymizedCount Int     @default(0)
+  archivedCount  Int      @default(0)
+  startedAt      DateTime?
+  completedAt    DateTime?
+  error          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  @@index([organizationId])
+  @@index([status])
+}
+
+model SecurityEvent {
+  id             String   @id @default(cuid())
+  organizationId String?
+  userId         String?
+  type           String
+  severity       String
+  message        String
+  ipAddress      String?
+  userAgent      String?
+  metadata       Json?
+  correlationId  String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  @@index([organizationId])
+  @@index([type])
+  @@index([severity])
+}
+
+model LoginAttempt {
+  id             String   @id @default(cuid())
+  organizationId String?
+  email          String
+  success        Boolean
+  failureReason  String?
+  ipAddress      String?
+  userAgent      String?
+  createdAt      DateTime @default(now())
+  @@index([organizationId])
+  @@index([email])
+  @@index([createdAt])
+}
+
+model SensitiveDataAccessLog {
+  id             String   @id @default(cuid())
+  organizationId String?
+  companyId      String?
+  userId         String?
+  entityType     String
+  entityId       String?
+  action         String
+  sensitivityLevel String
+  ipAddress      String?
+  userAgent      String?
+  correlationId  String?
+  createdAt      DateTime @default(now())
+  @@index([organizationId])
+  @@index([entityType])
+  @@index([createdAt])
+}
+
+model FeatureFlag {
+  id                      String   @id @default(cuid())
+  key                     String   @unique
+  name                    String
+  description             String
+  enabledGlobally         Boolean  @default(false)
+  enabledForOrganizations Json?
+  enabledForRoles         Json?
+  rolloutPercent          Int      @default(0)
+  status                  String   @default("experimental")
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+}
+
+model OnboardingState {
+  id             String   @id @default(cuid())
+  organizationId String
+  userId         String?
+  steps          Json
+  completedAt    DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  @@index([organizationId])
+}
+
+model SupportAction {
+  id             String   @id @default(cuid())
+  organizationId String
+  companyId      String?
+  action         String
+  status         String   @default("queued")
+  requestedBy    String?
+  result         Json?
+  reason         String?
+  correlationId  String?
+  createdAt      DateTime @default(now())
+  completedAt    DateTime?
+  updatedAt      DateTime @updatedAt
+  @@index([organizationId])
+  @@index([action])
+}
+
+model PerformanceSnapshot {
+  id             String   @id @default(cuid())
+  organizationId String?
+  metric         String
+  value          Float
+  unit           String
+  route          String?
+  metadata       Json?
+  capturedAt     DateTime @default(now())
+  @@index([organizationId])
+  @@index([metric])
+  @@index([capturedAt])
+}
+
+model DataQualityScore {
+  id             String   @id @default(cuid())
+  organizationId String
+  domain         String
+  score          Float
+  issuesCount    Int
+  criticalCount  Int
+  recommendations Json?
+  calculatedAt   DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  @@unique([organizationId, domain])
+}
+
+model HelpArticle {
+  id          String   @id @default(cuid())
+  pageKey     String
+  title       String
+  body        String
+  category    String
+  links       Json?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  @@index([pageKey])
+  @@index([category])
+}

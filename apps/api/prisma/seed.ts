@@ -11,6 +11,24 @@ const hashPassword = (password: string) => {
 };
 
 async function main() {
+  await prisma.helpArticle.deleteMany();
+  await prisma.dataQualityScore.deleteMany();
+  await prisma.performanceSnapshot.deleteMany();
+  await prisma.supportAction.deleteMany();
+  await prisma.onboardingState.deleteMany();
+  await prisma.featureFlag.deleteMany();
+  await prisma.sensitiveDataAccessLog.deleteMany();
+  await prisma.loginAttempt.deleteMany();
+  await prisma.securityEvent.deleteMany();
+  await prisma.purgeRun.deleteMany();
+  await prisma.retentionPolicy.deleteMany();
+  await prisma.exportRun.deleteMany();
+  await prisma.restoreRun.deleteMany();
+  await prisma.backupRun.deleteMany();
+  await prisma.errorReport.deleteMany();
+  await prisma.applicationLog.deleteMany();
+  await prisma.systemEvent.deleteMany();
+  await prisma.jobRun.deleteMany();
   await prisma.dataSourcePolicy.deleteMany();
   await prisma.duplicateCandidate.deleteMany();
   await prisma.providerRateLimitState.deleteMany();
@@ -493,6 +511,41 @@ async function main() {
     prisma.auditLog.create({ data: { entityType: "financial_connector", entityId: bankConnector.id, action: "sync_completed", after: { provider: "bridge", imported: 6 }, } }),
     prisma.auditLog.create({ data: { entityType: "financial_connector", entityId: expiredConnector.id, action: "consent_expired", after: { provider: "tink", requiresUserAction: true } } })
   ]);
+
+  await Promise.all([
+    prisma.jobRun.create({ data: { organizationId: organization.id, companyId: company.id, type: "connector_sync", status: "success", startedAt: d("2026-07-01"), finishedAt: d("2026-07-01"), durationMs: 1840, progressPercent: 100, inputSummary: { provider: "bridge" }, resultSummary: { imported: 6, updated: 1 }, triggeredBy: "schedule", correlationId: "seed-sync-success" } }),
+    prisma.jobRun.create({ data: { organizationId: organization.id, companyId: company.id, type: "report_pdf", status: "failed", startedAt: d("2026-07-01"), finishedAt: d("2026-07-01"), durationMs: 4200, progressPercent: 65, inputSummary: { report: "codir" }, errorMessage: "Template PDF indisponible", errorDetails: { renderer: "pdf" }, triggeredBy: "user", triggeredByUserId: "direction@esnforecast.local", correlationId: "seed-report-failed" } }),
+    prisma.jobRun.create({ data: { organizationId: organization.id, companyId: company.id, type: "reforecast", status: "retrying", startedAt: d("2026-07-01"), durationMs: 900, progressPercent: 40, inputSummary: { scenarioId: referenceScenario.id }, errorMessage: "Rate limit provider temporaire", triggeredBy: "webhook", correlationId: "seed-reforecast-retry" } }),
+    prisma.systemEvent.create({ data: { organizationId: organization.id, companyId: company.id, level: "warning", module: "connectors", message: "Consentement bancaire proche expiration", metadata: { connectorId: expiredConnector.id }, correlationId: "seed-system-event" } }),
+    prisma.applicationLog.create({ data: { level: "info", service: "api", route: "/api/connectors", organizationId: organization.id, companyId: company.id, correlationId: "seed-log-1", durationMs: 74, message: "Liste connecteurs chargee", metadata: { count: 3 } } }),
+    prisma.applicationLog.create({ data: { level: "error", service: "api", route: "/api/reports/codir.pdf", organizationId: organization.id, companyId: company.id, correlationId: "seed-report-failed", durationMs: 4200, errorCode: "REPORT_ERROR", message: "Generation rapport CODIR echouee" } }),
+    prisma.errorReport.create({ data: { organizationId: organization.id, companyId: company.id, code: "REPORT_ERROR", message: "Le rapport CODIR n'a pas pu etre genere.", userAction: "Relancer le job ou verifier le template.", status: "open", severity: "warning", correlationId: "seed-report-failed" } }),
+    prisma.backupRun.create({ data: { organizationId: organization.id, companyId: company.id, type: "full_organization", status: "success", filePath: "backups/demo-full-organization.json", sizeBytes: 42800, createdBy: "admin@esnforecast.local", completedAt: d("2026-07-01") } }),
+    prisma.restoreRun.create({ data: { organizationId: organization.id, mode: "dry_run", status: "success", resultSummary: { valid: true, conflicts: 0, excludedSecrets: true }, createdBy: "admin@esnforecast.local", completedAt: d("2026-07-01") } }),
+    prisma.exportRun.create({ data: { organizationId: organization.id, companyId: company.id, type: "full", format: "zip_csv", status: "success", filePath: "exports/demo-full.zip", sizeBytes: 64000, createdBy: "direction@esnforecast.local", completedAt: d("2026-07-01") } }),
+    prisma.retentionPolicy.create({ data: { organizationId: organization.id, domain: "application_logs", retentionDays: 90, action: "delete", isActive: true } }),
+    prisma.retentionPolicy.create({ data: { organizationId: organization.id, domain: "webhook_payloads", retentionDays: 180, action: "archive", isActive: true } }),
+    prisma.purgeRun.create({ data: { organizationId: organization.id, domain: "application_logs", status: "success", deletedCount: 120, startedAt: d("2026-07-01"), completedAt: d("2026-07-01") } }),
+    prisma.securityEvent.create({ data: { organizationId: organization.id, userId: "admin@esnforecast.local", type: "sensitive_export", severity: "warning", message: "Export financier complet genere", ipAddress: "127.0.0.1", userAgent: "seed", metadata: { export: "full" }, correlationId: "seed-export" } }),
+    prisma.loginAttempt.create({ data: { organizationId: organization.id, email: "admin@esnforecast.local", success: true, ipAddress: "127.0.0.1", userAgent: "seed" } }),
+    prisma.loginAttempt.create({ data: { organizationId: organization.id, email: "unknown@esnforecast.local", success: false, failureReason: "invalid_password", ipAddress: "127.0.0.1", userAgent: "seed" } }),
+    prisma.sensitiveDataAccessLog.create({ data: { organizationId: organization.id, companyId: company.id, userId: "finance@esnforecast.local", entityType: "employee_salary", entityId: employees[0].id, action: "view", sensitivityLevel: "salary", ipAddress: "127.0.0.1", userAgent: "seed", correlationId: "seed-sensitive-access" } }),
+    prisma.featureFlag.create({ data: { key: "new_sidebar_v5", name: "Menu lateral V5", description: "Navigation groupee, scrollable, compacte et recherchable.", enabledGlobally: true, enabledForRoles: ["admin", "direction"], rolloutPercent: 100, status: "stable" } }),
+    prisma.featureFlag.create({ data: { key: "command_palette", name: "Palette de commande", description: "Recherche rapide des pages et actions.", enabledGlobally: true, enabledForRoles: ["admin", "direction", "finance"], rolloutPercent: 100, status: "beta" } }),
+    prisma.featureFlag.create({ data: { key: "ai_assistant", name: "Assistant IA", description: "Analyse assistee basee sur les donnees calculees.", enabledGlobally: false, enabledForOrganizations: [organization.id], rolloutPercent: 25, status: "experimental" } }),
+    prisma.onboardingState.create({ data: { organizationId: organization.id, userId: "admin@esnforecast.local", steps: { company: true, clients: true, employees: true, missions: true, bank: false, accounting: false, dataQuality: false, firstProjection: true, codirReport: false } } }),
+    prisma.supportAction.create({ data: { organizationId: organization.id, companyId: company.id, action: "recalculate_data_quality", status: "success", requestedBy: "admin@esnforecast.local", result: { scoresUpdated: 6 }, reason: "Controle support demo", correlationId: "seed-support-action", completedAt: d("2026-07-01") } }),
+    prisma.performanceSnapshot.create({ data: { organizationId: organization.id, metric: "api_latency_ms", value: 380, unit: "ms", route: "/api/projections/scenario", metadata: { percentile: "p95" }, capturedAt: d("2026-07-01") } }),
+    prisma.performanceSnapshot.create({ data: { organizationId: organization.id, metric: "projection_duration_ms", value: 1280, unit: "ms", route: "/api/projections/scenario", metadata: { horizon: 24 }, capturedAt: d("2026-07-01") } }),
+    prisma.dataQualityScore.create({ data: { organizationId: organization.id, domain: "transactions", score: 72, issuesCount: 4, criticalCount: 1, recommendations: ["Categoriser les transactions importantes", "Renouveler le consentement expire"] } }),
+    prisma.dataQualityScore.create({ data: { organizationId: organization.id, domain: "connectors", score: 68, issuesCount: 2, criticalCount: 1, recommendations: ["Reconnecter le connecteur Tink", "Relancer la sync comptable"] } }),
+    prisma.dataQualityScore.create({ data: { organizationId: organization.id, domain: "missions", score: 86, issuesCount: 1, criticalCount: 0, recommendations: ["Verifier les dates de fin estimees"] } }),
+    prisma.helpArticle.create({ data: { pageKey: "dashboard", title: "Lire le dashboard direction", category: "pilotage", body: "Le dashboard combine reel, previsionnel et alertes. Commencez par la tresorerie, les ecarts et les alertes critiques.", links: [{ label: "Documentation exploitation", href: "/docs/v5-operations.md" }] } }),
+    prisma.helpArticle.create({ data: { pageKey: "bankReconciliation", title: "Rapprochement partiel", category: "finance", body: "Un rapprochement partiel relie une transaction a une facture sans couvrir tout le montant. Il doit rester visible jusqu'au solde complet." } }),
+    prisma.helpArticle.create({ data: { pageKey: "forecastReliability", title: "Score de fiabilite", category: "previsions", body: "Le score baisse si les donnees bancaires sont obsoletes, si les transactions ne sont pas rapprochees ou si une forte part du CA reste non signee." } })
+  ]);
+
+  await prisma.auditLog.create({ data: { entityType: "product_hardening_v5", entityId: "seed", action: "create_operations_demo", after: { jobs: 3, featureFlags: 3, backups: 1, dataQualityScores: 3 } } });
 }
 
 main()

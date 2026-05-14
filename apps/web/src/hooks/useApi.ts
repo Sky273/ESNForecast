@@ -1,6 +1,31 @@
 import { useCallback, useEffect, useState } from "react";
 import { api } from "../api";
 
+export function useApi<T>(path: string) {
+  const [data, setData] = useState<T | null>(null);
+  const [loading, setLoading] = useState(Boolean(path));
+  const [error, setError] = useState<string | null>(null);
+
+  const refetch = useCallback(async () => {
+    if (!path) return;
+    setLoading(true);
+    setError(null);
+    try {
+      setData(await api<T>(path));
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Erreur API");
+    } finally {
+      setLoading(false);
+    }
+  }, [path]);
+
+  useEffect(() => {
+    void refetch();
+  }, [refetch]);
+
+  return { data, loading, error, refetch, setData };
+}
+
 export function useApiList<T>(path: string) {
   const [data, setData] = useState<T[]>([]);
   const [loading, setLoading] = useState(true);

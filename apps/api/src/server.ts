@@ -10,14 +10,17 @@ import { v1Router } from "./routes/v1";
 import { v2Router } from "./routes/v2";
 import { v3Router } from "./routes/v3";
 import { v4Router } from "./routes/v4";
+import { v5Router } from "./routes/v5";
+import { errorHandler, notFoundHandler, requestContext } from "./middleware/requestContext";
 
 const app = express();
 const port = Number(process.env.PORT ?? 4000);
 
 app.use(cors());
 app.use(express.json({ limit: "2mb" }));
+app.use(requestContext);
 
-app.get("/api/health", (_req, res) => res.json({ ok: true, name: "ESN Forecast API" }));
+app.get("/api/health", (_req, res) => res.json({ ok: true, name: "ESN Forecast API", timestamp: new Date().toISOString() }));
 app.use("/api/employees", crudRouter(prisma, "employee"));
 app.use("/api/partners", crudRouter(prisma, "partner", { include: { resources: true } }));
 app.use("/api/partner-resources", crudRouter(prisma, "partnerResource", { include: { partner: true } }));
@@ -35,11 +38,10 @@ app.use("/api", v1Router);
 app.use("/api", v2Router);
 app.use("/api", v4Router);
 app.use("/api", v3Router);
+app.use("/api", v5Router);
 
-app.use((error: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
-  console.error(error);
-  res.status(500).json({ error: error instanceof Error ? error.message : "Unexpected error" });
-});
+app.use(notFoundHandler);
+app.use(errorHandler);
 
 app.listen(port, () => {
   console.log(`ESN Forecast API listening on http://localhost:${port}`);
