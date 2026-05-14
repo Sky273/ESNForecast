@@ -128,6 +128,7 @@ enum CashOutSourceType {
 
 model Company {
   id                              String   @id @default(cuid())
+  organizationId                  String?
   name                            String
   currency                        String   @default("EUR")
   defaultEmployeeSocialRate       Float    @default(0.22)
@@ -137,6 +138,7 @@ model Company {
   defaultProjectionHorizonMonths  Int      @default(12)
   createdAt                       DateTime @default(now())
   updatedAt                       DateTime @updatedAt
+  @@index([organizationId])
 }
 
 model Employee {
@@ -317,6 +319,7 @@ model MonthlyProjectionCache {
 
 model User {
   id           String     @id @default(cuid())
+  organizationId String?
   email        String     @unique
   name         String
   role         UserRole   @default(readonly)
@@ -324,6 +327,7 @@ model User {
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
   auditLogs    AuditLog[]
+  @@index([organizationId])
 }
 
 model Scenario {
@@ -468,4 +472,441 @@ model ReportExport {
   format    String
   payload   Json?
   createdAt DateTime @default(now())
+}
+
+model Organization {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Membership {
+  id             String   @id @default(cuid())
+  organizationId String
+  userId         String
+  role           UserRole @default(readonly)
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  @@unique([organizationId, userId])
+  @@index([organizationId])
+  @@index([userId])
+}
+
+model Timesheet {
+  id              String   @id @default(cuid())
+  companyId       String?
+  resourceType    String
+  resourceId      String
+  missionId       String
+  month           Int
+  year            Int
+  workedDays      Float
+  billableDays    Float
+  nonBillableDays Float   @default(0)
+  absenceDays     Float   @default(0)
+  vacationDays    Float   @default(0)
+  sickLeaveDays   Float   @default(0)
+  trainingDays    Float   @default(0)
+  internalDays    Float   @default(0)
+  status          String  @default("draft")
+  submittedBy     String?
+  approvedBy      String?
+  submittedAt     DateTime?
+  approvedAt      DateTime?
+  lockedAt        DateTime?
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  @@index([companyId])
+  @@index([missionId])
+  @@index([resourceType, resourceId])
+  @@index([year, month])
+}
+
+model MonthlyActual {
+  id                     String   @id @default(cuid())
+  companyId              String
+  month                  Int
+  year                   Int
+  actualRevenueGenerated Float    @default(0)
+  actualRevenueInvoiced  Float    @default(0)
+  actualCashIn           Float    @default(0)
+  actualEmployeeCosts    Float    @default(0)
+  actualExternalCosts    Float    @default(0)
+  actualFixedCosts       Float    @default(0)
+  actualVariableCosts    Float    @default(0)
+  actualCashOut          Float    @default(0)
+  actualGrossMargin      Float    @default(0)
+  actualNetMargin        Float    @default(0)
+  actualClosingCash      Float    @default(0)
+  notes                  String?
+  lockedAt               DateTime?
+  lockedBy               String?
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+  @@unique([companyId, year, month])
+  @@index([companyId])
+}
+
+model MonthlyClose {
+  id                      String   @id @default(cuid())
+  companyId               String
+  month                   Int
+  year                    Int
+  status                  String   @default("open")
+  initialForecastSnapshot Json?
+  revisedForecastSnapshot Json?
+  actualSnapshot          Json?
+  closedBy                String?
+  closedAt                DateTime?
+  reopenedBy              String?
+  reopenedAt              DateTime?
+  notes                   String?
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+  @@unique([companyId, year, month])
+  @@index([companyId])
+}
+
+model Invoice {
+  id            String   @id @default(cuid())
+  companyId     String
+  clientId      String
+  missionId     String?
+  invoiceNumber String   @unique
+  invoiceDate   DateTime
+  dueDate       DateTime
+  amountHT      Float
+  vatRate       Float    @default(0.2)
+  amountTTC     Float
+  status        String   @default("draft")
+  paymentDate   DateTime?
+  paidAmount    Float    @default(0)
+  source        String   @default("manual")
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  @@index([companyId])
+  @@index([clientId])
+  @@index([missionId])
+  @@index([status])
+}
+
+model Payment {
+  id            String   @id @default(cuid())
+  invoiceId     String
+  clientId      String
+  paymentDate   DateTime
+  amount        Float
+  paymentMethod String?
+  status        String   @default("received")
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  @@index([invoiceId])
+  @@index([clientId])
+}
+
+model BillingReconciliation {
+  id                String   @id @default(cuid())
+  invoiceForecastId String?
+  invoiceId         String?
+  paymentId         String?
+  status            String   @default("unmatched")
+  amountVariance    Float    @default(0)
+  dateVarianceDays  Int      @default(0)
+  notes             String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  @@index([invoiceForecastId])
+  @@index([invoiceId])
+}
+
+model CrmOpportunity {
+  id                    String   @id @default(cuid())
+  externalSource        String
+  externalId            String
+  clientName            String
+  opportunityName       String
+  stage                 String
+  probability           Float
+  expectedAmount        Float
+  expectedStartDate     DateTime?
+  expectedEndDate       DateTime?
+  expectedTJM           Float?
+  expectedStaffingNeeds Json?
+  owner                 String?
+  lastSyncedAt          DateTime?
+  rawPayload            Json?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  @@unique([externalSource, externalId])
+}
+
+model AccountingSync {
+  id                    String   @id @default(cuid())
+  provider              String
+  status                String
+  lastSyncAt            DateTime?
+  importedInvoicesCount Int      @default(0)
+  importedPaymentsCount Int      @default(0)
+  importedExpensesCount Int      @default(0)
+  errors                Json?
+  notes                 String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+}
+
+model HrSync {
+  id                     String   @id @default(cuid())
+  provider               String
+  status                 String
+  lastSyncAt             DateTime?
+  importedEmployeesCount Int      @default(0)
+  importedAbsencesCount  Int      @default(0)
+  errors                 Json?
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+}
+
+model Absence {
+  id                   String   @id @default(cuid())
+  employeeId           String
+  startDate            DateTime
+  endDate              DateTime
+  type                 String
+  impactOnBillableDays Float    @default(0)
+  source               String?
+  notes                String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  @@index([employeeId])
+}
+
+model BusinessCalendar {
+  id                 String   @id @default(cuid())
+  companyId          String
+  country            String
+  region             String?
+  year               Int
+  holidays           Json
+  workingDaysByMonth Json
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  @@unique([companyId, country, region, year])
+}
+
+model Skill {
+  id             String   @id @default(cuid())
+  name           String
+  category       String?
+  aliases        Json?
+  normalizedName String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  @@unique([normalizedName])
+}
+
+model ResourceSkill {
+  id              String   @id @default(cuid())
+  resourceType    String
+  resourceId      String
+  skillId         String
+  level           String
+  yearsExperience Float?
+  lastUsedAt      DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  @@index([resourceType, resourceId])
+  @@index([skillId])
+}
+
+model MissionSkillNeed {
+  id            String   @id @default(cuid())
+  missionId     String
+  skillId       String
+  requiredLevel String
+  requiredFTE   Float
+  startDate     DateTime
+  endDate       DateTime?
+  priority      String   @default("medium")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  @@index([missionId])
+  @@index([skillId])
+}
+
+model PlannedHire {
+  id                     String   @id @default(cuid())
+  scenarioId             String
+  title                  String
+  targetRole             String
+  targetSkills           Json?
+  expectedStartDate      DateTime
+  expectedMonthlyCost    Float
+  expectedEmployerCharges Float   @default(0)
+  expectedFullCost       Float
+  expectedTJM            Float
+  expectedUtilizationRate Float
+  onboardingMonths       Int      @default(1)
+  probability            Float    @default(1)
+  status                 String   @default("planned")
+  notes                  String?
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+  @@index([scenarioId])
+}
+
+model ProbabilisticAssumption {
+  id              String   @id @default(cuid())
+  scenarioId      String
+  entityType      String
+  entityId        String
+  field           String
+  distributionType String
+  minValue        Float
+  mostLikelyValue Float
+  maxValue        Float
+  probability     Float   @default(1)
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  @@index([scenarioId])
+}
+
+model MonteCarloResult {
+  id          String   @id @default(cuid())
+  scenarioId  String
+  iterations  Int
+  result      Json
+  createdAt   DateTime @default(now())
+  @@index([scenarioId])
+}
+
+model ApprovalWorkflow {
+  id          String   @id @default(cuid())
+  entityType  String
+  entityId    String
+  status      String   @default("draft")
+  requestedBy String?
+  approvedBy  String?
+  rejectedBy  String?
+  requestedAt DateTime?
+  approvedAt  DateTime?
+  rejectedAt  DateTime?
+  comment     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  @@index([entityType, entityId])
+}
+
+model Notification {
+  id                String   @id @default(cuid())
+  userId            String?
+  type              String
+  severity          String
+  title             String
+  message           String
+  relatedEntityType String?
+  relatedEntityId   String?
+  status            String   @default("unread")
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  @@index([userId])
+  @@index([status])
+}
+
+model ApiKey {
+  id             String   @id @default(cuid())
+  companyId      String
+  name           String
+  keyHash        String
+  scopes         Json
+  createdAt      DateTime @default(now())
+  revokedAt      DateTime?
+  lastUsedAt     DateTime?
+  @@index([companyId])
+}
+
+model WebhookSubscription {
+  id                 String   @id @default(cuid())
+  companyId          String
+  url                String
+  events             Json
+  secret             String
+  isActive           Boolean  @default(true)
+  lastDeliveryStatus String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  @@index([companyId])
+}
+
+model Document {
+  id          String   @id @default(cuid())
+  companyId   String
+  entityType  String
+  entityId    String
+  fileName    String
+  mimeType    String
+  size        Int
+  storagePath String
+  category    String
+  uploadedBy  String?
+  uploadedAt  DateTime @default(now())
+  notes       String?
+  @@index([companyId])
+  @@index([entityType, entityId])
+}
+
+model BusinessRule {
+  id          String   @id @default(cuid())
+  companyId   String?
+  name        String
+  description String?
+  triggerType String
+  condition   Json
+  action      Json
+  severity    String   @default("warning")
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  @@index([companyId])
+}
+
+model Offer {
+  id                String   @id @default(cuid())
+  clientId          String
+  title             String
+  status            String   @default("draft")
+  expectedStartDate DateTime?
+  expectedEndDate   DateTime?
+  pricingMode       String
+  totalAmount       Float
+  expectedMargin    Float
+  probability       Float    @default(1)
+  notes             String?
+  lines             OfferLine[]
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  @@index([clientId])
+}
+
+model OfferLine {
+  id             String   @id @default(cuid())
+  offerId        String
+  offer          Offer    @relation(fields: [offerId], references: [id], onDelete: Cascade)
+  label          String
+  role           String?
+  skillNeeds     Json?
+  quantity       Float
+  durationDays   Float
+  tjmSale        Float
+  estimatedCost  Float
+  expectedMargin Float
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  @@index([offerId])
 }

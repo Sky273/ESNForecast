@@ -1,4 +1,4 @@
-import { AlertTriangle, BarChart3, Building2, Calculator, ChartNoAxesCombined, Contact, Euro, FileText, Handshake, History, LayoutDashboard, Receipt, Settings as SettingsIcon, Shield, TrendingUp, Users, WalletCards } from "lucide-react";
+import { AlertTriangle, BarChart3, Bell, BookOpenCheck, Building2, Calculator, ChartNoAxesCombined, Contact, Euro, FileText, Handshake, History, LayoutDashboard, Receipt, Settings as SettingsIcon, Shield, Sparkles, TrendingUp, Users, WalletCards } from "lucide-react";
 import { useEffect, useState } from "react";
 import { api } from "./api";
 import { CrudPage } from "./components/CrudPage";
@@ -7,32 +7,50 @@ import { Dashboard } from "./pages/Dashboard";
 import { Projections } from "./pages/Projections";
 import { Settings } from "./pages/Settings";
 import { AdminPage, AlertsPage, AuditPage, BenchPage, BillingPage, CashInPage, CashOutPage, ProfitabilityMissionsPage, ProfitabilityResourcesPage, ReportsPage, ScenariosPage, SimulationsPage, TreasuryPage } from "./pages/V1Pages";
+import { ActualsVariancesPage, AiAnalysisPage, CapacityPage, ExecutiveCockpitPage, MonthlyClosePage, MonteCarloPage, PaymentsPage, RealInvoicesPage, ReconciliationPage, StrategicRisksPage, TimesheetsPage, V2CrudPage } from "./pages/V2Pages";
 import { configs } from "./pages/crudConfigs";
 
 const nav = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { id: "executiveV2", label: "Cockpit V2", icon: Sparkles },
   { id: "projections", label: "Projections", icon: ChartNoAxesCombined },
-  { id: "treasury", label: "Trésorerie", icon: TrendingUp },
-  { id: "scenarios", label: "Scénarios", icon: BarChart3 },
+  { id: "actuals", label: "Reel / ecarts", icon: BarChart3 },
+  { id: "treasury", label: "Tresorerie", icon: TrendingUp },
+  { id: "timesheets", label: "CRA", icon: BookOpenCheck },
+  { id: "monthlyClose", label: "Cloture", icon: Shield },
+  { id: "scenarios", label: "Scenarios", icon: BarChart3 },
   { id: "simulations", label: "Simulations", icon: Calculator },
+  { id: "monteCarlo", label: "Monte Carlo", icon: ChartNoAxesCombined },
   { id: "missions", label: "Missions", icon: Calculator },
-  { id: "profitabilityMissions", label: "Rentabilité missions", icon: BarChart3 },
+  { id: "offers", label: "Offres", icon: Receipt },
+  { id: "profitabilityMissions", label: "Rentabilite missions", icon: BarChart3 },
   { id: "assignments", label: "Affectations", icon: Contact },
   { id: "employees", label: "Ressources internes", icon: Users },
-  { id: "profitabilityResources", label: "Rentabilité ressources", icon: Users },
+  { id: "profitabilityResources", label: "Rentabilite ressources", icon: Users },
+  { id: "capacity", label: "Capacity planning", icon: Users },
   { id: "bench", label: "Intercontrat", icon: AlertTriangle },
   { id: "partners", label: "Partenaires", icon: Handshake },
   { id: "partnerResources", label: "Ressources partenaires", icon: Building2 },
-  { id: "freelancers", label: "Indépendants", icon: Contact },
+  { id: "freelancers", label: "Independants", icon: Contact },
   { id: "clients", label: "Clients", icon: Building2 },
   { id: "fixedCosts", label: "Frais fixes", icon: WalletCards },
   { id: "variableCosts", label: "Frais variables", icon: Euro },
-  { id: "billing", label: "Facturation", icon: Receipt },
+  { id: "billing", label: "Facturation prevue", icon: Receipt },
+  { id: "realInvoices", label: "Factures reelles", icon: Receipt },
+  { id: "payments", label: "Paiements", icon: Euro },
+  { id: "reconciliation", label: "Rapprochement", icon: Calculator },
   { id: "cashIn", label: "Encaissements", icon: TrendingUp },
-  { id: "cashOut", label: "Décaissements", icon: Euro },
+  { id: "cashOut", label: "Decaissements", icon: Euro },
+  { id: "plannedHires", label: "Recrutements", icon: Users },
+  { id: "strategicRisks", label: "Risques strategiques", icon: AlertTriangle },
+  { id: "aiAnalysis", label: "Analyse IA", icon: Sparkles },
+  { id: "rules", label: "Regles", icon: SettingsIcon },
+  { id: "notifications", label: "Notifications", icon: Bell },
+  { id: "documents", label: "Documents", icon: FileText },
+  { id: "connectors", label: "Connecteurs", icon: Handshake },
   { id: "alerts", label: "Alertes", icon: AlertTriangle },
   { id: "reports", label: "Rapports", icon: FileText },
-  { id: "settings", label: "Paramètres", icon: SettingsIcon },
+  { id: "settings", label: "Parametres", icon: SettingsIcon },
   { id: "audit", label: "Historique", icon: History },
   { id: "admin", label: "Administration", icon: Shield }
 ];
@@ -71,7 +89,7 @@ export function App() {
       </aside>
       <main className="p-4 md:p-6">
         <header className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-line bg-white p-3">
-          <div className="text-sm text-muted">Scénario actif et horizon visibles sur toutes les vues V1.</div>
+          <div className="text-sm text-muted">Scenario actif et horizon visibles sur toutes les vues.</div>
           <div className="flex flex-wrap gap-2">
             <select className="rounded-md border border-line px-3 py-2 text-sm" value={scenarioId} onChange={(event) => setScenarioId(event.target.value)}>
               {scenarios.map((scenario) => <option key={scenario.id} value={scenario.id}>{scenario.name}</option>)}
@@ -81,20 +99,38 @@ export function App() {
             </select>
           </div>
         </header>
+
         {page === "dashboard" ? <Dashboard horizon={horizon} setHorizon={setHorizon} /> : null}
+        {page === "executiveV2" ? <ExecutiveCockpitPage scenarioId={scenarioId} horizon={horizon} /> : null}
         {page === "projections" ? <Projections horizon={horizon} /> : null}
+        {page === "actuals" ? <ActualsVariancesPage scenarioId={scenarioId} horizon={horizon} /> : null}
+        {page === "timesheets" ? <TimesheetsPage /> : null}
+        {page === "monthlyClose" ? <MonthlyClosePage /> : null}
         {page === "treasury" ? <TreasuryPage scenarioId={scenarioId} horizon={horizon} /> : null}
         {page === "scenarios" ? <ScenariosPage scenarioId={scenarioId} horizon={horizon} /> : null}
         {page === "simulations" ? <SimulationsPage /> : null}
+        {page === "monteCarlo" ? <MonteCarloPage scenarioId={scenarioId} horizon={horizon} /> : null}
+        {page === "offers" ? <V2CrudPage kind="offers" /> : null}
         {page === "profitabilityMissions" ? <ProfitabilityMissionsPage scenarioId={scenarioId} horizon={horizon} /> : null}
+        {page === "assignments" ? <Assignments /> : null}
         {page === "profitabilityResources" ? <ProfitabilityResourcesPage scenarioId={scenarioId} horizon={horizon} /> : null}
+        {page === "capacity" ? <CapacityPage scenarioId={scenarioId} horizon={horizon} /> : null}
         {page === "bench" ? <BenchPage scenarioId={scenarioId} horizon={horizon} /> : null}
         {page === "billing" ? <BillingPage /> : null}
+        {page === "realInvoices" ? <RealInvoicesPage /> : null}
+        {page === "payments" ? <PaymentsPage /> : null}
+        {page === "reconciliation" ? <ReconciliationPage /> : null}
         {page === "cashIn" ? <CashInPage /> : null}
         {page === "cashOut" ? <CashOutPage /> : null}
+        {page === "plannedHires" ? <V2CrudPage kind="plannedHires" /> : null}
+        {page === "strategicRisks" ? <StrategicRisksPage scenarioId={scenarioId} horizon={horizon} /> : null}
+        {page === "aiAnalysis" ? <AiAnalysisPage scenarioId={scenarioId} horizon={horizon} /> : null}
+        {page === "rules" ? <V2CrudPage kind="rules" /> : null}
+        {page === "notifications" ? <V2CrudPage kind="notifications" /> : null}
+        {page === "documents" ? <V2CrudPage kind="documents" /> : null}
+        {page === "connectors" ? <V2CrudPage kind="connectors" /> : null}
         {page === "alerts" ? <AlertsPage scenarioId={scenarioId} horizon={horizon} /> : null}
         {page === "reports" ? <ReportsPage scenarioId={scenarioId} horizon={horizon} /> : null}
-        {page === "assignments" ? <Assignments /> : null}
         {page === "settings" ? <Settings /> : null}
         {page === "audit" ? <AuditPage /> : null}
         {page === "admin" ? <AdminPage /> : null}

@@ -10,7 +10,7 @@
     "dev": "node scripts/run-workspace.mjs --parallel apps/api:dev apps/web:dev",
     "dev:api": "node scripts/run-workspace.mjs apps/api dev",
     "dev:web": "node scripts/run-workspace.mjs apps/web dev",
-    "build": "node scripts/run-workspace.mjs --serial apps/api:build apps/web:build packages/shared:build",
+    "build": "node scripts/run-workspace.mjs --serial packages/shared:build apps/api:build apps/web:build",
     "test": "node scripts/run-workspace.mjs --serial packages/shared:test",
     "seed": "node scripts/run-workspace.mjs apps/api seed",
     "prisma:generate": "node scripts/run-workspace.mjs apps/api prisma:generate",

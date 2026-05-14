@@ -9,6 +9,33 @@ const hashPassword = (password: string) => {
 };
 
 async function main() {
+  await prisma.offerLine.deleteMany();
+  await prisma.offer.deleteMany();
+  await prisma.businessRule.deleteMany();
+  await prisma.document.deleteMany();
+  await prisma.webhookSubscription.deleteMany();
+  await prisma.apiKey.deleteMany();
+  await prisma.notification.deleteMany();
+  await prisma.approvalWorkflow.deleteMany();
+  await prisma.monteCarloResult.deleteMany();
+  await prisma.probabilisticAssumption.deleteMany();
+  await prisma.plannedHire.deleteMany();
+  await prisma.missionSkillNeed.deleteMany();
+  await prisma.resourceSkill.deleteMany();
+  await prisma.skill.deleteMany();
+  await prisma.businessCalendar.deleteMany();
+  await prisma.absence.deleteMany();
+  await prisma.hrSync.deleteMany();
+  await prisma.accountingSync.deleteMany();
+  await prisma.crmOpportunity.deleteMany();
+  await prisma.billingReconciliation.deleteMany();
+  await prisma.payment.deleteMany();
+  await prisma.invoice.deleteMany();
+  await prisma.monthlyClose.deleteMany();
+  await prisma.monthlyActual.deleteMany();
+  await prisma.timesheet.deleteMany();
+  await prisma.membership.deleteMany();
+  await prisma.organization.deleteMany();
   await prisma.monthlyProjectionCache.deleteMany();
   await prisma.auditLog.deleteMany();
   await prisma.alert.deleteMany();
@@ -32,8 +59,11 @@ async function main() {
   await prisma.company.deleteMany();
   await prisma.user.deleteMany();
 
-  await prisma.company.create({
+  const organization = await prisma.organization.create({ data: { name: "ESN Forecast Demo Group", slug: "demo-group" } });
+
+  const company = await prisma.company.create({
     data: {
+      organizationId: organization.id,
       name: "ESN Forecast Demo",
       currency: "EUR",
       defaultEmployeeSocialRate: 0.22,
@@ -63,9 +93,9 @@ async function main() {
   });
 
   await Promise.all([
-    prisma.user.create({ data: { email: "admin@esnforecast.local", name: "Admin ESN", role: "admin", passwordHash: hashPassword("demo") } }),
-    prisma.user.create({ data: { email: "direction@esnforecast.local", name: "Direction ESN", role: "direction", passwordHash: hashPassword("demo") } }),
-    prisma.user.create({ data: { email: "finance@esnforecast.local", name: "Finance ESN", role: "finance", passwordHash: hashPassword("demo") } })
+    prisma.user.create({ data: { organizationId: organization.id, email: "admin@esnforecast.local", name: "Admin ESN", role: "admin", passwordHash: hashPassword("demo") } }),
+    prisma.user.create({ data: { organizationId: organization.id, email: "direction@esnforecast.local", name: "Direction ESN", role: "direction", passwordHash: hashPassword("demo") } }),
+    prisma.user.create({ data: { organizationId: organization.id, email: "finance@esnforecast.local", name: "Finance ESN", role: "finance", passwordHash: hashPassword("demo") } })
   ]);
 
   const [referenceScenario, pessimisticScenario, optimisticScenario] = await Promise.all([
@@ -217,6 +247,84 @@ async function main() {
     prisma.alert.create({ data: { scenarioId: referenceScenario.id, type: "client_concentration", severity: "warning", message: "Banque Horizon concentre une part importante du CA", recommendedAction: "Diversifier le pipe commercial", status: "new" } }),
     prisma.auditLog.create({ data: { entityType: "seed", entityId: "v1", action: "create_demo_data", after: { scenarios: 3, users: 3 } } })
   ]);
+
+  const realInvoice = await prisma.invoice.create({
+    data: {
+      companyId: company.id,
+      clientId: clients[0].id,
+      missionId: missions[0].id,
+      invoiceNumber: "F-2026-0001",
+      invoiceDate: d("2026-06-30"),
+      dueDate: d("2026-08-14"),
+      amountHT: 39200,
+      vatRate: 0.2,
+      amountTTC: 47040,
+      status: "partially_paid",
+      paidAmount: 28000,
+      paymentDate: d("2026-08-05"),
+      source: "generated_from_timesheet",
+      notes: "Facture generee depuis CRA valide"
+    }
+  });
+
+  await Promise.all([
+    prisma.timesheet.create({ data: { companyId: company.id, resourceType: "employee", resourceId: employees[0].id, missionId: missions[0].id, month: 6, year: 2026, workedDays: 20, billableDays: 19, nonBillableDays: 1, absenceDays: 0, vacationDays: 0, sickLeaveDays: 0, trainingDays: 0, internalDays: 1, status: "approved", approvedAt: d("2026-07-03"), notes: "CRA valide pour facturation" } }),
+    prisma.timesheet.create({ data: { companyId: company.id, resourceType: "employee", resourceId: employees[2].id, missionId: missions[1].id, month: 6, year: 2026, workedDays: 18, billableDays: 14, nonBillableDays: 4, absenceDays: 2, vacationDays: 2, sickLeaveDays: 0, trainingDays: 0, internalDays: 2, status: "submitted", submittedAt: d("2026-07-02"), notes: "A valider par finance" } }),
+    prisma.timesheet.create({ data: { companyId: company.id, resourceType: "freelancer", resourceId: freelancers[1].id, missionId: missions[3].id, month: 6, year: 2026, workedDays: 20, billableDays: 20, nonBillableDays: 0, absenceDays: 0, vacationDays: 0, sickLeaveDays: 0, trainingDays: 0, internalDays: 0, status: "locked", lockedAt: d("2026-07-05"), notes: "CRA verrouille apres validation client" } }),
+    prisma.monthlyActual.create({ data: { companyId: company.id, month: 6, year: 2026, actualRevenueGenerated: 92500, actualRevenueInvoiced: 81200, actualCashIn: 28000, actualEmployeeCosts: 43800, actualExternalCosts: 21800, actualFixedCosts: 17020, actualVariableCosts: 4300, actualCashOut: 86920, actualGrossMargin: 26900, actualNetMargin: 5580, actualClosingCash: 61080, notes: "Mois reel avec encaissement partiel" } }),
+    prisma.monthlyClose.create({ data: { companyId: company.id, month: 5, year: 2026, status: "closed", closedAt: d("2026-06-07"), closedBy: "finance@esnforecast.local", initialForecastSnapshot: { revenue: 78000 }, revisedForecastSnapshot: { revenue: 82000 }, actualSnapshot: { revenue: 79500, cash: 69000 }, notes: "Mois cloture demo" } }),
+    prisma.payment.create({ data: { invoiceId: realInvoice.id, clientId: clients[0].id, paymentDate: d("2026-08-05"), amount: 28000, paymentMethod: "wire", status: "received", notes: "Paiement partiel" } }),
+    prisma.billingReconciliation.create({ data: { invoiceId: realInvoice.id, status: "partially_matched", amountVariance: -8040, dateVarianceDays: 7, notes: "Paiement partiel rapproche" } })
+  ]);
+
+  const [javaSkill, dataSkill, cloudSkill] = await Promise.all([
+    prisma.skill.create({ data: { name: "Java", normalizedName: "java", category: "Backend", aliases: ["spring", "jvm"] } }),
+    prisma.skill.create({ data: { name: "Data Engineering", normalizedName: "data-engineering", category: "Data", aliases: ["etl", "dbt"] } }),
+    prisma.skill.create({ data: { name: "Cloud AWS", normalizedName: "cloud-aws", category: "Cloud", aliases: ["aws", "terraform"] } })
+  ]);
+
+  await Promise.all([
+    prisma.resourceSkill.create({ data: { resourceType: "employee", resourceId: employees[0].id, skillId: javaSkill.id, level: "expert", yearsExperience: 9 } }),
+    prisma.resourceSkill.create({ data: { resourceType: "employee", resourceId: employees[1].id, skillId: dataSkill.id, level: "senior", yearsExperience: 6 } }),
+    prisma.resourceSkill.create({ data: { resourceType: "employee", resourceId: employees[3].id, skillId: cloudSkill.id, level: "senior", yearsExperience: 7 } }),
+    prisma.missionSkillNeed.create({ data: { missionId: missions[4].id, skillId: javaSkill.id, requiredLevel: "senior", requiredFTE: 2, startDate: d("2026-09-01"), endDate: d("2027-03-31"), priority: "critical" } }),
+    prisma.missionSkillNeed.create({ data: { missionId: missions[5].id, skillId: cloudSkill.id, requiredLevel: "confirmed", requiredFTE: 2, startDate: d("2026-10-01"), endDate: d("2027-05-31"), priority: "high" } }),
+    prisma.absence.create({ data: { employeeId: employees[2].id, startDate: d("2026-06-10"), endDate: d("2026-06-11"), type: "vacation", impactOnBillableDays: 2, source: "manual", notes: "Absence impactant CRA" } }),
+    prisma.businessCalendar.create({ data: { companyId: company.id, country: "FR", region: "IDF", year: 2026, holidays: ["2026-01-01", "2026-05-01", "2026-05-08", "2026-07-14", "2026-11-11", "2026-12-25"], workingDaysByMonth: { "2026-06": 22, "2026-07": 23, "2026-08": 21, "2026-09": 22 } } })
+  ]);
+
+  await Promise.all([
+    prisma.plannedHire.create({ data: { scenarioId: referenceScenario.id, title: "Recrutement Java senior", targetRole: "Consultant Java senior", targetSkills: ["java", "spring"], expectedStartDate: d("2026-09-01"), expectedMonthlyCost: 5200, expectedEmployerCharges: 2340, expectedFullCost: 8040, expectedTJM: 900, expectedUtilizationRate: 0.8, onboardingMonths: 1, probability: 0.75, status: "approved", notes: "Couvre le gap Java du pipe banque" } }),
+    prisma.probabilisticAssumption.create({ data: { scenarioId: referenceScenario.id, entityType: "mission", entityId: missions[4].id, field: "revenueGenerated", distributionType: "triangular", minValue: 45000, mostLikelyValue: 72000, maxValue: 95000, probability: 0.65, notes: "Opportunite IA conformite incertaine" } }),
+    prisma.businessRule.create({ data: { companyId: company.id, name: "Tresorerie critique", description: "Alerte si la tresorerie de cloture passe sous 50k", triggerType: "monthly_projection", condition: { metric: "closingCash", operator: "lt", value: 50000 }, action: { type: "alert", message: "Tresorerie sous seuil de vigilance" }, severity: "critical", isActive: true } }),
+    prisma.businessRule.create({ data: { companyId: company.id, name: "Marge faible", description: "Alerte marge inferieure a 22%", triggerType: "monthly_projection", condition: { metric: "marginRate", operator: "lt", value: 0.22 }, action: { type: "alert", message: "Marge previsionnelle inferieure au seuil" }, severity: "warning", isActive: true } }),
+    prisma.notification.create({ data: { type: "invoice_overdue", severity: "warning", title: "Relance paiement Banque Horizon", message: "La facture F-2026-0001 reste partiellement payee.", relatedEntityType: "invoice", relatedEntityId: realInvoice.id, status: "unread" } }),
+    prisma.approvalWorkflow.create({ data: { entityType: "timesheet", entityId: "demo-cra", status: "pending_approval", requestedBy: "consultant@esnforecast.local", requestedAt: d("2026-07-02"), comment: "CRA juin a valider" } }),
+    prisma.crmOpportunity.create({ data: { externalSource: "csv-demo", externalId: "opp-001", clientName: "Banque Horizon", opportunityName: "Modernisation paiement instantane", stage: "proposal", probability: 0.55, expectedAmount: 180000, expectedStartDate: d("2026-11-01"), expectedEndDate: d("2027-04-30"), expectedTJM: 920, expectedStaffingNeeds: { java: 2, cloud: 1 }, owner: "Julien Moreau", lastSyncedAt: d("2026-06-15"), rawPayload: { source: "seed" } } }),
+    prisma.accountingSync.create({ data: { provider: "csv-accounting", status: "completed", lastSyncAt: d("2026-07-05"), importedInvoicesCount: 1, importedPaymentsCount: 1, importedExpensesCount: 2, errors: [] } }),
+    prisma.hrSync.create({ data: { provider: "csv-hr", status: "completed", lastSyncAt: d("2026-07-04"), importedEmployeesCount: 8, importedAbsencesCount: 1, errors: [] } }),
+    prisma.document.create({ data: { companyId: company.id, entityType: "invoice", entityId: realInvoice.id, fileName: "F-2026-0001.pdf", mimeType: "application/pdf", size: 128000, storagePath: "local/demo/F-2026-0001.pdf", category: "invoice", uploadedBy: "finance@esnforecast.local", notes: "Document fictif seed" } }),
+    prisma.apiKey.create({ data: { companyId: company.id, name: "Demo API", keyHash: hashPassword("demo-api-key"), scopes: ["read:projection", "read:invoices"] } }),
+    prisma.webhookSubscription.create({ data: { companyId: company.id, url: "https://example.invalid/webhooks/esn-forecast", events: ["invoice.paid", "monthly_close.completed"], secret: "demo-secret", isActive: true, lastDeliveryStatus: "never_sent" } })
+  ]);
+
+  const offer = await prisma.offer.create({
+    data: {
+      clientId: clients[4].id,
+      title: "Offre centre de service GreenGrid",
+      status: "internal_review",
+      expectedStartDate: d("2026-10-01"),
+      expectedEndDate: d("2027-03-31"),
+      pricingMode: "daily_rate",
+      totalAmount: 198000,
+      expectedMargin: 64000,
+      probability: 0.45,
+      notes: "Offre en validation direction"
+    }
+  });
+  await prisma.offerLine.create({ data: { offerId: offer.id, label: "Equipe cloud et run", role: "Cloud engineer", skillNeeds: { cloud: 2 }, quantity: 2, durationDays: 120, tjmSale: 825, estimatedCost: 134000, expectedMargin: 64000 } });
+
+  await prisma.auditLog.create({ data: { entityType: "seed", entityId: "v2", action: "create_demo_data", after: { timesheets: 3, invoices: 1, skills: 3, rules: 2 } } });
 }
 
 main()

@@ -7,6 +7,7 @@ import { csvRouter } from "./routes/csv";
 import { projectionsRouter } from "./routes/projections";
 import { settingsRouter } from "./routes/settings";
 import { v1Router } from "./routes/v1";
+import { v2Router } from "./routes/v2";
 
 const app = express();
 const port = Number(process.env.PORT ?? 4000);
@@ -29,6 +30,7 @@ app.use("/api/settings", settingsRouter);
 app.use("/api/export", csvRouter);
 app.use("/api/import", csvRouter);
 app.use("/api", v1Router);
+app.use("/api", v2Router);
 
 app.use((error: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error(error);
