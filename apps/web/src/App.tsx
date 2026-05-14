@@ -9,12 +9,15 @@ import { Settings } from "./pages/Settings";
 import { AdminPage, AlertsPage, AuditPage, BenchPage, BillingPage, CashInPage, CashOutPage, ProfitabilityMissionsPage, ProfitabilityResourcesPage, ReportsPage, ScenariosPage, SimulationsPage, TreasuryPage } from "./pages/V1Pages";
 import { ActualsVariancesPage, AiAnalysisPage, CapacityPage, ExecutiveCockpitPage, MonthlyClosePage, MonteCarloPage, PaymentsPage, RealInvoicesPage, ReconciliationPage, StrategicRisksPage, TimesheetsPage, V2CrudPage } from "./pages/V2Pages";
 import { BankAccountsPage, BankConsentsPage, BankReconciliationPage, BankTransactionsPage, ClientPaymentProfilesPage, CodirReportPage, ConnectedFinanceDashboard, ConnectorSupervisionPage, DataQualityPage, FinancialAnomaliesPage, FinancialAuditPage, FinancialRulesPage, ForecastReliabilityPage, ImportedAccountingPage, RealTreasuryPage, RunwayPage } from "./pages/V3Pages";
+import { ConnectorCompliancePage, ConsentCompliancePage, DataSourcePoliciesPage, DuplicatesPage, ProviderConnectionPage, ProviderErrorsPage, ProviderHealthPage, ProviderRateLimitsPage, ProviderWebhooksPage, RealConnectorsPage } from "./pages/V4Pages";
 import { configs } from "./pages/crudConfigs";
 
 const nav = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
   { id: "executiveV2", label: "Cockpit V2", icon: Sparkles },
   { id: "connectedFinance", label: "Dashboard V3", icon: Landmark },
+  { id: "realConnectors", label: "Connecteurs reels", icon: Handshake },
+  { id: "providerConnection", label: "Connexion provider", icon: Sparkles },
   { id: "projections", label: "Projections", icon: ChartNoAxesCombined },
   { id: "actuals", label: "Reel / ecarts", icon: BarChart3 },
   { id: "treasury", label: "Tresorerie", icon: TrendingUp },
@@ -56,6 +59,14 @@ const nav = [
   { id: "financialAnomalies", label: "Anomalies financieres", icon: AlertTriangle },
   { id: "dataQuality", label: "Sante donnees", icon: Shield },
   { id: "connectorSupervision", label: "Supervision connecteurs", icon: Handshake },
+  { id: "providerHealth", label: "Health providers", icon: Shield },
+  { id: "providerErrors", label: "Erreurs providers", icon: AlertTriangle },
+  { id: "providerWebhooks", label: "Webhooks", icon: Bell },
+  { id: "providerRateLimits", label: "Rate limits", icon: BarChart3 },
+  { id: "duplicates", label: "Doublons", icon: Calculator },
+  { id: "sourcePolicies", label: "Sources de verite", icon: SettingsIcon },
+  { id: "connectorCompliance", label: "Conformite", icon: Shield },
+  { id: "consentCompliance", label: "Consentements V4", icon: Shield },
   { id: "bankConsents", label: "Consentements", icon: Shield },
   { id: "financialRules", label: "Regles bancaires", icon: SettingsIcon },
   { id: "codirReport", label: "Rapport CODIR", icon: FileText },
@@ -120,6 +131,8 @@ export function App() {
         {page === "dashboard" ? <Dashboard horizon={horizon} setHorizon={setHorizon} /> : null}
         {page === "executiveV2" ? <ExecutiveCockpitPage scenarioId={scenarioId} horizon={horizon} /> : null}
         {page === "connectedFinance" ? <ConnectedFinanceDashboard scenarioId={scenarioId} horizon={horizon} /> : null}
+        {page === "realConnectors" ? <RealConnectorsPage /> : null}
+        {page === "providerConnection" ? <ProviderConnectionPage /> : null}
         {page === "projections" ? <Projections horizon={horizon} /> : null}
         {page === "actuals" ? <ActualsVariancesPage scenarioId={scenarioId} horizon={horizon} /> : null}
         {page === "timesheets" ? <TimesheetsPage /> : null}
@@ -153,6 +166,14 @@ export function App() {
         {page === "financialAnomalies" ? <FinancialAnomaliesPage /> : null}
         {page === "dataQuality" ? <DataQualityPage /> : null}
         {page === "connectorSupervision" ? <ConnectorSupervisionPage /> : null}
+        {page === "providerHealth" ? <ProviderHealthPage /> : null}
+        {page === "providerErrors" ? <ProviderErrorsPage /> : null}
+        {page === "providerWebhooks" ? <ProviderWebhooksPage /> : null}
+        {page === "providerRateLimits" ? <ProviderRateLimitsPage /> : null}
+        {page === "duplicates" ? <DuplicatesPage /> : null}
+        {page === "sourcePolicies" ? <DataSourcePoliciesPage /> : null}
+        {page === "connectorCompliance" ? <ConnectorCompliancePage /> : null}
+        {page === "consentCompliance" ? <ConsentCompliancePage /> : null}
         {page === "bankConsents" ? <BankConsentsPage /> : null}
         {page === "financialRules" ? <FinancialRulesPage /> : null}
         {page === "codirReport" ? <CodirReportPage scenarioId={scenarioId} horizon={horizon} /> : null}

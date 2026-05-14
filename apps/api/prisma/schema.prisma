@@ -1270,3 +1270,178 @@ model FinancialExportLog {
   @@index([organizationId])
   @@index([createdAt])
 }
+
+model ProviderCapability {
+  id              String   @id @default(cuid())
+  provider        String
+  connectorType   String
+  environment     String
+  capabilities    Json
+  isConfigured    Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  @@unique([provider, connectorType, environment])
+}
+
+model ProviderCredential {
+  id                 String   @id @default(cuid())
+  organizationId     String
+  provider           String
+  environment        String
+  clientIdMasked     String?
+  clientSecretEncrypted String?
+  apiBaseUrl         String?
+  redirectUri        String?
+  webhookSecretEncrypted String?
+  status             String   @default("configured")
+  createdBy          String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  revokedAt          DateTime?
+  @@index([organizationId])
+  @@index([provider, environment])
+}
+
+model ProviderToken {
+  id                    String   @id @default(cuid())
+  organizationId         String
+  companyId              String
+  connectorId            String
+  provider               String
+  accessTokenEncrypted   String?
+  refreshTokenEncrypted  String?
+  expiresAt              DateTime?
+  scopes                 Json?
+  tokenType              String?
+  providerAccountId      String?
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+  revokedAt              DateTime?
+  @@index([organizationId])
+  @@index([companyId])
+  @@index([connectorId])
+  @@index([provider])
+}
+
+model SecretAccessLog {
+  id             String   @id @default(cuid())
+  organizationId String?
+  userId         String?
+  provider       String?
+  connectorId    String?
+  action         String
+  sensitivityLevel String @default("secret")
+  createdAt      DateTime @default(now())
+  @@index([organizationId])
+  @@index([connectorId])
+}
+
+model OAuthConnectionSession {
+  id               String   @id @default(cuid())
+  organizationId   String
+  companyId        String
+  provider         String
+  connectorType    String
+  state            String   @unique
+  codeVerifierHash String?
+  redirectUri      String
+  status           String   @default("created")
+  error            String?
+  createdAt        DateTime @default(now())
+  expiresAt        DateTime
+  @@index([organizationId])
+  @@index([provider])
+  @@index([status])
+}
+
+model SyncCursor {
+  id                    String   @id @default(cuid())
+  connectorId            String
+  resourceType           String
+  cursor                 String?
+  lastExternalUpdatedAt  DateTime?
+  lastSuccessfulSyncAt   DateTime?
+  lastFailedSyncAt       DateTime?
+  metadata               Json?
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+  @@unique([connectorId, resourceType])
+  @@index([connectorId])
+}
+
+model ProviderWebhookEvent {
+  id              String   @id @default(cuid())
+  provider        String
+  connectorId     String?
+  eventType       String
+  externalEventId String?
+  payload         Json
+  signatureValid  Boolean  @default(false)
+  receivedAt      DateTime @default(now())
+  processedAt     DateTime?
+  status          String   @default("received")
+  error           String?
+  @@unique([provider, externalEventId])
+  @@index([provider])
+  @@index([connectorId])
+  @@index([status])
+}
+
+model ProviderError {
+  id                   String   @id @default(cuid())
+  connectorId           String?
+  provider              String
+  errorCategory         String
+  providerErrorCode     String?
+  providerErrorMessage  String?
+  userMessage           String
+  technicalDetails      Json?
+  retryable             Boolean @default(false)
+  requiresUserAction    Boolean @default(false)
+  createdAt             DateTime @default(now())
+  resolvedAt            DateTime?
+  @@index([connectorId])
+  @@index([provider])
+  @@index([errorCategory])
+}
+
+model ProviderRateLimitState {
+  id              String   @id @default(cuid())
+  provider        String
+  connectorId     String?
+  remaining       Int?
+  resetAt         DateTime?
+  lastRateLimitAt DateTime?
+  isThrottled     Boolean  @default(false)
+  updatedAt       DateTime @updatedAt
+  @@unique([provider, connectorId])
+}
+
+model DuplicateCandidate {
+  id              String   @id @default(cuid())
+  organizationId  String
+  entityType      String
+  sourceAType     String
+  sourceAId       String
+  sourceBType     String
+  sourceBId       String
+  confidenceScore Float
+  reason          String
+  status          String   @default("pending")
+  createdAt       DateTime @default(now())
+  resolvedAt      DateTime?
+  @@index([organizationId])
+  @@index([entityType])
+  @@index([status])
+}
+
+model DataSourcePolicy {
+  id                 String   @id @default(cuid())
+  organizationId     String
+  domain             String
+  primarySource      String
+  conflictResolution String   @default("manual")
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  @@unique([organizationId, domain])
+}

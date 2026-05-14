@@ -221,3 +221,78 @@ Le package partage expose :
 ## Limites V3
 
 La V3 ne stocke pas d'identifiants bancaires et n'initie aucun paiement. Les providers bancaire et comptable livres sont mock/CSV : ils preparent l'integration d'agregateurs type Bridge, Powens, Tink ou Plaid, mais aucune connexion bancaire reelle OAuth/API n'est active sans credentials et contrat fournisseur. ESN Forecast reste un cockpit de pilotage, pas un logiciel comptable certifie.
+
+## V4 - Connecteurs production-grade
+
+La V4 ajoute une couche provider commune pour passer du mock/CSV vers des connecteurs reels supervisables.
+
+Capacites livrees :
+
+- interface `FinancialConnectorProvider` commune ;
+- providers Bridge, Powens, Tink, Plaid, Pennylane et Sage ;
+- skeletons Cegid, Odoo et QuickBooks non actives par defaut ;
+- `SecretManager` AES-GCM pour tokens et credentials ;
+- sessions OAuth avec `state`, expiration et callback ;
+- Plaid Link token et exchange public token cote backend ;
+- tokens provider chiffres en base, jamais exposes au frontend ;
+- sync full/incrementale avec cursors ;
+- normalisation comptes, transactions, factures et paiements ;
+- ingestion webhooks par provider avec stockage brut ;
+- mapping d'erreurs provider ;
+- rate limit state ;
+- detection de doublons multi-source ;
+- politiques de source de verite ;
+- supervision provider, errors, syncs, webhooks, rate limits ;
+- page conformite connecteurs avec tokens masques.
+
+## API V4 principale
+
+- `GET /api/providers`
+- `GET /api/providers/:provider/capabilities`
+- `GET /api/providers/:provider/config-status`
+- `POST /api/connectors/:provider/oauth/start`
+- `GET /api/connectors/:provider/oauth/callback`
+- `POST /api/connectors/:id/reconnect`
+- `POST /api/connectors/:id/revoke`
+- `POST /api/providers/plaid/link-token`
+- `POST /api/providers/plaid/exchange-public-token`
+- `POST /api/connectors/:id/sync`
+- `POST /api/connectors/:id/full-sync`
+- `POST /api/connectors/:id/incremental-sync`
+- `GET /api/connectors/:id/cursors`
+- `POST /api/webhooks/bridge`
+- `POST /api/webhooks/powens`
+- `POST /api/webhooks/tink`
+- `POST /api/webhooks/plaid`
+- `POST /api/webhooks/pennylane`
+- `POST /api/webhooks/sage`
+- `GET /api/provider-errors`
+- `POST /api/provider-errors/:id/resolve`
+- `POST /api/provider-errors/:id/retry`
+- `GET /api/duplicates`
+- `POST /api/duplicates/:id/merge`
+- `GET /api/data-source-policies`
+- `PUT /api/data-source-policies/:domain`
+- `GET /api/connector-health`
+- `GET /api/connector-health/webhooks`
+- `GET /api/connector-health/rate-limits`
+- `GET /api/compliance/connectors`
+- `GET /api/compliance/consents`
+- `POST /api/compliance/consents/:id/revoke`
+
+## Configuration V4
+
+Les variables providers sont declarees dans `apps/api/.env.example` :
+
+- Bridge : `BRIDGE_CLIENT_ID`, `BRIDGE_CLIENT_SECRET`, `BRIDGE_API_BASE_URL`, `BRIDGE_REDIRECT_URI`, `BRIDGE_WEBHOOK_SECRET`, `BRIDGE_ENV`
+- Powens : `POWENS_CLIENT_ID`, `POWENS_CLIENT_SECRET`, `POWENS_DOMAIN`, `POWENS_REDIRECT_URI`, `POWENS_WEBHOOK_SECRET`, `POWENS_ENV`
+- Tink : `TINK_CLIENT_ID`, `TINK_CLIENT_SECRET`, `TINK_API_BASE_URL`, `TINK_REDIRECT_URI`, `TINK_WEBHOOK_SECRET`, `TINK_ENV`
+- Plaid : `PLAID_CLIENT_ID`, `PLAID_SECRET`, `PLAID_ENV`, `PLAID_PRODUCTS`, `PLAID_COUNTRY_CODES`, `PLAID_REDIRECT_URI`, `PLAID_WEBHOOK_SECRET`
+- Pennylane : `PENNYLANE_CLIENT_ID`, `PENNYLANE_CLIENT_SECRET`, `PENNYLANE_API_BASE_URL`, `PENNYLANE_REDIRECT_URI`, `PENNYLANE_WEBHOOK_SECRET`, `PENNYLANE_ENV`
+- Sage : `SAGE_CLIENT_ID`, `SAGE_CLIENT_SECRET`, `SAGE_API_BASE_URL`, `SAGE_REDIRECT_URI`, `SAGE_WEBHOOK_SECRET`, `SAGE_ENV`
+
+`SECRET_ENCRYPTION_KEY` doit etre defini avec une valeur forte en production. Sans credentials provider, ESN Forecast reste exploitable en mode mock/sandbox, ce qui permet tests, demo et developpement local.
+
+## Limites V4
+
+La V4 n'initie aucun paiement et ne stocke aucun identifiant bancaire utilisateur. Les appels providers reels dependent des contrats, credentials, scopes et URLs actives chez Bridge, Powens, Tink, Plaid, Pennylane ou Sage. En absence de credentials, les flux OAuth/sync utilisent un mode mock explicite et auditable.

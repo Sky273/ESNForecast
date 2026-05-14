@@ -1,7 +1,9 @@
 import { PrismaClient } from "@prisma/client";
 import { randomBytes, scryptSync } from "node:crypto";
+import { SecretManager } from "../src/connectors/secretManager";
 
 const prisma = new PrismaClient();
+const secrets = new SecretManager(process.env.SECRET_ENCRYPTION_KEY ?? "seed-demo-key");
 const d = (value: string) => new Date(`${value}T00:00:00.000Z`);
 const hashPassword = (password: string) => {
   const salt = randomBytes(16).toString("hex");
@@ -9,6 +11,17 @@ const hashPassword = (password: string) => {
 };
 
 async function main() {
+  await prisma.dataSourcePolicy.deleteMany();
+  await prisma.duplicateCandidate.deleteMany();
+  await prisma.providerRateLimitState.deleteMany();
+  await prisma.providerError.deleteMany();
+  await prisma.providerWebhookEvent.deleteMany();
+  await prisma.syncCursor.deleteMany();
+  await prisma.oAuthConnectionSession.deleteMany();
+  await prisma.secretAccessLog.deleteMany();
+  await prisma.providerToken.deleteMany();
+  await prisma.providerCredential.deleteMany();
+  await prisma.providerCapability.deleteMany();
   await prisma.financialExportLog.deleteMany();
   await prisma.codirReport.deleteMany();
   await prisma.dataQualityIssue.deleteMany();
@@ -440,6 +453,46 @@ async function main() {
   ]);
 
   await prisma.auditLog.create({ data: { entityType: "financial_v3", entityId: "seed", action: "create_connected_finance_demo", after: { connectors: 3, bankTransactions: 6, reconciliations: 1, anomalies: 2 } } });
+
+  await Promise.all([
+    prisma.providerCapability.create({ data: { provider: "bridge", connectorType: "banking", environment: "sandbox", capabilities: { supportsOAuth: true, supportsAccounts: true, supportsTransactions: true, supportsWebhooks: true }, isConfigured: false } }),
+    prisma.providerCapability.create({ data: { provider: "powens", connectorType: "banking", environment: "sandbox", capabilities: { supportsOAuth: true, supportsAccounts: true, supportsTransactions: true, supportsWebhooks: true }, isConfigured: false } }),
+    prisma.providerCapability.create({ data: { provider: "tink", connectorType: "banking", environment: "sandbox", capabilities: { supportsOAuth: true, supportsAccounts: true, supportsTransactions: true, supportsWebhooks: true }, isConfigured: false } }),
+    prisma.providerCapability.create({ data: { provider: "plaid", connectorType: "banking", environment: "sandbox", capabilities: { supportsOAuth: true, supportsAccounts: true, supportsTransactions: true, supportsWebhooks: true, supportsPlaidLink: true }, isConfigured: false } }),
+    prisma.providerCapability.create({ data: { provider: "pennylane", connectorType: "accounting", environment: "sandbox", capabilities: { supportsOAuth: true, supportsInvoices: true, supportsPayments: true, supportsWebhooks: true }, isConfigured: false } }),
+    prisma.providerCapability.create({ data: { provider: "sage", connectorType: "accounting", environment: "sandbox", capabilities: { supportsOAuth: true, supportsInvoices: true, supportsPayments: true }, isConfigured: false } })
+  ]);
+
+  await Promise.all([
+    prisma.providerCredential.create({ data: { organizationId: organization.id, provider: "bridge", environment: "sandbox", clientIdMasked: "brid********demo", clientSecretEncrypted: secrets.encryptSecret("bridge-demo-secret"), apiBaseUrl: "https://api.bridgeapi.io", redirectUri: "http://localhost:4000/api/connectors/bridge/oauth/callback", webhookSecretEncrypted: secrets.encryptSecret("bridge-webhook-demo"), status: "configured", createdBy: "admin@esnforecast.local" } }),
+    prisma.providerCredential.create({ data: { organizationId: organization.id, provider: "plaid", environment: "sandbox", clientIdMasked: "plai********demo", clientSecretEncrypted: secrets.encryptSecret("plaid-demo-secret"), apiBaseUrl: "https://sandbox.plaid.com", redirectUri: "http://localhost:5173", webhookSecretEncrypted: secrets.encryptSecret("plaid-webhook-demo"), status: "configured", createdBy: "admin@esnforecast.local" } }),
+    prisma.providerCredential.create({ data: { organizationId: organization.id, provider: "pennylane", environment: "sandbox", clientIdMasked: "penn********demo", clientSecretEncrypted: secrets.encryptSecret("pennylane-demo-secret"), apiBaseUrl: "https://app.pennylane.com/api/external/v1", redirectUri: "http://localhost:4000/api/connectors/pennylane/oauth/callback", webhookSecretEncrypted: secrets.encryptSecret("pennylane-webhook-demo"), status: "configured", createdBy: "finance@esnforecast.local" } })
+  ]);
+
+  await Promise.all([
+    prisma.providerToken.create({ data: { organizationId: organization.id, companyId: company.id, connectorId: bankConnector.id, provider: "bridge", accessTokenEncrypted: secrets.encryptSecret("bridge-access-demo"), refreshTokenEncrypted: secrets.encryptSecret("bridge-refresh-demo"), expiresAt: d("2026-07-01"), scopes: ["accounts", "transactions"], tokenType: "Bearer", providerAccountId: "bridge-item-demo" } }),
+    prisma.providerToken.create({ data: { organizationId: organization.id, companyId: company.id, connectorId: accountingConnector.id, provider: "pennylane", accessTokenEncrypted: secrets.encryptSecret("pennylane-access-demo"), refreshTokenEncrypted: secrets.encryptSecret("pennylane-refresh-demo"), expiresAt: d("2026-07-01"), scopes: ["customer_invoices", "supplier_invoices", "payments"], tokenType: "Bearer", providerAccountId: "pennylane-company-demo" } }),
+    prisma.secretAccessLog.create({ data: { organizationId: organization.id, provider: "bridge", connectorId: bankConnector.id, action: "store_token", sensitivityLevel: "secret" } })
+  ]);
+
+  await Promise.all([
+    prisma.oAuthConnectionSession.create({ data: { organizationId: organization.id, companyId: company.id, provider: "plaid", connectorType: "banking", state: "demo-oauth-state-plaid", redirectUri: "http://localhost:5173", status: "token_exchanged", expiresAt: d("2026-07-01") } }),
+    prisma.syncCursor.create({ data: { connectorId: bankConnector.id, resourceType: "transactions", cursor: "cursor-bank-2026-06-30", lastSuccessfulSyncAt: d("2026-07-01"), metadata: { mode: "incremental" } } }),
+    prisma.syncCursor.create({ data: { connectorId: accountingConnector.id, resourceType: "invoices", cursor: "cursor-invoices-2026-06-30", lastSuccessfulSyncAt: d("2026-07-01"), metadata: { mode: "incremental" } } }),
+    prisma.providerWebhookEvent.create({ data: { provider: "bridge", connectorId: bankConnector.id, eventType: "transactions.updated", externalEventId: "bridge-event-001", payload: { account_id: "mock-account-main" }, signatureValid: true, status: "processed", processedAt: d("2026-07-01") } }),
+    prisma.providerWebhookEvent.create({ data: { provider: "tink", connectorId: expiredConnector.id, eventType: "credentials.expired", externalEventId: "tink-event-001", payload: { status: "expired" }, signatureValid: true, status: "received" } }),
+    prisma.providerError.create({ data: { connectorId: expiredConnector.id, provider: "tink", errorCategory: "CONSENT_EXPIRED", providerErrorCode: "CONSENT_EXPIRED", providerErrorMessage: "User consent expired", userMessage: "Le consentement bancaire doit etre renouvele.", technicalDetails: { providerStatus: "expired" }, retryable: false, requiresUserAction: true } }),
+    prisma.providerRateLimitState.create({ data: { provider: "plaid", connectorId: bankConnector.id, remaining: 12, resetAt: d("2026-07-02"), lastRateLimitAt: d("2026-07-01"), isThrottled: false } })
+  ]);
+
+  await Promise.all([
+    prisma.duplicateCandidate.create({ data: { organizationId: organization.id, entityType: "payment", sourceAType: "bank_transaction", sourceAId: tx1.id, sourceBType: "payment", sourceBId: realInvoice.id, confidenceScore: 0.91, reason: "Montant et reference facture proches entre banque et compta", status: "pending" } }),
+    prisma.dataSourcePolicy.create({ data: { organizationId: organization.id, domain: "bank_transactions", primarySource: "bank_provider", conflictResolution: "provider_wins" } }),
+    prisma.dataSourcePolicy.create({ data: { organizationId: organization.id, domain: "invoices", primarySource: "pennylane", conflictResolution: "manual" } }),
+    prisma.dataSourcePolicy.create({ data: { organizationId: organization.id, domain: "missions", primarySource: "esn_forecast", conflictResolution: "esn_forecast_wins" } }),
+    prisma.auditLog.create({ data: { entityType: "financial_connector", entityId: bankConnector.id, action: "sync_completed", after: { provider: "bridge", imported: 6 }, } }),
+    prisma.auditLog.create({ data: { entityType: "financial_connector", entityId: expiredConnector.id, action: "consent_expired", after: { provider: "tink", requiresUserAction: true } } })
+  ]);
 }
 
 main()
