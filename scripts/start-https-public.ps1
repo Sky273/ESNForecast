@@ -1,8 +1,10 @@
 param(
+  [string]$Domain = "esnforecast.net",
+  [string]$TunnelName = "esn-forecast",
   [string]$DatabaseUrl = "postgresql://postgres:postgres@localhost:55432/esn_forecast?schema=public",
   [int]$ApiPort = 4000,
   [int]$WebPort = 5173,
-  [int]$TunnelTimeoutSeconds = 45
+  [string]$CloudflaredConfigPath = "$env:USERPROFILE\.cloudflared\config.yml"
 )
 
 $ErrorActionPreference = "Stop"
@@ -11,7 +13,11 @@ $logDir = Join-Path $root ".tmp"
 New-Item -ItemType Directory -Force -Path $logDir | Out-Null
 
 if (-not (Get-Command cloudflared -ErrorAction SilentlyContinue)) {
-  throw "cloudflared is not installed or not available in PATH. Install it from https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/"
+  throw "cloudflared is not installed or not available in PATH."
+}
+
+if (-not (Test-Path $CloudflaredConfigPath)) {
+  throw "Cloudflare config not found: $CloudflaredConfigPath. Create it with scripts/write-cloudflare-config.ps1 after creating the named tunnel."
 }
 
 $script:children = @()
@@ -48,39 +54,18 @@ function Wait-HttpOk {
   throw "Timeout waiting for $Url"
 }
 
-function Wait-TunnelUrl {
-  param([string[]]$LogFiles, [int]$TimeoutSeconds)
-  $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
-  do {
-    foreach ($file in $LogFiles) {
-      if (Test-Path $file) {
-        $content = Get-Content -Raw -ErrorAction SilentlyContinue $file
-        if ([string]::IsNullOrWhiteSpace($content)) {
-          continue
-        }
-        $match = [regex]::Match($content, "https://[a-zA-Z0-9-]+\.trycloudflare\.com")
-        if ($match.Success) {
-          return $match.Value
-        }
-      }
-    }
-    Start-Sleep -Milliseconds 500
-  } while ((Get-Date) -lt $deadline)
-  throw "Unable to find the Cloudflare Tunnel URL in logs: $($LogFiles -join ', ')"
-}
-
 function Assert-PortAvailable {
   param([int]$Port, [string]$Name)
   $listeners = Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue
   if ($listeners) {
     $processIds = ($listeners | Select-Object -ExpandProperty OwningProcess -Unique) -join ", "
-    throw "$Name port $Port is already in use by process id(s): $processIds. Stop the existing process or change the port before starting the HTTPS tunnel."
+    throw "$Name port $Port is already in use by process id(s): $processIds. Stop the existing process or change the port before starting the public tunnel."
   }
 }
 
-function Stop-DevProcesses {
+function Stop-Processes {
   Write-Host ""
-  Write-Host "Stopping HTTPS tunnel processes..." -ForegroundColor Yellow
+  Write-Host "Stopping ESN Forecast public HTTPS processes..." -ForegroundColor Yellow
   foreach ($process in $script:children) {
     if ($process -and -not $process.HasExited) {
       Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
@@ -89,41 +74,58 @@ function Stop-DevProcesses {
 }
 
 try {
-  Write-Host "Starting ESN Forecast with HTTPS tunnels" -ForegroundColor Cyan
+  $publicWebBaseUrl = "https://$Domain"
+  $publicApiBaseUrl = "$publicWebBaseUrl/api"
+
+  Write-Host "Starting ESN Forecast on $publicWebBaseUrl" -ForegroundColor Cyan
 
   Assert-PortAvailable -Port $ApiPort -Name "API"
   Assert-PortAvailable -Port $WebPort -Name "Web"
 
-  $apiTunnel = Start-LoggedProcess -Name "api-tunnel" -Command "cloudflared" -Arguments @("tunnel", "--url", "http://127.0.0.1:$ApiPort")
-  $apiHttpsUrl = Wait-TunnelUrl -LogFiles @($apiTunnel.Stdout, $apiTunnel.Stderr) -TimeoutSeconds $TunnelTimeoutSeconds
-  Write-Host "API HTTPS: $apiHttpsUrl/api" -ForegroundColor Green
-
-  $webTunnel = Start-LoggedProcess -Name "web-tunnel" -Command "cloudflared" -Arguments @("tunnel", "--url", "http://127.0.0.1:$WebPort")
-  $webHttpsUrl = Wait-TunnelUrl -LogFiles @($webTunnel.Stdout, $webTunnel.Stderr) -TimeoutSeconds $TunnelTimeoutSeconds
-  Write-Host "Web HTTPS: $webHttpsUrl" -ForegroundColor Green
-
   $env:DATABASE_URL = $DatabaseUrl
   $env:PORT = "$ApiPort"
-  $env:PUBLIC_API_BASE_URL = "$apiHttpsUrl/api"
-  $env:PUBLIC_WEB_BASE_URL = "$webHttpsUrl"
-  $env:BRIDGE_REDIRECT_URI = "$apiHttpsUrl/api/connectors/bridge/oauth/callback"
-  $api = Start-LoggedProcess -Name "api" -Command "cmd.exe" -Arguments @("/c", "npm run dev:api")
+  $env:PUBLIC_WEB_BASE_URL = $publicWebBaseUrl
+  $env:PUBLIC_API_BASE_URL = $publicApiBaseUrl
+  $env:BRIDGE_REDIRECT_URI = "$publicApiBaseUrl/connectors/bridge/oauth/callback"
+  $env:VITE_API_URL = $publicApiBaseUrl
+
+  $api = Start-LoggedProcess -Name "api-public" -Command "cmd.exe" -Arguments @("/c", "npm run dev:api")
   Wait-HttpOk -Url "http://127.0.0.1:$ApiPort/api/health" -TimeoutSeconds 30
   Write-Host "API local ready: http://127.0.0.1:$ApiPort/api/health" -ForegroundColor Green
 
-  $env:VITE_API_URL = "$apiHttpsUrl/api"
-  $web = Start-LoggedProcess -Name "web" -Command "cmd.exe" -Arguments @("/c", "npm run dev:web -- --port $WebPort")
+  Write-Host "Building web frontend for $publicWebBaseUrl..." -ForegroundColor Cyan
+  Push-Location (Join-Path $root "packages\shared")
+  try {
+    & npm run build
+    if ($LASTEXITCODE -ne 0) {
+      throw "Shared package build failed with exit code $LASTEXITCODE."
+    }
+  } finally {
+    Pop-Location
+  }
+
+  Push-Location (Join-Path $root "apps\web")
+  try {
+    & npm run build
+    if ($LASTEXITCODE -ne 0) {
+      throw "Web build failed with exit code $LASTEXITCODE."
+    }
+  } finally {
+    Pop-Location
+  }
+
+  $web = Start-LoggedProcess -Name "web-public" -Command "node" -Arguments @("scripts/serve-static.mjs", "--root", "apps/web/dist", "--port", "$WebPort")
   Wait-HttpOk -Url "http://127.0.0.1:$WebPort" -TimeoutSeconds 30
   Write-Host "Web local ready: http://127.0.0.1:$WebPort" -ForegroundColor Green
 
+  $tunnel = Start-LoggedProcess -Name "cloudflared-public" -Command "cloudflared" -Arguments @("tunnel", "--config", $CloudflaredConfigPath, "run", $TunnelName)
+
   Write-Host ""
-  Write-Host "ESN Forecast is available over HTTPS:" -ForegroundColor Cyan
-  Write-Host "Application: $webHttpsUrl" -ForegroundColor Green
-  Write-Host "API:         $apiHttpsUrl/api" -ForegroundColor Green
-  Write-Host "OAuth callback example: $apiHttpsUrl/api/connectors/bridge/oauth/callback" -ForegroundColor Green
-  Write-Host ""
-  Write-Host "Webhook base URL:" -ForegroundColor Cyan
-  Write-Host "$apiHttpsUrl/api/webhooks/<provider>" -ForegroundColor Green
+  Write-Host "ESN Forecast public HTTPS is starting:" -ForegroundColor Cyan
+  Write-Host "Application: $publicWebBaseUrl" -ForegroundColor Green
+  Write-Host "API:         $publicApiBaseUrl" -ForegroundColor Green
+  Write-Host "Bridge callback: $publicApiBaseUrl/connectors/bridge/oauth/callback" -ForegroundColor Green
+  Write-Host "Bridge webhook:  $publicApiBaseUrl/webhooks/bridge" -ForegroundColor Green
   Write-Host ""
   Write-Host "Keep this terminal open. Press Ctrl+C to stop." -ForegroundColor Yellow
 
@@ -136,5 +138,5 @@ try {
     }
   }
 } finally {
-  Stop-DevProcesses
+  Stop-Processes
 }

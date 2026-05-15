@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { api } from "../../api";
+import { API_URL, api } from "../../api";
 import { CrudPage } from "../../components/CrudPage";
 import { Badge } from "../../components/Format";
 import { KpiCard } from "../../components/KpiCard";
@@ -17,7 +17,77 @@ export function RealConnectorsPage() {
 export function ProviderConnectionPage() {
   const [provider, setProvider] = useState("bridge");
   const [result, setResult] = useState<any>(null);
-  const start = async () => setResult(await api(`/connectors/${provider}/oauth/start`, { method: "POST", body: JSON.stringify({ connectorType: ["pennylane", "sage"].includes(provider) ? "accounting" : "banking" }) }));
+  const [callbackResult, setCallbackResult] = useState<Record<string, string> | null>(() => readProviderCallbackResult());
+  const [loading, setLoading] = useState(false);
+
+  const start = async () => {
+    setLoading(true);
+    try {
+      const response = await api<any>(`/connectors/${provider}/oauth/start`, {
+        method: "POST",
+        body: JSON.stringify({
+          connectorType: ["pennylane", "sage"].includes(provider) ? "accounting" : "banking",
+          redirectUri: `${API_URL}/connectors/${provider}/oauth/callback`,
+          returnUrl: `${window.location.origin}/#/provider-connection`
+        })
+      });
+      setResult(response);
+      window.location.assign(response.authorizationUrl);
+    } catch (error) {
+      setResult({ error: error instanceof Error ? error.message : "Erreur de demarrage de connexion" });
+      setLoading(false);
+    }
+  };
+
+  const clearCallback = () => {
+    setCallbackResult(null);
+    window.history.replaceState(null, "", window.location.pathname + window.location.search);
+  };
+
+  return (
+    <section className="space-y-5">
+      <PageTitle title="Assistant de connexion provider" subtitle="Demarre le flux OAuth provider, puis affiche le resultat au retour." />
+      {callbackResult ? (
+        <div className={`rounded-lg border p-4 text-sm ${callbackResult.connectionStatus === "success" ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-red-200 bg-red-50 text-red-900"}`}>
+          <div className="font-semibold">{callbackResult.connectionStatus === "success" ? "Connexion provider terminee" : "Connexion provider en erreur"}</div>
+          <div className="mt-1">
+            {callbackResult.connectionStatus === "success"
+              ? `Provider ${callbackResult.provider ?? ""} connecte. Connecteur cree : ${callbackResult.connectorId ?? "non renseigne"}.`
+              : callbackResult.message ?? "Le provider a retourne une erreur."}
+          </div>
+          <pre className="mt-3 overflow-auto rounded bg-white/70 p-3 text-xs">{JSON.stringify(callbackResult, null, 2)}</pre>
+          <button className="mt-3 rounded-md border border-line bg-white px-3 py-2 text-xs font-medium text-slate-700" onClick={clearCallback}>Effacer le retour</button>
+        </div>
+      ) : null}
+      <div className="rounded-lg border border-line bg-white p-4">
+        <div className="grid gap-3 md:grid-cols-[240px_auto]">
+          <select className="rounded-md border border-line px-3 py-2" value={provider} onChange={(event) => setProvider(event.target.value)}>
+            {["bridge", "powens", "tink", "plaid", "pennylane", "sage"].map((item) => <option key={item} value={item}>{item}</option>)}
+          </select>
+          <button className="rounded-md bg-brand px-4 py-2 text-sm font-medium text-white disabled:opacity-60" disabled={loading} onClick={start}>{loading ? "Redirection..." : "Demarrer connexion"}</button>
+        </div>
+      </div>
+      {result ? (
+        <div className="rounded-lg border border-line bg-white p-4 text-sm">
+          <div className="font-medium">Authorization URL</div>
+          {result.authorizationUrl ? <a className="break-all text-brand" href={result.authorizationUrl}>{result.authorizationUrl}</a> : null}
+          <pre className="mt-3 overflow-auto rounded bg-surface p-3">{JSON.stringify(result, null, 2)}</pre>
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+function ProviderConnectionPageLegacy() {
+  const [provider, setProvider] = useState("bridge");
+  const [result, setResult] = useState<any>(null);
+  const start = async () => setResult(await api(`/connectors/${provider}/oauth/start`, {
+    method: "POST",
+    body: JSON.stringify({
+      connectorType: ["pennylane", "sage"].includes(provider) ? "accounting" : "banking",
+      redirectUri: `${API_URL}/connectors/${provider}/oauth/callback`
+    })
+  }));
   return (
     <section className="space-y-5">
       <PageTitle title="Assistant de connexion provider" subtitle="Demarre un flux OAuth sécurisé ou un flux sandbox/mock si les credentials sont absents." />
@@ -40,10 +110,10 @@ export function ProviderHealthPage() {
     <section className="space-y-5">
       <PageTitle title="Santé connectéurs V4" subtitle="Vue opérationnelle provider, syncs, webhooks, erreurs et rate limits." />
       <div className="grid gap-3 md:grid-cols-4">
-        <KpiCard label="Connectes" value={String(data?.summary?.connectéd ?? 0)} tone="good" />
+        <KpiCard label="Connectes" value={String(data?.summary?.connected ?? 0)} tone="good" />
         <KpiCard label="En erreur" value={String(data?.summary?.errors ?? 0)} tone={(data?.summary?.errors ?? 0) > 0 ? "risk" : "good"} />
         <KpiCard label="Expirés" value={String(data?.summary?.expired ?? 0)} tone={(data?.summary?.expired ?? 0) > 0 ? "risk" : "good"} />
-        <KpiCard label="Deconnectés" value={String(data?.summary?.disconnectéd ?? 0)} />
+        <KpiCard label="Deconnectés" value={String(data?.summary?.disconnected ?? 0)} />
       </div>
       <SimpleTable rows={data?.connectors ?? []} columns={[["provider", "Provider"], ["type", "Type"], ["name", "Nom"], ["status", "Statut", statusBadge], ["lastSyncAt", "Dernier sync"], ["errorMessage", "Erreur"]]} />
     </section>
@@ -116,7 +186,7 @@ function capabilityText(value: any) {
 }
 
 function statusBadge(value: string) {
-  return <Badge tone={["connectéd", "success", "processed", true].includes(value as any) ? "good" : ["error", "expired", "failed"].includes(value) ? "risk" : "warn"}>{String(value)}</Badge>;
+  return <Badge tone={["connected", "success", "processed", true].includes(value as any) ? "good" : ["error", "expired", "failed"].includes(value) ? "risk" : "warn"}>{String(value)}</Badge>;
 }
 
 function TablePage({ title, subtitle, rows, columns }: { title: string; subtitle: string; rows: any[]; columns: any[] }) {
@@ -137,6 +207,13 @@ function useObject(path: string) {
   const [data, setData] = useState<any>(null);
   useEffect(() => { void api<any>(path).then(setData).catch(() => setData(null)); }, [path]);
   return { data };
+}
+
+function readProviderCallbackResult() {
+  const hash = window.location.hash.replace(/^#\/?/, "");
+  const [route, search = ""] = hash.split("?");
+  if (route !== "provider-connection" || !search) return null;
+  return Object.fromEntries(new URLSearchParams(search).entries());
 }
 
 function SimpleTable({ rows, columns }: { rows: any[]; columns: any[] }) {

@@ -35,9 +35,10 @@ export function useApiList<T>(path: string) {
     setLoading(true);
     setError(null);
     try {
-      setData(await api<T[]>(path));
+      setData(normalizeListResponse<T>(await api<unknown>(path)));
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Erreur API");
+      setData([]);
     } finally {
       setLoading(false);
     }
@@ -48,6 +49,17 @@ export function useApiList<T>(path: string) {
   }, [reload]);
 
   return { data, loading, error, reload, setData };
+}
+
+function normalizeListResponse<T>(payload: unknown): T[] {
+  if (Array.isArray(payload)) return payload as T[];
+  if (payload && typeof payload === "object") {
+    const record = payload as Record<string, unknown>;
+    for (const key of ["rows", "data", "items", "resources", "connectors"]) {
+      if (Array.isArray(record[key])) return record[key] as T[];
+    }
+  }
+  return [];
 }
 
 export function useProjection(horizon: number) {

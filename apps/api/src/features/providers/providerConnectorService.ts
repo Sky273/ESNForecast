@@ -13,7 +13,7 @@ export function listProviders() {
   });
 }
 
-export async function startOAuth(providerName: ProviderName, body: { organizationId?: string; companyId?: string; connectorType?: string; redirectUri?: string }) {
+export async function startOAuth(providerName: ProviderName, body: { organizationId?: string; companyId?: string; connectorType?: string; redirectUri?: string; returnUrl?: string }) {
   const provider = getProvider(providerName);
   const company = body.companyId ? await prisma.company.findUnique({ where: { id: body.companyId } }) : await prisma.company.findFirst();
   const organization = body.organizationId ? await prisma.organization.findUnique({ where: { id: body.organizationId } }) : await prisma.organization.findFirst();
@@ -21,8 +21,10 @@ export async function startOAuth(providerName: ProviderName, body: { organizatio
   const state = randomBytes(24).toString("hex");
   const redirectUri =
     body.redirectUri ??
+    buildPublicRedirectUri(providerName) ??
     process.env[`${providerName.toUpperCase()}_REDIRECT_URI`] ??
     `http://localhost:4000/api/connectors/${providerName}/oauth/callback`;
+  const callbackRedirectUri = appendReturnUrl(redirectUri, body.returnUrl);
   const session = await prisma.oAuthConnectionSession.create({
     data: {
       organizationId: organization.id,
@@ -30,12 +32,12 @@ export async function startOAuth(providerName: ProviderName, body: { organizatio
       provider: providerName,
       connectorType: body.connectorType ?? (provider.getProviderCapabilities().supportsTransactions ? "banking" : "accounting"),
       state,
-      redirectUri,
+      redirectUri: callbackRedirectUri,
       status: "created",
       expiresAt: new Date(Date.now() + 10 * 60 * 1000)
     }
   });
-  const authorizationUrl = await provider.createAuthorizationUrl({ state, redirectUri });
+  const authorizationUrl = await provider.createAuthorizationUrl({ state, redirectUri: callbackRedirectUri });
   await prisma.oAuthConnectionSession.update({ where: { id: session.id }, data: { status: "redirected" } });
   return { sessionId: session.id, authorizationUrl, state, provider: providerName, environment: provider.validateConfig().environment };
 }
@@ -50,7 +52,11 @@ export async function handleOAuthCallback(providerName: ProviderName, query: Rec
   }
   const provider = getProvider(providerName);
   await prisma.oAuthConnectionSession.update({ where: { id: session.id }, data: { status: "callback_received" } });
-  const token = await provider.handleOAuthCallback({ code: query.code ? String(query.code) : undefined, publicToken: query.public_token ? String(query.public_token) : undefined, state });
+  const token = await provider.handleOAuthCallback({
+    code: query.code ? String(query.code) : query.item_id ? String(query.item_id) : undefined,
+    publicToken: query.public_token ? String(query.public_token) : undefined,
+    state
+  });
   const connector = await prisma.connector.create({
     data: {
       organizationId: session.organizationId,
@@ -58,7 +64,7 @@ export async function handleOAuthCallback(providerName: ProviderName, query: Rec
       type: session.connectorType,
       provider: providerName,
       name: `${providerName} ${provider.validateConfig().environment}`,
-      status: "connectéd",
+      status: "connected",
       configuration: { environment: provider.validateConfig().environment },
       lastSyncAt: null
     }
@@ -76,7 +82,16 @@ export async function handleOAuthCallback(providerName: ProviderName, query: Rec
     providerAccountId: token.providerAccountId
   });
   await prisma.oAuthConnectionSession.update({ where: { id: session.id }, data: { status: "token_exchanged" } });
-  return { connectorId: connector.id, provider: providerName, status: connector.status };
+  const initialSync = await syncConnector(connector.id, "full");
+  return {
+    connectorId: connector.id,
+    provider: providerName,
+    status: connector.status,
+    initialSyncStatus: initialSync.status,
+    importedCount: initialSync.importedCount,
+    updatedCount: initialSync.updatedCount,
+    errorCount: initialSync.errorCount
+  };
 }
 
 export async function exchangePlaidPublicToken(body: { organizationId?: string; companyId?: string; publicToken: string }) {
@@ -137,7 +152,7 @@ export async function syncConnector(connectorId: string, mode: "full" | "increme
       await saveCursor(connectorId, "payments", payments.nextCursor);
       logs.push({ invoices: invoices.invoices.length, payments: payments.payments.length });
     }
-    await prisma.connector.update({ where: { id: connectorId }, data: { status: "connectéd", lastSyncAt: new Date(), errorMessage: null } });
+    await prisma.connector.update({ where: { id: connectorId }, data: { status: "connected", lastSyncAt: new Date(), errorMessage: null } });
     return prisma.connectorSyncRun.update({ where: { id: run.id }, data: { status: "success", finishedAt: new Date(), importedCount, updatedCount, logs: logs as any } });
   } catch (error) {
     const mapped = provider.mapError(error);
@@ -149,14 +164,16 @@ export async function syncConnector(connectorId: string, mode: "full" | "increme
 
 export async function revokeConnector(connectorId: string) {
   await secretManager.revokeProviderToken(connectorId);
-  await prisma.connector.update({ where: { id: connectorId }, data: { status: "disconnectéd" } });
+  await prisma.connector.update({ where: { id: connectorId }, data: { status: "disconnected" } });
   return { connectorId, revoked: true };
 }
 
-export async function reconnectConnector(connectorId: string) {
+export async function reconnectConnector(connectorId: string, body: { redirectUri?: string; publicApiBaseUrl?: string } = {}) {
   const connector = await prisma.connector.findUnique({ where: { id: connectorId } });
   if (!connector) throw new Error("Connector not found");
-  return startOAuth(resolveProviderName(connector.provider), { organizationId: connector.organizationId, companyId: connector.companyId, connectorType: connector.type });
+  const provider = resolveProviderName(connector.provider);
+  const redirectUri = body.redirectUri ?? (body.publicApiBaseUrl ? `${body.publicApiBaseUrl}/connectors/${provider}/oauth/callback` : undefined);
+  return startOAuth(provider, { organizationId: connector.organizationId, companyId: connector.companyId, connectorType: connector.type, redirectUri });
 }
 
 export async function ingestWebhook(providerName: ProviderName, payload: unknown, signature?: string) {
@@ -207,10 +224,10 @@ export async function connectorHealth() {
   return {
     providers: listProviderConfigs().map((config) => ({ provider: config.provider, environment: config.environment, configured: config.configured })),
     summary: {
-      connectéd: connectors.filter((connector) => connector.status === "connectéd").length,
+      connected: connectors.filter((connector) => connector.status === "connected").length,
       errors: connectors.filter((connector) => connector.status === "error").length,
       expired: connectors.filter((connector) => connector.status === "expired").length,
-      disconnectéd: connectors.filter((connector) => connector.status === "disconnectéd").length
+      disconnected: connectors.filter((connector) => connector.status === "disconnected").length
     },
     connectors,
     runs,
@@ -273,4 +290,16 @@ async function saveCursor(connectorId: string, resourceType: string, cursor?: st
     create: { connectorId, resourceType, cursor, lastSuccessfulSyncAt: new Date() },
     update: { cursor, lastSuccessfulSyncAt: new Date(), lastFailedSyncAt: null }
   });
+}
+
+function buildPublicRedirectUri(providerName: ProviderName) {
+  const publicApiBaseUrl = process.env.PUBLIC_API_BASE_URL?.replace(/\/$/, "");
+  return publicApiBaseUrl ? `${publicApiBaseUrl}/connectors/${providerName}/oauth/callback` : undefined;
+}
+
+function appendReturnUrl(redirectUri: string, returnUrl?: string) {
+  if (!returnUrl) return redirectUri;
+  const url = new URL(redirectUri);
+  url.searchParams.set("returnUrl", returnUrl);
+  return url.toString();
 }

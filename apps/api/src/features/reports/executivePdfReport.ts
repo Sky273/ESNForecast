@@ -201,7 +201,7 @@ export function buildCodirPdf(report: { payload: any; report?: any }) {
   pdf.text("Connecteurs", margin, Math.max(y + 18, 645), 14, "F2");
   y = Math.max(y + 44, 671);
   connectors.slice(0, 5).forEach((connector: any) => {
-    pdf.rect(margin, y - 16, 512, 30, connector.status === "connectéd" ? "0.96 0.99 0.97" : "1 0.97 0.94", "0.86 0.89 0.93");
+    pdf.rect(margin, y - 16, 512, 30, connector.status === "connected" ? "0.96 0.99 0.97" : "1 0.97 0.94", "0.86 0.89 0.93");
     pdf.text(`${connector.name ?? connector.provider ?? "Connecteur"} - ${connector.status ?? "inconnu"}`, margin + 10, y + 2, 9, "F2");
     y += 36;
   });

@@ -26,7 +26,7 @@ export abstract class BaseProvider implements FinancialConnectorProvider {
   }
 
   async createAuthorizationUrl(input: { state: string; redirectUri: string; codeChallenge?: string }) {
-    if (!this.validateConfig().ok) return this.mockAuthorizationUrl(input.state);
+    if (!this.validateConfig().ok) return this.mockAuthorizationUrl(input.state, input.redirectUri);
     const url = new URL(this.authorizationEndpoint());
     url.searchParams.set("client_id", this.config.clientId!);
     url.searchParams.set("redirect_uri", input.redirectUri);
@@ -139,7 +139,7 @@ export abstract class BaseProvider implements FinancialConnectorProvider {
   }
 
   protected normalizeAccounts(payload: any): NormalizedBankAccount[] {
-    const rows = Array.isArray(payload?.accounts) ? payload.accounts : Array.isArray(payload) ? payload : [];
+    const rows = Array.isArray(payload?.resources) ? payload.resources : Array.isArray(payload?.accounts) ? payload.accounts : Array.isArray(payload) ? payload : [];
     return rows.map((row: any) => ({
       provider: this.getProviderName(),
       externalConnectionId: String(row.connection_id ?? row.item_id ?? row.user_id ?? "default"),
@@ -148,15 +148,15 @@ export abstract class BaseProvider implements FinancialConnectorProvider {
       ibanMasked: maskIban(row.iban ?? row.account_number ?? ""),
       currency: String(row.currency_code ?? row.currency ?? "EUR"),
       type: String(row.type ?? "checking"),
-      currentBalance: Number(row.balance?.current ?? row.current_balance ?? row.balances?.current ?? 0),
-      availableBalance: Number(row.balance?.available ?? row.available_balance ?? row.balances?.available ?? row.balance?.current ?? 0),
+      currentBalance: Number(row.balance?.current ?? row.balance ?? row.current_balance ?? row.balances?.current ?? 0),
+      availableBalance: Number(row.balance?.available ?? row.instant_balance ?? row.available_balance ?? row.balances?.available ?? row.balance?.current ?? row.balance ?? 0),
       balanceDate: String(row.balance_date ?? new Date().toISOString().slice(0, 10)),
       rawPayload: row
     }));
   }
 
   protected normalizeTransactions(payload: any): NormalizedBankTransaction[] {
-    const rows = Array.isArray(payload?.transactions) ? payload.transactions : Array.isArray(payload) ? payload : [];
+    const rows = Array.isArray(payload?.resources) ? payload.resources : Array.isArray(payload?.transactions) ? payload.transactions : Array.isArray(payload) ? payload : [];
     return rows.map((row: any) => {
       const amount = Number(row.amount ?? row.value ?? 0);
       return {
@@ -216,17 +216,23 @@ export abstract class BaseProvider implements FinancialConnectorProvider {
   }
 
   protected extractCursor(payload: any) {
-    return payload?.next_cursor ?? payload?.cursor ?? payload?.next ?? undefined;
+    return payload?.next_cursor ?? payload?.cursor ?? payload?.next ?? payload?.pagination?.next_uri ?? undefined;
   }
 
   protected async providerFetch(url: string, init: RequestInit = {}) {
     const response = await fetch(url, init);
-    if (!response.ok) throw Object.assign(new Error(`Provider ${this.getProviderName()} returned ${response.status}`), { status: response.status });
+    if (!response.ok) {
+      const body = await response.text().catch(() => "");
+      throw Object.assign(new Error(`Provider ${this.getProviderName()} returned ${response.status}${body ? `: ${body}` : ""}`), { status: response.status, body });
+    }
     return response.json();
   }
 
-  protected mockAuthorizationUrl(state: string) {
-    return `http://localhost:4000/api/connectors/${this.getProviderName()}/oauth/callback?state=${encodeURIComponent(state)}&code=mock-${this.getProviderName()}`;
+  protected mockAuthorizationUrl(state: string, redirectUri: string) {
+    const url = new URL(redirectUri);
+    url.searchParams.set("state", state);
+    url.searchParams.set("code", `mock-${this.getProviderName()}`);
+    return url.toString();
   }
 
   protected mockAccounts(connectorId: string): NormalizedBankAccount[] {

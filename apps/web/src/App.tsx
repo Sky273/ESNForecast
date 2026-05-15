@@ -287,6 +287,11 @@ function AppContent() {
   }, []);
 
   useEffect(() => {
+    if (!currentUser || authRoute.name !== "provider-connection") return;
+    setPage("providerConnection");
+  }, [authRoute.name, currentUser]);
+
+  useEffect(() => {
     localStorage.setItem("esn-forecast-open-nav-groups", JSON.stringify(openGroups));
   }, [openGroups]);
 

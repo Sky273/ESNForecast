@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, type Request } from "express";
 import { prisma } from "../../db";
 import {
   connectorHealth,
@@ -32,21 +32,33 @@ providersRouter.get("/providers/:provider/config-status", (req, res) => {
 
 providersRouter.post("/connectors/:provider/oauth/start", async (req, res, next) => {
   try {
-    res.status(201).json(await startOAuth(req.params.provider as ProviderName, req.body));
+    res.status(201).json(await startOAuth(req.params.provider as ProviderName, withDynamicRedirectUri(req, req.params.provider as ProviderName)));
   } catch (error) {
     next(error);
   }
 });
 providersRouter.get("/connectors/:provider/oauth/callback", async (req, res, next) => {
   try {
-    res.json(await handleOAuthCallback(req.params.provider as ProviderName, req.query));
+    const result = await handleOAuthCallback(req.params.provider as ProviderName, req.query);
+    const returnUrl = getProviderReturnUrl(req);
+    if (returnUrl) {
+      return res.redirect(buildProviderConnectionReturnUrl(returnUrl, "success", result));
+    }
+    res.json(result);
   } catch (error) {
+    const returnUrl = getProviderReturnUrl(req);
+    if (returnUrl) {
+      return res.redirect(buildProviderConnectionReturnUrl(returnUrl, "error", {
+        provider: req.params.provider,
+        message: error instanceof Error ? error.message : "Erreur de connexion provider"
+      }));
+    }
     next(error);
   }
 });
 providersRouter.post("/connectors/:id/reconnect", async (req, res, next) => {
   try {
-    res.json(await reconnectConnector(req.params.id));
+    res.json(await reconnectConnector(req.params.id, { ...req.body, publicApiBaseUrl: getPublicApiBaseUrl(req) }));
   } catch (error) {
     next(error);
   }
@@ -106,15 +118,27 @@ providersRouter.get("/connectors/:id/cursors", async (req, res, next) => {
 for (const provider of ["bridge", "powens", "tink", "plaid", "pennylane", "sage"] as ProviderName[]) {
   providersRouter.post(`/providers/${provider}/connect`, async (req, res, next) => {
     try {
-      res.status(201).json(await startOAuth(provider, req.body));
+      res.status(201).json(await startOAuth(provider, withDynamicRedirectUri(req, provider)));
     } catch (error) {
       next(error);
     }
   });
   providersRouter.get(`/providers/${provider}/callback`, async (req, res, next) => {
     try {
-      res.json(await handleOAuthCallback(provider, req.query));
+      const result = await handleOAuthCallback(provider, req.query);
+      const returnUrl = getProviderReturnUrl(req);
+      if (returnUrl) {
+        return res.redirect(buildProviderConnectionReturnUrl(returnUrl, "success", result));
+      }
+      res.json(result);
     } catch (error) {
+      const returnUrl = getProviderReturnUrl(req);
+      if (returnUrl) {
+        return res.redirect(buildProviderConnectionReturnUrl(returnUrl, "error", {
+          provider,
+          message: error instanceof Error ? error.message : "Erreur de connexion provider"
+        }));
+      }
       next(error);
     }
   });
@@ -284,4 +308,59 @@ async function updateDuplicate(id: string, status: string, res: any, next: any) 
   } catch (error) {
     next(error);
   }
+}
+
+function withDynamicRedirectUri(req: Request, provider: ProviderName) {
+  const publicApiBaseUrl = getPublicApiBaseUrl(req);
+  const redirectUri = req.body?.redirectUri;
+  if (redirectUri && (!isLocalRedirectUri(redirectUri) || !publicApiBaseUrl)) return req.body;
+  if (!publicApiBaseUrl) return req.body;
+  return {
+    ...req.body,
+    redirectUri: `${publicApiBaseUrl}/connectors/${provider}/oauth/callback`
+  };
+}
+
+function getPublicApiBaseUrl(req: Request) {
+  if (process.env.PUBLIC_API_BASE_URL) return process.env.PUBLIC_API_BASE_URL.replace(/\/$/, "");
+  const host = firstHeaderValue(req.headers["x-forwarded-host"]) ?? req.get("host");
+  if (!host) return "";
+  const proto = firstHeaderValue(req.headers["x-forwarded-proto"]) ?? req.protocol ?? "http";
+  return `${proto}://${host}/api`;
+}
+
+function firstHeaderValue(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+function isLocalRedirectUri(value: string) {
+  try {
+    const url = new URL(value);
+    return ["localhost", "127.0.0.1", "::1"].includes(url.hostname);
+  } catch {
+    return false;
+  }
+}
+
+function getProviderReturnUrl(req: Request) {
+  const raw = typeof req.query.returnUrl === "string" ? req.query.returnUrl : process.env.PUBLIC_WEB_BASE_URL ? `${process.env.PUBLIC_WEB_BASE_URL.replace(/\/$/, "")}/#/provider-connection` : "";
+  if (!raw) return "";
+  try {
+    const url = new URL(raw);
+    return ["http:", "https:"].includes(url.protocol) ? url.toString() : "";
+  } catch {
+    return "";
+  }
+}
+
+function buildProviderConnectionReturnUrl(returnUrl: string, status: "success" | "error", payload: Record<string, unknown>) {
+  const url = new URL(returnUrl);
+  const params = new URLSearchParams({ connectionStatus: status });
+  for (const [key, value] of Object.entries(payload)) {
+    if (value === undefined || value === null) continue;
+    params.set(key === "status" ? "connectorStatus" : key, String(value));
+  }
+  const hashBase = url.hash.split("?")[0] || "#/provider-connection";
+  url.hash = `${hashBase}?${params.toString()}`;
+  return url.toString();
 }

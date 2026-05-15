@@ -71,13 +71,13 @@ connectedFinanceRouter.post("/connectors/:id/sync", async (req, res, next) => {
   try {
     const connector = await prisma.connector.update({ where: { id: req.params.id }, data: { status: "syncing" } });
     const run = await prisma.connectorSyncRun.create({ data: { connectorId: connector.id, status: "success", finishedAt: new Date(), importedCount: 3, logs: { mode: "mock", provider: connector.provider } } });
-    await prisma.connector.update({ where: { id: connector.id }, data: { status: "connectéd", lastSyncAt: new Date(), errorMessage: null } });
+    await prisma.connector.update({ where: { id: connector.id }, data: { status: "connected", lastSyncAt: new Date(), errorMessage: null } });
     res.json(serializeDates(run));
   } catch (error) {
     next(error);
   }
 });
-connectedFinanceRouter.post("/connectors/:id/disconnect", async (req, res, next) => updateStatus(prisma.connector, req.params.id, { status: "disconnectéd" }, res, next));
+connectedFinanceRouter.post("/connectors/:id/disconnect", async (req, res, next) => updateStatus(prisma.connector, req.params.id, { status: "disconnected" }, res, next));
 connectedFinanceRouter.get("/connectors/:id/status", async (req, res, next) => {
   try {
     const connector = await prisma.connector.findUnique({ where: { id: req.params.id } });
