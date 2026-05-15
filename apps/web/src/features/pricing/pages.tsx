@@ -150,21 +150,46 @@ export function PricingSimulatorPage() {
 
 export function MissionPricingProfilePage() {
   const { data: missions } = useApi<any[]>("/missions");
-  const missionId = missions?.[0]?.id;
+  const [selectedMissionId, setSelectedMissionId] = useState("");
+  const missionId = selectedMissionId || missions?.[0]?.id || "";
   const { data } = useApi<any>(missionId ? `/pricing/missions/${missionId}` : "");
+  const [recalculated, setRecalculated] = useState<any | null>(null);
+  const profile = recalculated?.missionId === missionId ? recalculated : data;
+  const recalculate = async () => {
+    if (!missionId) return;
+    setRecalculated(await api(`/pricing/missions/${missionId}/recalculate`, { method: "POST" }));
+  };
   return (
     <>
-      <PageHeader title="Profil pricing mission" description="Lecture détaillée du coût complet, TJM plancher, TJM recommandé et Écart de marge." />
-      <div className="grid gap-3 md:grid-cols-4">
-        <KpiCard label="Mission" value={data?.missionTitle ?? "-"} />
-        <KpiCard label="TJM actuel" value={money(data?.currentDailyRate)} />
-        <KpiCard label="TJM plancher" value={money(data?.calculatedFloorDailyRate)} tone={(data?.currentDailyRate ?? 0) < (data?.calculatedFloorDailyRate ?? 0) ? "risk" : "default"} />
-        <KpiCard label="TJM recommandé" value={money(data?.recommendedDailyRate)} />
-        <KpiCard label="Coût complet / jour" value={money(data?.fullDailyCost)} />
-        <KpiCard label="Marge actuelle" value={percent(data?.currentMarginRate)} tone={kpiTone(data?.pricingStatus ?? "")} />
-        <KpiCard label="Impact mensuel" value={money(data?.monthlyImpactAmount)} />
-        <KpiCard label="Statut" value={data?.pricingStatus ?? "-"} tone={kpiTone(data?.pricingStatus ?? "")} />
+      <PageHeader title="Profil pricing mission" description="Lecture détaillée du coût complet, TJM plancher, TJM recommandé et écart de marge." />
+      <div className="mb-5 rounded-lg border border-line bg-white p-4">
+        <div className="flex flex-wrap items-end gap-3">
+          <label className="min-w-[320px] flex-1 text-sm">
+            <span className="mb-1 block text-xs font-medium text-muted">Mission analysee</span>
+            <select className="w-full rounded-md border border-line px-3 py-2" value={missionId} onChange={(event) => { setSelectedMissionId(event.target.value); setRecalculated(null); }}>
+              {(missions ?? []).map((mission) => <option key={mission.id} value={mission.id}>{mission.client?.name ? `${mission.title} - ${mission.client.name}` : mission.title}</option>)}
+            </select>
+          </label>
+          <button className="rounded-md bg-brand px-3 py-2 text-sm font-medium text-white disabled:opacity-60" onClick={recalculate} disabled={!missionId}>Recalculer</button>
+        </div>
       </div>
+      <div className="grid gap-3 md:grid-cols-4">
+        <KpiCard label="Mission" value={profile?.missionTitle ?? "-"} />
+        <KpiCard label="TJM actuel" value={money(profile?.currentDailyRate)} />
+        <KpiCard label="TJM plancher" value={money(profile?.calculatedFloorDailyRate)} tone={(profile?.currentDailyRate ?? 0) < (profile?.calculatedFloorDailyRate ?? 0) ? "risk" : "default"} />
+        <KpiCard label="TJM recommandé" value={money(profile?.recommendedDailyRate)} />
+        <KpiCard label="Coût complet / jour" value={money(profile?.fullDailyCost)} />
+        <KpiCard label="Marge actuelle" value={percent(profile?.currentMarginRate)} tone={kpiTone(profile?.pricingStatus ?? "")} />
+        <KpiCard label="Impact mensuel" value={money(profile?.monthlyImpactAmount)} />
+        <KpiCard label="Statut" value={profile?.pricingStatus ?? "-"} tone={kpiTone(profile?.pricingStatus ?? "")} />
+      </div>
+      {profile?.pricingStatus === "insufficient_data" ? (
+        <div className="mt-5 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+          <div className="font-semibold">Données insuffisantes pour calculer le pricing.</div>
+          <p className="mt-1">Complète les affectations de cette mission avec des jours facturables, un TJM vente et des coûts ressource.</p>
+          {profile?.missingData?.length ? <p className="mt-2">Champs manquants : {profile.missingData.join(", ")}</p> : null}
+        </div>
+      ) : null}
     </>
   );
 }
