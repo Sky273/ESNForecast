@@ -179,7 +179,7 @@ export function AuditPage() {
 }
 
 export function AdminPage() {
-  return <CrudPage title="Administration utilisateurs" path="/users" initial={{ email: "", name: "", role: "readonly", passwordHash: "demo" }} fields={[
+  return <CrudPage title="Administration utilisateurs" path="/users" initial={{ email: "", name: "", role: "readonly" }} fields={[
     { name: "email", label: "Email" }, { name: "name", label: "Nom" }, { name: "role", label: "Rôle", type: "select", options: ["admin", "direction", "finance", "commercial", "readonly"].map((value) => ({ label: value, value })) }
   ]} columns={[{ key: "email", label: "Email" }, { key: "name", label: "Nom" }, { key: "role", label: "Rôle" }]} />;
 }

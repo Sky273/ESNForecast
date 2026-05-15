@@ -81,7 +81,20 @@ export async function buildVariances(scenarioId?: string, horizon?: number) {
 }
 
 export async function buildCapacity(scenarioId?: string, horizon?: number) {
-  return calculateCapacityPlan(await buildV2Input(scenarioId, horizon));
+  const [capacity, skills] = await Promise.all([
+    buildV2Input(scenarioId, horizon).then(calculateCapacityPlan),
+    prisma.skill.findMany()
+  ]);
+  const skillsById = new Map(skills.map((skill) => [skill.id, skill]));
+  return capacity.map((row) => {
+    const skill = skillsById.get(row.skillId);
+    return {
+      ...row,
+      skillName: skill?.name ?? row.skillId,
+      skillCategory: skill?.category ?? null,
+      skillLabel: skill ? `${skill.name}${skill.category ? ` (${skill.category})` : ""}` : row.skillId
+    };
+  });
 }
 
 export async function buildStrategicRisks(scenarioId?: string, horizon?: number) {

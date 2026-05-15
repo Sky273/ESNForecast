@@ -327,7 +327,21 @@ model User {
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
   auditLogs    AuditLog[]
+  activationTokens AccountActivationToken[]
   @@index([organizationId])
+}
+
+model AccountActivationToken {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
 }
 
 model Scenario {
@@ -1740,4 +1754,484 @@ model HelpArticle {
   updatedAt   DateTime @updatedAt
   @@index([pageKey])
   @@index([category])
+}
+
+model Budget {
+  id            String   @id @default(cuid())
+  organizationId String
+  companyId     String
+  fiscalYear    Int
+  name          String
+  description   String?
+  status        String   @default("draft")
+  versionNumber Int      @default(1)
+  budgetType    String   @default("initial")
+  isReference   Boolean  @default(false)
+  createdBy     String?
+  updatedBy     String?
+  approvedBy    String?
+  lockedBy      String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  approvedAt    DateTime?
+  lockedAt      DateTime?
+  notes         String?
+  @@index([organizationId])
+  @@index([companyId])
+  @@index([fiscalYear])
+  @@index([status])
+}
+
+model BudgetLine {
+  id             String   @id @default(cuid())
+  budgetId       String
+  month          Int
+  year           Int
+  category       String
+  subCategory    String?
+  clientId       String?
+  missionId      String?
+  businessUnitId String?
+  resourceId     String?
+  amount         Float
+  quantity       Float?
+  percentage     Float?
+  comment        String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  @@index([budgetId])
+  @@index([year, month])
+  @@index([category])
+}
+
+model Objective {
+  id             String   @id @default(cuid())
+  organizationId String
+  companyId      String
+  fiscalYear     Int
+  name           String
+  description    String?
+  type           String
+  targetValue    Float
+  unit           String
+  period         String
+  startMonth     Int?
+  endMonth       Int?
+  ownerUserId    String?
+  status         String   @default("draft")
+  createdBy      String?
+  updatedBy      String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  @@index([organizationId])
+  @@index([companyId])
+  @@index([fiscalYear])
+  @@index([type])
+  @@index([status])
+}
+
+model RollingForecast {
+  id              String   @id @default(cuid())
+  organizationId  String
+  companyId       String
+  name            String
+  baseMonth       String
+  horizonMonths   Int
+  sourceScenarioId String?
+  sourceBudgetId  String?
+  versionNumber   Int      @default(1)
+  status          String   @default("draft")
+  generatedAt     DateTime @default(now())
+  generatedBy     String?
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  @@index([organizationId])
+  @@index([companyId])
+  @@index([baseMonth])
+  @@index([status])
+}
+
+model RollingForecastLine {
+  id                String   @id @default(cuid())
+  rollingForecastId String
+  month             Int
+  year              Int
+  category          String
+  amount            Float
+  source            String
+  confidenceScore   Float
+  comment           String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  @@index([rollingForecastId])
+  @@index([year, month])
+  @@index([category])
+}
+
+model VarianceAnalysis {
+  id             String   @id @default(cuid())
+  organizationId String
+  companyId      String
+  fiscalYear     Int
+  month          Int?
+  quarter        Int?
+  category       String
+  budgetValue    Float
+  actualValue    Float
+  forecastValue  Float?
+  varianceAmount Float
+  variancePercent Float
+  severity       String
+  status         String   @default("new")
+  ownerUserId    String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  @@index([organizationId])
+  @@index([companyId])
+  @@index([fiscalYear])
+  @@index([category])
+  @@index([severity])
+  @@index([status])
+}
+
+model VarianceCause {
+  id                  String   @id @default(cuid())
+  varianceAnalysisId  String
+  causeType           String
+  description         String
+  amountImpact        Float
+  relatedClientId     String?
+  relatedMissionId    String?
+  relatedResourceId   String?
+  relatedInvoiceId    String?
+  relatedTransactionId String?
+  confidenceScore     Float
+  createdAt           DateTime @default(now())
+  @@index([varianceAnalysisId])
+  @@index([causeType])
+}
+
+model VarianceComment {
+  id                 String   @id @default(cuid())
+  varianceAnalysisId String
+  userId             String?
+  comment            String
+  visibility         String   @default("internal")
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  @@index([varianceAnalysisId])
+}
+
+model ActionPlan {
+  id                 String   @id @default(cuid())
+  organizationId     String
+  companyId          String
+  title              String
+  description        String?
+  relatedObjectiveId String?
+  relatedVarianceId  String?
+  fiscalYear         Int
+  status             String   @default("draft")
+  ownerUserId        String?
+  createdBy          String?
+  updatedBy          String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  @@index([organizationId])
+  @@index([companyId])
+  @@index([fiscalYear])
+  @@index([status])
+}
+
+model ActionItem {
+  id                  String   @id @default(cuid())
+  actionPlanId         String
+  title               String
+  description         String?
+  actionType          String
+  ownerUserId         String?
+  dueDate             DateTime?
+  status              String   @default("todo")
+  expectedImpactAmount Float?
+  expectedImpactMonth String?
+  actualImpactAmount  Float?
+  priority            String   @default("medium")
+  relatedClientId     String?
+  relatedMissionId    String?
+  relatedInvoiceId    String?
+  relatedResourceId   String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  @@index([actionPlanId])
+  @@index([status])
+  @@index([priority])
+}
+
+model ActionSuggestion {
+  id                  String   @id @default(cuid())
+  organizationId      String
+  sourceType          String
+  sourceId            String
+  title               String
+  description         String
+  expectedImpactAmount Float?
+  expectedImpactMonth String?
+  confidenceScore     Float
+  priority            String
+  status              String   @default("suggested")
+  createdAt           DateTime @default(now())
+  resolvedAt          DateTime?
+  @@index([organizationId])
+  @@index([sourceType])
+  @@index([status])
+  @@index([priority])
+}
+
+model AnnualLandingSnapshot {
+  id                       String   @id @default(cuid())
+  organizationId            String
+  companyId                 String
+  fiscalYear                Int
+  budgetId                  String?
+  budgetRevenue             Float
+  actualRevenueToDate       Float
+  forecastRevenueRemaining  Float
+  projectedAnnualRevenue    Float
+  revenueGap                Float
+  budgetGrossMargin         Float
+  projectedGrossMargin      Float
+  marginGap                 Float
+  budgetClosingCash         Float
+  projectedClosingCash      Float
+  cashGap                   Float
+  achievementProbability    Float
+  lowCase                   Json?
+  medianCase                Json?
+  highCase                  Json?
+  mainDrivers               Json?
+  calculatedAt              DateTime @default(now())
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+  @@index([organizationId])
+  @@index([companyId])
+  @@index([fiscalYear])
+}
+
+model RequiredPipelineSnapshot {
+  id                       String   @id @default(cuid())
+  organizationId            String
+  companyId                 String
+  fiscalYear                Int
+  targetRevenue             Float
+  actualRevenue             Float
+  signedRemainingRevenue    Float
+  weightedPipelineRevenue   Float
+  revenueGap                Float
+  historicalConversionRate  Float
+  requiredGrossPipeline     Float
+  opportunitiesNeeded       Int
+  latestSignatureMonth      String?
+  recommendations           Json?
+  calculatedAt              DateTime @default(now())
+  @@index([organizationId])
+  @@index([companyId])
+  @@index([fiscalYear])
+}
+
+model BudgetStaffingSnapshot {
+  id                    String   @id @default(cuid())
+  organizationId         String
+  companyId              String
+  fiscalYear             Int
+  month                  Int
+  requiredBillableDays   Float
+  internalCapacityDays   Float
+  externalCapacityDays   Float
+  gapDays                Float
+  requiredFTE            Float
+  availableFTE           Float
+  staffingGapFTE         Float
+  missingSkills          Json?
+  recommendedActions     Json?
+  calculatedAt           DateTime @default(now())
+  @@index([organizationId])
+  @@index([companyId])
+  @@index([fiscalYear, month])
+}
+
+model WhatMustBeTrueCondition {
+  id             String   @id @default(cuid())
+  organizationId String
+  companyId      String
+  fiscalYear     Int
+  conditionType  String
+  description    String
+  targetValue    Float?
+  currentValue   Float?
+  gap            Float?
+  riskLevel      String
+  relatedActions Json?
+  status         String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  @@index([organizationId])
+  @@index([companyId])
+  @@index([fiscalYear])
+  @@index([conditionType])
+  @@index([status])
+}
+
+model PricingSettings {
+  id                                   String   @id @default(cuid())
+  organizationId                       String
+  companyId                            String
+  defaultTargetMarginRate              Float    @default(0.3)
+  minimumMarginRate                    Float    @default(0.2)
+  defaultOverheadAllocationMode        String   @default("percentage_of_direct_cost")
+  defaultOverheadDailyAmount           Float    @default(0)
+  defaultOverheadRate                  Float    @default(0.08)
+  monthlyOverheadPool                  Float    @default(0)
+  roundingMode                         String   @default("nearest_10")
+  defaultCommercialDiscountWarningRate Float    @default(0.05)
+  renegotiationMarginThreshold         Float    @default(0.25)
+  renegotiationReviewPeriodMonths      Int      @default(3)
+  createdAt                            DateTime @default(now())
+  updatedAt                            DateTime @updatedAt
+  @@index([organizationId])
+  @@index([companyId])
+}
+
+model MissionPricingProfile {
+  id                          String    @id @default(cuid())
+  organizationId              String
+  companyId                   String
+  missionId                   String
+  targetMarginRate            Float
+  minimumMarginRate           Float
+  overheadAllocationMode      String
+  overheadDailyAmount         Float?
+  overheadRate                Float?
+  monthlyOverheadAmount       Float?
+  pricingStatus               String    @default("not_evaluated")
+  currentAverageSaleDailyRate Float     @default(0)
+  calculatedFloorDailyRate    Float     @default(0)
+  recommendedDailyRate        Float     @default(0)
+  currentMarginRate           Float     @default(0)
+  targetMarginGap             Float     @default(0)
+  monthlyImpactAmount         Float     @default(0)
+  annualizedImpactAmount      Float     @default(0)
+  lastCalculatedAt            DateTime?
+  notes                       String?
+  createdAt                   DateTime  @default(now())
+  updatedAt                   DateTime  @updatedAt
+  @@unique([missionId])
+  @@index([organizationId])
+  @@index([companyId])
+  @@index([pricingStatus])
+}
+
+model PricingSimulation {
+  id             String   @id @default(cuid())
+  organizationId String
+  companyId      String
+  missionId      String
+  scenarioId     String?
+  name           String
+  input          Json
+  output         Json
+  createdBy      String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  variants       PricingSimulationVariant[]
+  @@index([organizationId])
+  @@index([companyId])
+  @@index([missionId])
+}
+
+model PricingSimulationVariant {
+  id              String   @id @default(cuid())
+  simulationId    String
+  simulation      PricingSimulation @relation(fields: [simulationId], references: [id], onDelete: Cascade)
+  name            String
+  dailyRate       Float
+  discountRate    Float    @default(0)
+  costAssumptions Json?
+  result          Json
+  isSelected      Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  @@index([simulationId])
+}
+
+model RenegotiationCandidate {
+  id                     String    @id @default(cuid())
+  organizationId         String
+  companyId              String
+  missionId              String
+  reason                 String
+  severity               String
+  currentDailyRate       Float
+  floorDailyRate         Float
+  recommendedDailyRate   Float
+  targetDailyRate        Float
+  marginGap              Float
+  monthlyImpactAmount    Float
+  annualizedImpactAmount Float
+  priorityScore          Int
+  priorityFactors        Json?
+  status                 String    @default("new")
+  ownerUserId            String?
+  nextReviewDate         DateTime?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+  @@index([organizationId])
+  @@index([companyId])
+  @@index([missionId])
+  @@index([status])
+  @@index([priorityScore])
+}
+
+model PricingDecision {
+  id                             String   @id @default(cuid())
+  organizationId                 String
+  companyId                      String
+  missionId                      String
+  decisionType                   String
+  previousDailyRate              Float?
+  newDailyRate                   Float?
+  floorDailyRateAtDecision       Float?
+  recommendedDailyRateAtDecision Float?
+  marginBefore                   Float?
+  marginAfter                    Float?
+  reason                         String
+  decidedBy                      String?
+  decidedAt                      DateTime @default(now())
+  relatedSimulationId            String?
+  relatedActionItemId            String?
+  createdAt                      DateTime @default(now())
+  updatedAt                      DateTime @updatedAt
+  @@index([organizationId])
+  @@index([companyId])
+  @@index([missionId])
+  @@index([decisionType])
+}
+
+model MarginException {
+  id               String    @id @default(cuid())
+  organizationId   String
+  companyId        String
+  missionId        String
+  reason           String
+  approvedBy       String?
+  approvedAt       DateTime?
+  expirationDate   DateTime?
+  targetReviewDate DateTime
+  comment          String?
+  status           String    @default("active")
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  @@index([organizationId])
+  @@index([companyId])
+  @@index([missionId])
+  @@index([status])
 }

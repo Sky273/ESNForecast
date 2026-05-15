@@ -1,6 +1,8 @@
 import { Router } from "express";
-import { scryptSync, timingSafeEqual } from "node:crypto";
+import { randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 import { prisma } from "../db";
+import { consumeActivationToken, sendAccountActivationEmail } from "../services/accountInvitationService";
+import { buildExecutivePdf } from "../services/executivePdfReport";
 import { buildScenarioProjection } from "../services/projectionService";
 import { coerceDates, serializeDates } from "../utils/serialize";
 
@@ -51,7 +53,7 @@ v1Router.use("/invoice-forecasts", crud("invoiceForecast" as any));
 v1Router.use("/cash-in-forecasts", crud("cashInForecast" as any));
 v1Router.use("/cash-out-forecasts", crud("cashOutForecast" as any));
 v1Router.use("/simulation-events", crud("simulationEvent" as any));
-v1Router.use("/users", crud("user" as any));
+v1Router.use("/users", usersRouter());
 
 v1Router.get("/scenarios", async (_req, res, next) => {
   try {
@@ -269,18 +271,14 @@ v1Router.get("/reports/executive.json", async (req, res, next) => {
 
 v1Router.get("/reports/executive.pdf", async (req, res, next) => {
   try {
-    const projection = await buildScenarioProjection(String(req.query.scenarioId || ""), Number(req.query.horizon) || 12);
-    const body = [
-      "ESN Forecast - Rapport direction",
-      `Scenario: ${projection.scenarioId}`,
-      `CA genere: ${projection.summary.totalRevenueGenerated}`,
-      `Cash-in: ${projection.summary.totalCashIn}`,
-      `Cash-out: ${projection.summary.totalCashOut}`,
-      `Tresorerie finale: ${projection.summary.finalClosingCash}`,
-      `Mois a risque: ${projection.summary.riskMonths.join(", ")}`
-    ].join("\n");
-    const pdf = `%PDF-1.1\n1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj\n2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj\n3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R >> endobj\n4 0 obj << /Length ${body.length + 60} >> stream\nBT /F1 12 Tf 50 740 Td (${body.replace(/[()]/g, "")}) Tj ET\nendstream endobj\ntrailer << /Root 1 0 R >>\n%%EOF`;
-    res.type("application/pdf").send(Buffer.from(pdf));
+    const horizon = Number(req.query.horizon) || 12;
+    const projection = await buildScenarioProjection(String(req.query.scenarioId || ""), horizon);
+    const pdf = buildExecutivePdf(projection as any, { horizon });
+    res
+      .type("application/pdf")
+      .setHeader("Content-Disposition", "inline; filename=\"executive-report.pdf\"")
+      .setHeader("Cache-Control", "no-store")
+      .send(pdf);
   } catch (error) {
     next(error);
   }
@@ -296,27 +294,165 @@ v1Router.get("/audit-logs", async (_req, res, next) => {
 
 v1Router.post("/auth/login", async (req, res, next) => {
   try {
-    const user = await prisma.user.findUnique({ where: { email: req.body.email } });
-    if (!user || !verifyPassword(String(req.body.password ?? ""), user.passwordHash)) return res.status(401).json({ error: "Invalid credentials" });
-    res.json({ token: Buffer.from(JSON.stringify({ userId: user.id, role: user.role })).toString("base64url"), user: maskUser(user) });
+    const user = await prisma.user.findUnique({ where: { email: String(req.body.email ?? "").trim() } });
+    if (!user || !user.passwordHash || !verifyPassword(String(req.body.password ?? ""), user.passwordHash)) return res.status(401).json({ error: "Invalid credentials" });
+    res.json({ token: createAuthToken(user), user: maskUser(user) });
   } catch (error) {
     next(error);
   }
 });
 
 v1Router.post("/auth/logout", (_req, res) => res.status(204).send());
-v1Router.get("/auth/me", async (_req, res) => {
-  const user = await prisma.user.findFirst({ orderBy: { createdAt: "asc" } });
-  res.json(user ? maskUser(user) : null);
+v1Router.get("/auth/me", async (req, res, next) => {
+  try {
+    const user = await getAuthenticatedUser(req);
+    if (!user) return res.status(401).json({ error: "Session expired" });
+    res.json(maskUser(user));
+  } catch (error) {
+    next(error);
+  }
+});
+
+v1Router.post("/auth/refresh", async (req, res, next) => {
+  try {
+    const user = await getAuthenticatedUser(req);
+    if (!user) return res.status(401).json({ error: "Session expired" });
+    res.json({ token: createAuthToken(user), user: maskUser(user) });
+  } catch (error) {
+    next(error);
+  }
+});
+
+v1Router.post("/auth/forgot-password", async (_req, res) => {
+  // TODO backend production: generate a single-use reset token, store its hash with expiry, and send it by email.
+  res.json({ ok: true, message: "If an account exists, a reset email has been sent." });
+});
+
+v1Router.post("/auth/reset-password", async (req, res) => {
+  // TODO backend production: validate reset token hash, expiry and single-use status before updating the user password.
+  if (!req.body?.token || !req.body?.newPassword) return res.status(400).json({ error: "Invalid or expired reset token" });
+  res.json({ ok: true, message: "Password reset accepted." });
+});
+
+v1Router.post("/auth/activate", async (req, res) => {
+  const token = String(req.body?.token ?? "");
+  const newPassword = String(req.body?.newPassword ?? "");
+  if (!token || !isStrongPassword(newPassword)) return res.status(400).json({ error: "Invalid or expired invitation" });
+  const user = await consumeActivationToken(token);
+  if (!user) return res.status(400).json({ error: "Invalid or expired invitation" });
+  await prisma.user.update({ where: { id: user.id }, data: { passwordHash: hashPassword(newPassword) } });
+  await audit("user", user.id, "activate_account", null, { userId: user.id });
+  res.json({ ok: true, message: "Account activation accepted." });
+});
+
+v1Router.post("/auth/change-password", async (req, res, next) => {
+  try {
+    const user = await getAuthenticatedUser(req);
+    if (!user) return res.status(401).json({ error: "Session expired" });
+    const newPassword = String(req.body.newPassword ?? "");
+    if (!verifyPassword(String(req.body.currentPassword ?? ""), user.passwordHash)) return res.status(400).json({ error: "Password change failed" });
+    if (!isStrongPassword(newPassword)) return res.status(400).json({ error: "Password policy not met" });
+    const updated = await prisma.user.update({ where: { id: user.id }, data: { passwordHash: hashPassword(newPassword) } });
+    await audit("user", user.id, "change_password", null, { userId: user.id });
+    res.json({ ok: true, user: maskUser(updated) });
+  } catch (error) {
+    next(error);
+  }
 });
 
 async function audit(entityType: string, entityId: string, action: string, before: unknown, after: unknown) {
   await prisma.auditLog.create({ data: { entityType, entityId, action, before: before as any, after: after as any } });
 }
 
+function usersRouter() {
+  const router = Router();
+
+  router.get("/", async (_req, res, next) => {
+    try {
+      const rows = await prisma.user.findMany({ orderBy: { createdAt: "desc" } });
+      res.json(serializeDates(rows.map(maskUser)));
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.post("/", async (req, res, next) => {
+    try {
+      const email = String(req.body.email ?? "").trim();
+      const name = String(req.body.name ?? "").trim();
+      if (!email || !name) return res.status(400).json({ error: "Email and name are required" });
+      const organizationId = req.body.organizationId ? String(req.body.organizationId) : undefined;
+      const role = req.body.role ?? "readonly";
+      const user = await prisma.user.create({ data: { organizationId, email, name, role, passwordHash: null } });
+      const invitation = await sendAccountActivationEmail(user);
+      await audit("user", user.id, "create_invited_user", null, { userId: user.id, email: user.email, mailSent: invitation.sent });
+      res.status(201).json({
+        ...serializeDates(maskUser(user)),
+        invitationEmailSent: invitation.sent,
+        activationEmailStatus: invitation.sent ? "sent" : "smtp_not_configured",
+        activationPreviewUrl: !invitation.sent && process.env.NODE_ENV !== "production" ? invitation.activationUrl : undefined,
+        activationExpiresAt: invitation.expiresAt.toISOString()
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.put("/:id", async (req, res, next) => {
+    try {
+      const data = { ...req.body };
+      delete data.id;
+      delete data.createdAt;
+      delete data.updatedAt;
+      delete data.passwordHash;
+      const row = await prisma.user.update({ where: { id: req.params.id }, data });
+      res.json(serializeDates(maskUser(row)));
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.delete("/:id", async (req, res, next) => {
+    try {
+      await prisma.user.delete({ where: { id: req.params.id } });
+      res.status(204).send();
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  return router;
+}
+
 function maskUser(user: any) {
   const { passwordHash: _passwordHash, ...safe } = user;
   return safe;
+}
+
+function createAuthToken(user: any) {
+  return Buffer.from(JSON.stringify({ userId: user.id, role: user.role })).toString("base64url");
+}
+
+async function getAuthenticatedUser(req: any) {
+  const header = String(req.headers.authorization ?? "");
+  const token = header.startsWith("Bearer ") ? header.slice("Bearer ".length) : "";
+  if (!token) return null;
+  try {
+    const payload = JSON.parse(Buffer.from(token, "base64url").toString("utf8"));
+    if (!payload.userId) return null;
+    return prisma.user.findUnique({ where: { id: String(payload.userId) } });
+  } catch {
+    return null;
+  }
+}
+
+function hashPassword(password: string) {
+  const salt = randomBytes(16).toString("hex");
+  return `${salt}:${scryptSync(password, salt, 64).toString("hex")}`;
+}
+
+function isStrongPassword(password: string) {
+  return password.length >= 12 && /[A-Z]/.test(password) && /[a-z]/.test(password) && /\d/.test(password) && /[^A-Za-z0-9]/.test(password);
 }
 
 function verifyPassword(password: string, stored?: string | null) {

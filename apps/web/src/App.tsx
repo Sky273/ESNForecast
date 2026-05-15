@@ -1,10 +1,19 @@
 import {
   AlertTriangle, BarChart3, Bell, BookOpenCheck, BriefcaseBusiness, Building2, Calculator, ChevronDown, ChevronsLeft, ChevronsRight, Contact,
-  DatabaseBackup, Euro, FileText, Gauge, Handshake, HeartPulse, HelpCircle, History, Landmark, LayoutDashboard, LockKeyhole, Receipt, Search,
-  Settings as SettingsIcon, Shield, Sparkles, TrendingUp, Users, WalletCards, Workflow
+  DatabaseBackup, Euro, FileText, Gauge, Handshake, HeartPulse, HelpCircle, History, KeyRound, Landmark, LayoutDashboard, LockKeyhole, LogOut,
+  Receipt, Search, Settings as SettingsIcon, Shield, Sparkles, TrendingUp, Users, WalletCards, Workflow
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type ComponentType } from "react";
 import { api } from "./api";
+import { hasAllowedRole } from "./auth/components/RoleGuard";
+import { AuthProvider, useAuth } from "./auth/hooks/useAuth";
+import { AccessDeniedPage } from "./auth/pages/AccessDeniedPage";
+import { ChangePasswordPage } from "./auth/pages/ChangePasswordPage";
+import { FirstLoginPage } from "./auth/pages/FirstLoginPage";
+import { ForgotPasswordPage } from "./auth/pages/ForgotPasswordPage";
+import { LoginPage } from "./auth/pages/LoginPage";
+import { ResetPasswordPage } from "./auth/pages/ResetPasswordPage";
+import { SessionExpiredPage } from "./auth/pages/SessionExpiredPage";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { CrudPage } from "./components/CrudPage";
 import { Assignments } from "./pages/Assignments";
@@ -32,6 +41,14 @@ import {
   BackofficeSupportPage, BackupsPage, FeatureFlagsPage, HelpPage, JobsPage, ObservabilityPage, OnboardingPage, PerformancePage,
   SecurityPage, SystemStatusPage
 } from "./pages/V5Pages";
+import {
+  ActionPlansPage, AnnualLandingPage, BudgetDetailPage, BudgetForecastActualPage, BudgetStaffingPage, BudgetsPage, ObjectivesPage,
+  RequiredPipelinePage, RollingForecastPage, TrajectoryDashboardPage, VarianceAnalysesPage, WhatMustBeTruePage
+} from "./pages/V6Pages";
+import {
+  MissionPricingProfilePage, PricingDashboardPage, PricingHistoryPage, PricingReportPage, PricingSettingsPage, PricingSimulatorPage,
+  RenegotiationCandidatesPage, UnderpricedMissionsPage
+} from "./pages/V7Pages";
 import { configs } from "./pages/crudConfigs";
 
 type NavItem = { id: string; label: string; icon: ComponentType<{ size?: number; className?: string }>; badge?: string; keywords?: string };
@@ -44,10 +61,29 @@ const navGroups: NavGroup[] = [
     icon: LayoutDashboard,
     items: [
       { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+      { id: "trajectory", label: "Trajectoire", icon: TrendingUp },
       { id: "executiveV2", label: "Vue direction", icon: Sparkles },
       { id: "treasury", label: "Tresorerie", icon: TrendingUp },
       { id: "actuals", label: "Previsionnel vs reel", icon: BarChart3 },
-      { id: "codirReport", label: "Rapport CODIR", icon: FileText }
+      { id: "codirReport", label: "Rapport CODIR", icon: FileText },
+      { id: "budgetForecastActual", label: "Rapport Budget / Forecast / Actual", icon: FileText }
+    ]
+  },
+  {
+    id: "budget",
+    label: "Budget & objectifs",
+    icon: Gauge,
+    items: [
+      { id: "budgets", label: "Budgets", icon: Calculator },
+      { id: "budgetDetail", label: "Detail budget", icon: FileText },
+      { id: "objectives", label: "Objectifs", icon: Gauge },
+      { id: "rollingForecast", label: "Rolling Forecast", icon: TrendingUp },
+      { id: "annualLanding", label: "Atterrissage annuel", icon: HeartPulse },
+      { id: "variances", label: "Ecarts", icon: BarChart3, badge: "3" },
+      { id: "actionPlans", label: "Plans d'action", icon: Workflow, badge: "4" },
+      { id: "requiredPipeline", label: "Pipeline necessaire", icon: BriefcaseBusiness },
+      { id: "budgetStaffing", label: "Staffing budgetaire", icon: Users },
+      { id: "whatMustBeTrue", label: "Conditions de reussite", icon: Shield }
     ]
   },
   {
@@ -106,6 +142,21 @@ const navGroups: NavGroup[] = [
       { id: "bankReconciliation", label: "Rapprochement bancaire", icon: Calculator },
       { id: "importedAccounting", label: "Comptabilite importee", icon: FileText },
       { id: "runway", label: "Runway", icon: HeartPulse }
+    ]
+  },
+  {
+    id: "pricing",
+    label: "Pricing & marge",
+    icon: Euro,
+    items: [
+      { id: "pricingDashboard", label: "Dashboard pricing", icon: Gauge },
+      { id: "pricingSimulator", label: "Simulateur pricing", icon: Calculator },
+      { id: "missionPricingProfile", label: "Profil pricing mission", icon: FileText },
+      { id: "underpricedMissions", label: "Missions sous-margees", icon: AlertTriangle, badge: "3" },
+      { id: "renegotiationCandidates", label: "Missions a renegocier", icon: Handshake, badge: "2" },
+      { id: "pricingSettings", label: "Parametres pricing", icon: SettingsIcon },
+      { id: "pricingReport", label: "Rapport pricing", icon: FileText },
+      { id: "pricingHistory", label: "Historique pricing", icon: History }
     ]
   },
   {
@@ -183,8 +234,25 @@ const navGroups: NavGroup[] = [
 ];
 
 const allItems = navGroups.flatMap((group) => group.items.map((item) => ({ ...item, group: group.label, groupId: group.id })));
+const AUTHENTICATION_DISABLED = false;
+const AUTH_DISABLED_USER = {
+  id: "auth-disabled-local-user",
+  email: "local@esnforecast.local",
+  name: "Acces local",
+  role: "admin"
+} as const;
 
 export function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
+  );
+}
+
+function AppContent() {
+  const auth = useAuth();
+  const currentUser = AUTHENTICATION_DISABLED ? AUTH_DISABLED_USER : auth.user;
   const [page, setPage] = useState("dashboard");
   const [horizon, setHorizon] = useState(12);
   const [scenarios, setScenarios] = useState<any[]>([]);
@@ -192,15 +260,27 @@ export function App() {
   const [compact, setCompact] = useState(() => localStorage.getItem("esn-forecast-compact-nav") === "true");
   const [query, setQuery] = useState("");
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
+  const [authRoute, setAuthRoute] = useState(() => readAuthRoute());
   const searchRef = useRef<HTMLInputElement>(null);
   const cfg = configs[page];
   const activeItem = allItems.find((item) => item.id === page) ?? allItems[0];
 
   useEffect(() => {
+    if (!currentUser) return;
     api<any[]>("/scenarios").then((rows) => {
       setScenarios(rows);
       setScenarioId(rows.find((row) => row.isActive)?.id ?? rows[0]?.id ?? "");
     }).catch(() => undefined);
+  }, [currentUser]);
+
+  useEffect(() => {
+    sessionStorage.setItem("esn-forecast-current-page", page);
+  }, [page]);
+
+  useEffect(() => {
+    const onHashChange = () => setAuthRoute(readAuthRoute());
+    window.addEventListener("hashchange", onHashChange);
+    return () => window.removeEventListener("hashchange", onHashChange);
   }, []);
 
   useEffect(() => {
@@ -234,13 +314,51 @@ export function App() {
       .filter((group) => group.items.length);
   }, [query]);
 
-  const toggleGroup = (id: string) => setOpenGroups((current) => ({ ...current, [id]: !(current[id] ?? true) }));
+  const toggleGroup = (id: string) => setOpenGroups((current) => ({ ...current, [id]: !Boolean(current[id]) }));
   const openPage = (id: string) => {
     setPage(id);
     setQuery("");
   };
 
   const content = renderPage(page, scenarioId, horizon, setHorizon, cfg);
+  const requiredRoles = getRequiredRoles(page);
+
+  const goLogin = () => {
+    auth.clearSessionExpired();
+    window.location.hash = "#/login";
+    setAuthRoute(readAuthRoute());
+  };
+
+  const afterLogin = () => {
+    const requested = sessionStorage.getItem("esn-forecast-requested-page");
+    if (requested && allItems.some((item) => item.id === requested)) setPage(requested);
+    sessionStorage.removeItem("esn-forecast-requested-page");
+    window.location.hash = "";
+    setAuthRoute(readAuthRoute());
+  };
+
+  if (!AUTHENTICATION_DISABLED && auth.loading) {
+    return <div className="grid min-h-screen place-items-center bg-slate-50 text-sm text-muted">Chargement de la session...</div>;
+  }
+
+  if (!AUTHENTICATION_DISABLED && (authRoute.name === "session-expired" || auth.sessionExpired)) {
+    return <SessionExpiredPage onLogin={goLogin} />;
+  }
+
+  if (!currentUser) {
+    if (authRoute.name === "forgot-password") return <ForgotPasswordPage onBack={goLogin} />;
+    if (authRoute.name === "reset-password") return <ResetPasswordPage token={authRoute.token} onBack={goLogin} />;
+    if (authRoute.name === "first-login") return <FirstLoginPage token={authRoute.token} onDone={goLogin} />;
+    return <LoginPage onAuthenticated={afterLogin} onForgotPassword={() => { window.location.hash = "#/forgot-password"; setAuthRoute(readAuthRoute()); }} />;
+  }
+
+  if (!AUTHENTICATION_DISABLED && authRoute.name === "change-password") {
+    return <ChangePasswordPage onDone={() => { window.location.hash = ""; setAuthRoute(readAuthRoute()); }} />;
+  }
+
+  if (!AUTHENTICATION_DISABLED && (authRoute.name === "access-denied" || (requiredRoles.length && !hasAllowedRole(currentUser.role, requiredRoles)))) {
+    return <AccessDeniedPage onDashboard={() => { setPage("dashboard"); window.location.hash = ""; setAuthRoute(readAuthRoute()); }} />;
+  }
 
   return (
     <div className={`h-screen overflow-hidden bg-slate-50 lg:grid ${compact ? "lg:grid-cols-[76px_1fr]" : "lg:grid-cols-[300px_1fr]"}`}>
@@ -321,6 +439,9 @@ export function App() {
                 {[3, 6, 12, 24].map((value) => <option key={value} value={value}>{value} mois</option>)}
               </select>
               <button className="rounded-md border border-line p-2 text-muted hover:bg-surface" aria-label="Notifications"><Bell size={17} /></button>
+              {AUTHENTICATION_DISABLED ? <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-800">Auth desactivee</span> : null}
+              {!AUTHENTICATION_DISABLED ? <button className="rounded-md border border-line p-2 text-muted hover:bg-surface" aria-label="Changer mon mot de passe" title="Changer mon mot de passe" onClick={() => { window.location.hash = "#/change-password"; setAuthRoute(readAuthRoute()); }}><KeyRound size={17} /></button> : null}
+              {!AUTHENTICATION_DISABLED ? <button className="rounded-md border border-line p-2 text-muted hover:bg-surface" aria-label="Deconnexion" title={`Deconnexion - ${currentUser.name}`} onClick={() => void auth.logout()}><LogOut size={17} /></button> : null}
             </div>
           </div>
         </header>
@@ -333,8 +454,46 @@ export function App() {
   );
 }
 
+type AuthRoute = { name: string; token?: string };
+
+function readAuthRoute(): AuthRoute {
+  const hash = window.location.hash.replace(/^#\/?/, "");
+  const [name, search = ""] = hash.split("?");
+  if (!name) return { name: "" };
+  const params = new URLSearchParams(search);
+  return { name, token: params.get("token") ?? undefined };
+}
+
+function getRequiredRoles(page: string) {
+  const adminPages = new Set(["admin", "rules", "settings", "audit", "financialAudit", "security", "featureFlags", "backofficeSupport", "systemStatus"]);
+  const financePages = new Set(["bankAccounts", "bankTransactions", "bankReconciliation", "importedAccounting", "realTreasury", "runway", "payments", "realInvoices"]);
+  if (adminPages.has(page)) return ["admin"];
+  if (financePages.has(page)) return ["admin", "direction", "finance", "manager"];
+  return [];
+}
+
 function renderPage(page: string, scenarioId: string, horizon: number, setHorizon: (horizon: number) => void, cfg: any) {
   if (page === "dashboard") return <Dashboard horizon={horizon} setHorizon={setHorizon} />;
+  if (page === "trajectory") return <TrajectoryDashboardPage />;
+  if (page === "budgets") return <BudgetsPage />;
+  if (page === "budgetDetail") return <BudgetDetailPage />;
+  if (page === "objectives") return <ObjectivesPage />;
+  if (page === "rollingForecast") return <RollingForecastPage />;
+  if (page === "annualLanding") return <AnnualLandingPage />;
+  if (page === "budgetForecastActual") return <BudgetForecastActualPage />;
+  if (page === "variances") return <VarianceAnalysesPage />;
+  if (page === "actionPlans") return <ActionPlansPage />;
+  if (page === "requiredPipeline") return <RequiredPipelinePage />;
+  if (page === "budgetStaffing") return <BudgetStaffingPage />;
+  if (page === "whatMustBeTrue") return <WhatMustBeTruePage />;
+  if (page === "pricingDashboard") return <PricingDashboardPage />;
+  if (page === "pricingSimulator") return <PricingSimulatorPage />;
+  if (page === "missionPricingProfile") return <MissionPricingProfilePage />;
+  if (page === "underpricedMissions") return <UnderpricedMissionsPage />;
+  if (page === "renegotiationCandidates") return <RenegotiationCandidatesPage />;
+  if (page === "pricingSettings") return <PricingSettingsPage />;
+  if (page === "pricingReport") return <PricingReportPage />;
+  if (page === "pricingHistory") return <PricingHistoryPage />;
   if (page === "executiveV2") return <ExecutiveCockpitPage scenarioId={scenarioId} horizon={horizon} />;
   if (page === "connectedFinance") return <ConnectedFinanceDashboard scenarioId={scenarioId} horizon={horizon} />;
   if (page === "realConnectors") return <RealConnectorsPage />;

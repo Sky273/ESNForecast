@@ -11,6 +11,8 @@ import { v2Router } from "./routes/v2";
 import { v3Router } from "./routes/v3";
 import { v4Router } from "./routes/v4";
 import { v5Router } from "./routes/v5";
+import { v6Router } from "./routes/v6";
+import { v7Router } from "./routes/v7";
 import { errorHandler, notFoundHandler, requestContext } from "./middleware/requestContext";
 
 const app = express();
@@ -39,6 +41,8 @@ app.use("/api", v2Router);
 app.use("/api", v4Router);
 app.use("/api", v3Router);
 app.use("/api", v5Router);
+app.use("/api", v6Router);
+app.use("/api", v7Router);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

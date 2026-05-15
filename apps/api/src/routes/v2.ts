@@ -85,7 +85,7 @@ v2Router.use("/invoices", crud("invoice" as any));
 v2Router.use("/payments", crud("payment" as any));
 v2Router.use("/planned-hires", crud("plannedHire" as any));
 v2Router.use("/business-rules", crud("businessRule" as any));
-v2Router.use("/documents", crud("document" as any));
+v2Router.use("/documents", crud("document" as any, { orderBy: { uploadedAt: "desc" } }));
 v2Router.use("/offers", crud("offer" as any, { include: { lines: true } }));
 v2Router.use("/workflows", crud("approvalWorkflow" as any));
 v2Router.use("/notifications", crud("notification" as any));

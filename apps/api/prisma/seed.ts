@@ -11,6 +11,28 @@ const hashPassword = (password: string) => {
 };
 
 async function main() {
+  await prisma.marginException.deleteMany();
+  await prisma.pricingDecision.deleteMany();
+  await prisma.renegotiationCandidate.deleteMany();
+  await prisma.pricingSimulationVariant.deleteMany();
+  await prisma.pricingSimulation.deleteMany();
+  await prisma.missionPricingProfile.deleteMany();
+  await prisma.pricingSettings.deleteMany();
+  await prisma.whatMustBeTrueCondition.deleteMany();
+  await prisma.budgetStaffingSnapshot.deleteMany();
+  await prisma.requiredPipelineSnapshot.deleteMany();
+  await prisma.annualLandingSnapshot.deleteMany();
+  await prisma.actionSuggestion.deleteMany();
+  await prisma.actionItem.deleteMany();
+  await prisma.actionPlan.deleteMany();
+  await prisma.varianceComment.deleteMany();
+  await prisma.varianceCause.deleteMany();
+  await prisma.varianceAnalysis.deleteMany();
+  await prisma.rollingForecastLine.deleteMany();
+  await prisma.rollingForecast.deleteMany();
+  await prisma.objective.deleteMany();
+  await prisma.budgetLine.deleteMany();
+  await prisma.budget.deleteMany();
   await prisma.helpArticle.deleteMany();
   await prisma.dataQualityScore.deleteMany();
   await prisma.performanceSnapshot.deleteMany();
@@ -546,6 +568,271 @@ async function main() {
   ]);
 
   await prisma.auditLog.create({ data: { entityType: "product_hardening_v5", entityId: "seed", action: "create_operations_demo", after: { jobs: 3, featureFlags: 3, backups: 1, dataQualityScores: 3 } } });
+
+  const [initialBudget, revisedBudget] = await Promise.all([
+    prisma.budget.create({ data: { organizationId: organization.id, companyId: company.id, fiscalYear: 2026, name: "Budget initial 2026", description: "Trajectoire annuelle validee CODIR", status: "locked", versionNumber: 1, budgetType: "initial", isReference: true, createdBy: "direction@esnforecast.local", approvedBy: "direction@esnforecast.local", lockedBy: "direction@esnforecast.local", approvedAt: d("2026-01-15"), lockedAt: d("2026-01-20"), notes: "Budget ambitieux avec croissance du pipe bancaire et energie" } }),
+    prisma.budget.create({ data: { organizationId: organization.id, companyId: company.id, fiscalYear: 2026, name: "Budget revise 2026", description: "Revision post T2", status: "approved", versionNumber: 2, budgetType: "revised", createdBy: "finance@esnforecast.local", approvedBy: "direction@esnforecast.local", approvedAt: d("2026-07-10"), notes: "Ajuste apres retard HealthLink et sous-occupation QA" } })
+  ]);
+
+  const budgetLines = Array.from({ length: 12 }, (_, index) => {
+    const month = index + 1;
+    const seasonalRevenue = 178000 + month * 5500 + (month >= 9 ? 22000 : 0);
+    const employeeCosts = 72000 + (month >= 9 ? 8500 : 0);
+    const externalCosts = 30500 + (month >= 10 ? 7000 : 0);
+    const fixedCosts = 17020;
+    const variableCosts = 4200 + month * 180;
+    const grossMargin = seasonalRevenue - employeeCosts - externalCosts;
+    const netMargin = grossMargin - fixedCosts - variableCosts;
+    return [
+      { budgetId: initialBudget.id, year: 2026, month, category: "revenue", amount: seasonalRevenue, comment: "CA budgete mensuel" },
+      { budgetId: initialBudget.id, year: 2026, month, category: "employee_costs", amount: employeeCosts },
+      { budgetId: initialBudget.id, year: 2026, month, category: "partner_costs", amount: externalCosts * 0.6 },
+      { budgetId: initialBudget.id, year: 2026, month, category: "freelancer_costs", amount: externalCosts * 0.4 },
+      { budgetId: initialBudget.id, year: 2026, month, category: "fixed_costs", amount: fixedCosts },
+      { budgetId: initialBudget.id, year: 2026, month, category: "variable_costs", amount: variableCosts },
+      { budgetId: initialBudget.id, year: 2026, month, category: "cash_in", amount: seasonalRevenue * 1.17 },
+      { budgetId: initialBudget.id, year: 2026, month, category: "cash_out", amount: employeeCosts + externalCosts + fixedCosts + variableCosts },
+      { budgetId: initialBudget.id, year: 2026, month, category: "gross_margin", amount: grossMargin },
+      { budgetId: initialBudget.id, year: 2026, month, category: "net_margin", amount: netMargin },
+      { budgetId: initialBudget.id, year: 2026, month, category: "closing_cash", amount: 125000 + month * 6200 },
+      { budgetId: initialBudget.id, year: 2026, month, category: "utilization_rate", amount: 0.87, percentage: 0.87 },
+      { budgetId: initialBudget.id, year: 2026, month, category: "bench_cost", amount: month >= 8 ? 12000 : 6500 },
+      { budgetId: initialBudget.id, year: 2026, month, category: "commercial_pipeline", amount: month >= 9 ? 290000 : 180000 }
+    ];
+  }).flat();
+  await prisma.budgetLine.createMany({ data: budgetLines });
+  await prisma.budgetLine.createMany({ data: budgetLines.map((line) => ({ ...line, budgetId: revisedBudget.id, amount: line.category === "revenue" ? line.amount * 0.96 : line.category === "closing_cash" ? line.amount * 0.92 : line.amount })) });
+
+  const rollingForecast = await prisma.rollingForecast.create({ data: { organizationId: organization.id, companyId: company.id, name: "Rolling forecast juillet 2026", baseMonth: "2026-07", horizonMonths: 12, sourceScenarioId: referenceScenario.id, sourceBudgetId: initialBudget.id, versionNumber: 1, status: "active", generatedBy: "finance@esnforecast.local", notes: "Reel T1/T2 + reforecast S2" } });
+  await prisma.rollingForecastLine.createMany({
+    data: budgetLines
+      .filter((line) => ["revenue", "gross_margin", "net_margin", "cash_in", "cash_out", "closing_cash", "utilization_rate", "bench_cost"].includes(line.category))
+      .map((line) => ({ rollingForecastId: rollingForecast.id, year: line.year, month: line.month, category: line.category, amount: line.month <= 6 ? line.amount * 0.92 : line.amount * (line.category === "revenue" ? 0.95 : line.category === "closing_cash" ? 0.9 : 0.97), source: line.month <= 6 ? "actual" : "reforecast", confidenceScore: line.month <= 6 ? 0.95 : 0.74, comment: line.month <= 6 ? "Reel consolide" : "Reforecast apres retard mission" }))
+  });
+
+  const [revenueObjective, marginObjective, cashObjective, utilizationObjective, pipelineObjective] = await Promise.all([
+    prisma.objective.create({ data: { organizationId: organization.id, companyId: company.id, fiscalYear: 2026, name: "CA annuel 2,4 M EUR", description: "Objectif CODIR de croissance", type: "revenue", targetValue: 2400000, unit: "amount", period: "annual", ownerUserId: "direction@esnforecast.local", status: "active" } }),
+    prisma.objective.create({ data: { organizationId: organization.id, companyId: company.id, fiscalYear: 2026, name: "Marge brute 28 %", type: "gross_margin", targetValue: 670000, unit: "amount", period: "annual", ownerUserId: "finance@esnforecast.local", status: "active" } }),
+    prisma.objective.create({ data: { organizationId: organization.id, companyId: company.id, fiscalYear: 2026, name: "Tresorerie minimale 150 k EUR", type: "cash", targetValue: 150000, unit: "amount", period: "annual", ownerUserId: "direction@esnforecast.local", status: "at_risk" } }),
+    prisma.objective.create({ data: { organizationId: organization.id, companyId: company.id, fiscalYear: 2026, name: "Occupation interne 87 %", type: "utilization", targetValue: 0.87, unit: "percentage", period: "monthly", ownerUserId: "staffing@esnforecast.local", status: "at_risk" } }),
+    prisma.objective.create({ data: { organizationId: organization.id, companyId: company.id, fiscalYear: 2026, name: "Pipeline supplementaire T3", type: "pipeline", targetValue: 500000, unit: "amount", period: "quarterly", startMonth: 7, endMonth: 9, ownerUserId: "commercial@esnforecast.local", status: "at_risk" } })
+  ]);
+
+  const revenueVariance = await prisma.varianceAnalysis.create({ data: { organizationId: organization.id, companyId: company.id, fiscalYear: 2026, month: 6, quarter: 2, category: "revenue", budgetValue: 211000, actualValue: 92500, forecastValue: 194120, varianceAmount: -118500, variancePercent: -0.56, severity: "critical", status: "action_required", ownerUserId: "commercial@esnforecast.local" } });
+  const marginVariance = await prisma.varianceAnalysis.create({ data: { organizationId: organization.id, companyId: company.id, fiscalYear: 2026, month: 6, quarter: 2, category: "gross_margin", budgetValue: 108800, actualValue: 26900, forecastValue: 101536, varianceAmount: -81900, variancePercent: -0.75, severity: "critical", status: "explained", ownerUserId: "finance@esnforecast.local" } });
+  const cashVariance = await prisma.varianceAnalysis.create({ data: { organizationId: organization.id, companyId: company.id, fiscalYear: 2026, month: 6, quarter: 2, category: "closing_cash", budgetValue: 162200, actualValue: 61080, forecastValue: 145980, varianceAmount: -101120, variancePercent: -0.62, severity: "critical", status: "action_required", ownerUserId: "direction@esnforecast.local" } });
+
+  await Promise.all([
+    prisma.varianceCause.create({ data: { varianceAnalysisId: revenueVariance.id, causeType: "delayed_mission", description: "Demarrage de Plateforme IA conformite decale de septembre a octobre", amountImpact: -42000, relatedMissionId: missions[4].id, relatedClientId: clients[0].id, confidenceScore: 0.83 } }),
+    prisma.varianceCause.create({ data: { varianceAnalysisId: revenueVariance.id, causeType: "late_payment", description: "Encaissement HealthLink en retard et facture non payee", amountImpact: -43200, relatedClientId: clients[3].id, confidenceScore: 0.88 } }),
+    prisma.varianceCause.create({ data: { varianceAnalysisId: marginVariance.id, causeType: "external_cost_increase", description: "Cout freelance cyber plus eleve que prevu sur audit sante", amountImpact: -18500, relatedMissionId: missions[3].id, confidenceScore: 0.8 } }),
+    prisma.varianceCause.create({ data: { varianceAnalysisId: cashVariance.id, causeType: "late_payment", description: "Paiement partiel Banque Horizon et retard HealthLink", amountImpact: -62240, relatedInvoiceId: realInvoice.id, confidenceScore: 0.9 } }),
+    prisma.varianceComment.create({ data: { varianceAnalysisId: revenueVariance.id, userId: "commercial@esnforecast.local", visibility: "direction", comment: "Le gap CA vient surtout du retard de demarrage IA et d'un pipe Q3 insuffisant. Deux offres sont prioritaires." } }),
+    prisma.varianceComment.create({ data: { varianceAnalysisId: marginVariance.id, userId: "finance@esnforecast.local", visibility: "finance", comment: "La marge de l'audit sante est degradee par un cout externe non anticipe. Action de renegociation fournisseur ouverte." } }),
+    prisma.varianceComment.create({ data: { varianceAnalysisId: cashVariance.id, userId: "direction@esnforecast.local", visibility: "direction", comment: "Point CODIR requis sur encaissements et gel temporaire des depenses non essentielles." } })
+  ]);
+
+  const actionPlan = await prisma.actionPlan.create({ data: { organizationId: organization.id, companyId: company.id, title: "Plan de redressement trajectoire S2", description: "Actions pour reduire le gap CA, cash et marge", relatedObjectiveId: revenueObjective.id, relatedVarianceId: revenueVariance.id, fiscalYear: 2026, status: "active", ownerUserId: "direction@esnforecast.local", createdBy: "direction@esnforecast.local" } });
+  await Promise.all([
+    prisma.actionItem.create({ data: { actionPlanId: actionPlan.id, title: "Relancer HealthLink et obtenir date paiement", description: "Escalade finance + commercial", actionType: "invoice_follow_up", ownerUserId: "finance@esnforecast.local", dueDate: d("2026-07-20"), status: "in_progress", expectedImpactAmount: 43200, expectedImpactMonth: "2026-08", priority: "critical", relatedClientId: clients[3].id } }),
+    prisma.actionItem.create({ data: { actionPlanId: actionPlan.id, title: "Securiser prolongation Banque Horizon", actionType: "mission_extension", ownerUserId: "commercial@esnforecast.local", dueDate: d("2026-08-15"), status: "todo", expectedImpactAmount: 120000, expectedImpactMonth: "2026-10", priority: "high", relatedClientId: clients[0].id, relatedMissionId: missions[0].id } }),
+    prisma.actionItem.create({ data: { actionPlanId: actionPlan.id, title: "Reduire cout freelance audit sante", actionType: "reduce_external_cost", ownerUserId: "finance@esnforecast.local", dueDate: d("2026-07-30"), status: "blocked", expectedImpactAmount: 12000, expectedImpactMonth: "2026-08", priority: "high", relatedMissionId: missions[3].id } }),
+    prisma.actionItem.create({ data: { actionPlanId: actionPlan.id, title: "Placer Sarah Leroy sur mission QA retail", actionType: "improve_utilization", ownerUserId: "staffing@esnforecast.local", dueDate: d("2026-07-25"), status: "done", expectedImpactAmount: 18000, expectedImpactMonth: "2026-08", actualImpactAmount: 16000, priority: "medium", relatedResourceId: employees[4].id } }),
+    prisma.actionSuggestion.create({ data: { organizationId: organization.id, sourceType: "variance", sourceId: cashVariance.id, title: "Accelerer relance encaissements critiques", description: "Regrouper Banque Horizon et HealthLink dans une relance direction", expectedImpactAmount: 62000, expectedImpactMonth: "2026-08", confidenceScore: 0.86, priority: "critical", status: "suggested" } }),
+    prisma.actionSuggestion.create({ data: { organizationId: organization.id, sourceType: "objective", sourceId: pipelineObjective.id, title: "Creer 330 k EUR de pipeline qualifie", description: "Cibler Energie et Banque pour combler le gap Q4", expectedImpactAmount: 115000, expectedImpactMonth: "2026-11", confidenceScore: 0.72, priority: "high", status: "suggested" } })
+  ]);
+
+  const annualLanding = await prisma.annualLandingSnapshot.create({ data: { organizationId: organization.id, companyId: company.id, fiscalYear: 2026, budgetId: initialBudget.id, budgetRevenue: 2493000, actualRevenueToDate: 92500, forecastRevenueRemaining: 1972600, projectedAnnualRevenue: 2065100, revenueGap: -427900, budgetGrossMargin: 1285500, projectedGrossMargin: 1071300, marginGap: -214200, budgetClosingCash: 199400, projectedClosingCash: 179460, cashGap: -19940, achievementProbability: 0.78, lowCase: { revenue: 1900000, cash: 145000 }, medianCase: { revenue: 2065100, cash: 179460 }, highCase: { revenue: 2190000, cash: 205000 }, mainDrivers: [{ label: "Retard mission IA", impact: -42000 }, { label: "Pipeline insuffisant", impact: -115000 }, { label: "Encaissements tardifs", impact: -62240 }] } });
+  await Promise.all([
+    prisma.requiredPipelineSnapshot.create({ data: { organizationId: organization.id, companyId: company.id, fiscalYear: 2026, targetRevenue: 2493000, actualRevenue: 92500, signedRemainingRevenue: 840000, weightedPipelineRevenue: 210000, revenueGap: 1350500, historicalConversionRate: 0.35, requiredGrossPipeline: 3858571, opportunitiesNeeded: 46, latestSignatureMonth: "2026-09", recommendations: ["Securiser prolongations", "Convertir GreenGrid", "Lancer campagne nouveaux comptes"] } }),
+    prisma.whatMustBeTrueCondition.create({ data: { organizationId: organization.id, companyId: company.id, fiscalYear: 2026, conditionType: "revenue_condition", description: "Signer au moins 420 k EUR de nouvelles missions avant fin septembre", targetValue: 420000, currentValue: 210000, gap: -210000, riskLevel: "high", relatedActions: ["Securiser prolongation Banque Horizon", "Convertir offre GreenGrid"], status: "at_risk" } }),
+    prisma.whatMustBeTrueCondition.create({ data: { organizationId: organization.id, companyId: company.id, fiscalYear: 2026, conditionType: "staffing_condition", description: "Maintenir un taux d'occupation interne superieur a 86 %", targetValue: 0.86, currentValue: 0.81, gap: -0.05, riskLevel: "medium", relatedActions: ["Placer Sarah Leroy sur mission QA retail"], status: "at_risk" } }),
+    prisma.whatMustBeTrueCondition.create({ data: { organizationId: organization.id, companyId: company.id, fiscalYear: 2026, conditionType: "payment_condition", description: "Encaisser 80 % des factures a moins de 45 jours", targetValue: 0.8, currentValue: 0.64, gap: -0.16, riskLevel: "high", relatedActions: ["Relancer HealthLink"], status: "not_satisfied" } })
+  ]);
+
+  for (const month of Array.from({ length: 12 }, (_, index) => index + 1)) {
+    const requiredBillableDays = 245 + month * 2;
+    const internalCapacityDays = month >= 9 ? 168 : 150;
+    const externalCapacityDays = month >= 10 ? 58 : 46;
+    await prisma.budgetStaffingSnapshot.create({
+      data: {
+        organizationId: organization.id,
+        companyId: company.id,
+        fiscalYear: 2026,
+        month,
+        requiredBillableDays,
+        internalCapacityDays,
+        externalCapacityDays,
+        gapDays: internalCapacityDays + externalCapacityDays - requiredBillableDays,
+        requiredFTE: requiredBillableDays / 20,
+        availableFTE: (internalCapacityDays + externalCapacityDays) / 20,
+        staffingGapFTE: (internalCapacityDays + externalCapacityDays - requiredBillableDays) / 20,
+        missingSkills: month >= 9 ? ["Java senior", "Cloud AWS"] : ["QA automation"],
+        recommendedActions: month >= 9 ? ["Recruter Java senior", "Securiser partenaire cloud"] : ["Placer consultant disponible"]
+      }
+    });
+  }
+
+  await Promise.all([
+    prisma.alert.create({ data: { scenarioId: referenceScenario.id, type: "budget_revenue_gap", severity: "critical", message: "Atterrissage annuel sous budget CA", month: "2026-07", recommendedAction: "Activer plan de redressement S2 et pipeline necessaire", status: "new" } }),
+    prisma.alert.create({ data: { scenarioId: referenceScenario.id, type: "objective_at_risk", severity: "warning", message: "Objectif occupation interne a risque", month: "2026-07", recommendedAction: "Placer les consultants en intercontrat avant fin juillet", status: "new" } }),
+    prisma.auditLog.create({ data: { entityType: "budget_v6", entityId: initialBudget.id, action: "create_budget_trajectory_demo", after: { fiscalYear: 2026, objectives: 5, landing: annualLanding.projectedAnnualRevenue, actionPlan: actionPlan.title } } }),
+    prisma.helpArticle.create({ data: { pageKey: "trajectory", title: "Budget, forecast et reel", category: "budget", body: "Le budget est la trajectoire cible verrouillee. Le rolling forecast est la trajectoire actualisee. Le reel explique les ecarts." } }),
+    prisma.helpArticle.create({ data: { pageKey: "annualLanding", title: "Atterrissage annuel", category: "budget", body: "L'atterrissage combine le reel a date et le forecast restant pour estimer la fin d'annee probable." } }),
+    prisma.helpArticle.create({ data: { pageKey: "actionPlans", title: "Plans d'action", category: "pilotage", body: "Chaque action doit etre rattachee a un objectif ou un ecart, avec responsable, echeance et impact attendu." } })
+  ]);
+
+  const pricingSettings = await prisma.pricingSettings.create({
+    data: {
+      organizationId: organization.id,
+      companyId: company.id,
+      defaultTargetMarginRate: 0.3,
+      minimumMarginRate: 0.22,
+      defaultOverheadAllocationMode: "percentage_of_direct_cost",
+      defaultOverheadRate: 0.08,
+      roundingMode: "nearest_10",
+      defaultCommercialDiscountWarningRate: 0.05,
+      renegotiationMarginThreshold: 0.25,
+      renegotiationReviewPeriodMonths: 3
+    }
+  });
+
+  const pricingProfiles = [
+    { mission: missions[0], status: "healthy", current: 720, floor: 580, recommended: 690, margin: 0.34, impact: 0, note: "Mission rentable, TJM coherent avec la cible." },
+    { mission: missions[1], status: "renegotiation_recommended", current: 610, floor: 590, recommended: 710, margin: 0.24, impact: 2800, note: "TJM proche du plancher, marge inferieure a la cible." },
+    { mission: missions[2], status: "underpriced", current: 560, floor: 620, recommended: 740, margin: 0.16, impact: 3600, note: "Remise commerciale durable non compensee." },
+    { mission: missions[3], status: "critical", current: 540, floor: 650, recommended: 780, margin: -0.08, impact: 5200, note: "Hausse cout freelance cyber non repercutee." },
+    { mission: missions[4], status: "watch", current: 760, floor: 640, recommended: 820, margin: 0.28, impact: 1200, note: "Mission longue a revoir avant prolongation." }
+  ];
+
+  for (const profile of pricingProfiles) {
+    await prisma.missionPricingProfile.create({
+      data: {
+        organizationId: organization.id,
+        companyId: company.id,
+        missionId: profile.mission.id,
+        targetMarginRate: 0.3,
+        minimumMarginRate: pricingSettings.minimumMarginRate,
+        overheadAllocationMode: pricingSettings.defaultOverheadAllocationMode,
+        overheadRate: pricingSettings.defaultOverheadRate,
+        pricingStatus: profile.status,
+        currentAverageSaleDailyRate: profile.current,
+        calculatedFloorDailyRate: profile.floor,
+        recommendedDailyRate: profile.recommended,
+        currentMarginRate: profile.margin,
+        targetMarginGap: profile.recommended - profile.current,
+        monthlyImpactAmount: profile.impact,
+        annualizedImpactAmount: profile.impact * 12,
+        lastCalculatedAt: d("2026-07-01"),
+        notes: profile.note
+      }
+    });
+  }
+
+  const candidateA = await prisma.renegotiationCandidate.create({
+    data: {
+      organizationId: organization.id,
+      companyId: company.id,
+      missionId: missions[3].id,
+      reason: "Marge negative apres hausse du cout freelance cyber",
+      severity: "critical",
+      currentDailyRate: 540,
+      floorDailyRate: 650,
+      recommendedDailyRate: 780,
+      targetDailyRate: 780,
+      marginGap: -0.38,
+      monthlyImpactAmount: 5200,
+      annualizedImpactAmount: 62400,
+      priorityScore: 88,
+      priorityFactors: [{ label: "Marge negative", value: 35 }, { label: "Impact mensuel", value: 10.4 }, { label: "Ecart TJM", value: 30 }, { label: "Mission critique", value: 12.6 }],
+      status: "negotiation_in_progress",
+      ownerUserId: "commercial@esnforecast.local",
+      nextReviewDate: d("2026-07-25")
+    }
+  });
+  const candidateB = await prisma.renegotiationCandidate.create({
+    data: {
+      organizationId: organization.id,
+      companyId: company.id,
+      missionId: missions[2].id,
+      reason: "TJM sous plancher apres remise commerciale prolongee",
+      severity: "high",
+      currentDailyRate: 560,
+      floorDailyRate: 620,
+      recommendedDailyRate: 740,
+      targetDailyRate: 720,
+      marginGap: -0.14,
+      monthlyImpactAmount: 3600,
+      annualizedImpactAmount: 43200,
+      priorityScore: 74,
+      priorityFactors: [{ label: "Ecart marge", value: 14 }, { label: "Impact mensuel", value: 7.2 }, { label: "Ecart TJM recommande", value: 24 }, { label: "Duree restante", value: 28.8 }],
+      status: "action_planned",
+      ownerUserId: "direction@esnforecast.local",
+      nextReviewDate: d("2026-08-05")
+    }
+  });
+
+  const pricingPlan = await prisma.actionPlan.create({
+    data: {
+      organizationId: organization.id,
+      companyId: company.id,
+      title: "Plan de renegociation marge mission",
+      description: "Actions V7 pour securiser les TJM et la marge des missions sous-margees",
+      fiscalYear: 2026,
+      status: "active",
+      ownerUserId: "direction@esnforecast.local",
+      createdBy: "direction@esnforecast.local"
+    }
+  });
+  const renegotiationAction = await prisma.actionItem.create({
+    data: {
+      actionPlanId: pricingPlan.id,
+      title: "Renegocier audit securite sante a 780 EUR",
+      description: "Argumentaire base sur hausse cout freelance et TJM recommande V7.",
+      actionType: "client_renegotiation",
+      ownerUserId: "commercial@esnforecast.local",
+      dueDate: d("2026-07-25"),
+      status: "in_progress",
+      expectedImpactAmount: 5200,
+      expectedImpactMonth: "2026-08",
+      priority: "critical",
+      relatedMissionId: missions[3].id
+    }
+  });
+
+  const simulation = await prisma.pricingSimulation.create({
+    data: {
+      organizationId: organization.id,
+      companyId: company.id,
+      missionId: missions[3].id,
+      scenarioId: referenceScenario.id,
+      name: "Audit sante - scenarios TJM",
+      input: { currentDailyRate: 540, targetMarginRate: 0.3, freelanceCostIncrease: 0.12 },
+      output: { recommendedDailyRate: 780, monthlyGain: 5200, status: "critical" },
+      createdBy: "finance@esnforecast.local",
+      variants: {
+        create: [
+          { name: "Maintien TJM", dailyRate: 540, discountRate: 0, result: { marginRate: -0.08, monthlyImpact: -5200 }, isSelected: false },
+          { name: "Hausse cible", dailyRate: 780, discountRate: 0, result: { marginRate: 0.3, monthlyImpact: 5200 }, isSelected: true },
+          { name: "Compromis commercial", dailyRate: 720, discountRate: 0, result: { marginRate: 0.24, monthlyImpact: 3600 }, isSelected: false }
+        ]
+      }
+    }
+  });
+
+  await Promise.all([
+    prisma.pricingDecision.create({ data: { organizationId: organization.id, companyId: company.id, missionId: missions[0].id, decisionType: "initial_pricing", previousDailyRate: 680, newDailyRate: 720, floorDailyRateAtDecision: 580, recommendedDailyRateAtDecision: 690, marginBefore: 0.29, marginAfter: 0.34, reason: "Prix initial valide au-dessus du TJM recommande", decidedBy: "direction@esnforecast.local", decidedAt: d("2026-06-01") } }),
+    prisma.pricingDecision.create({ data: { organizationId: organization.id, companyId: company.id, missionId: missions[2].id, decisionType: "discount_accepted", previousDailyRate: 610, newDailyRate: 560, floorDailyRateAtDecision: 620, recommendedDailyRateAtDecision: 740, marginBefore: 0.22, marginAfter: 0.16, reason: "Remise acceptee pour prolongation courte, a revoir au prochain avenant", decidedBy: "commercial@esnforecast.local", decidedAt: d("2026-06-15"), relatedSimulationId: simulation.id } }),
+    prisma.pricingDecision.create({ data: { organizationId: organization.id, companyId: company.id, missionId: missions[3].id, decisionType: "renegotiation", previousDailyRate: 540, newDailyRate: 780, floorDailyRateAtDecision: 650, recommendedDailyRateAtDecision: 780, marginBefore: -0.08, marginAfter: 0.3, reason: "Renegociation lancee apres hausse du cout freelance", decidedBy: "finance@esnforecast.local", decidedAt: d("2026-07-01"), relatedActionItemId: renegotiationAction.id } }),
+    prisma.marginException.create({ data: { organizationId: organization.id, companyId: company.id, missionId: missions[1].id, reason: "Entree strategique chez client energie avec potentiel de phase 2", approvedBy: "direction@esnforecast.local", approvedAt: d("2026-06-20"), expirationDate: d("2026-09-30"), targetReviewDate: d("2026-09-15"), comment: "Exception visible en rapport pricing, pas de masquage de la marge.", status: "active" } }),
+    prisma.alert.create({ data: { scenarioId: referenceScenario.id, type: "pricing_floor_rate", severity: "critical", message: "Audit securite sante est sous le TJM plancher", month: "2026-07", recommendedAction: "Renegocier a 780 EUR ou reduire le cout freelance", status: "new" } }),
+    prisma.alert.create({ data: { scenarioId: referenceScenario.id, type: "pricing_discount", severity: "warning", message: "Migration cloud retail subit une remise durable superieure au seuil", month: "2026-07", recommendedAction: "Preparer avenant ou limiter la remise a la prochaine reconduction", status: "new" } }),
+    prisma.actionSuggestion.create({ data: { organizationId: organization.id, sourceType: "pricing", sourceId: candidateA.id, title: "Preparer argumentaire TJM audit sante", description: "Utiliser cout complet et marge cible pour justifier le TJM 780 EUR", expectedImpactAmount: 5200, expectedImpactMonth: "2026-08", confidenceScore: 0.84, priority: "critical", status: "suggested" } }),
+    prisma.actionSuggestion.create({ data: { organizationId: organization.id, sourceType: "pricing", sourceId: candidateB.id, title: "Revoir remise migration retail", description: "Limiter la remise ou compenser par extension de volume", expectedImpactAmount: 3600, expectedImpactMonth: "2026-08", confidenceScore: 0.78, priority: "high", status: "suggested" } }),
+    prisma.helpArticle.create({ data: { pageKey: "pricingDashboard", title: "TJM plancher et TJM recommande", category: "pricing", body: "Le TJM plancher couvre le cout complet et la marge minimum. Le TJM recommande vise la marge cible de l'entreprise ou de la mission." } }),
+    prisma.helpArticle.create({ data: { pageKey: "pricingSimulator", title: "Simuler une remise", category: "pricing", body: "Une remise doit etre analysee en impact CA, marge mensuelle, marge annuelle et ecart au TJM recommande." } }),
+    prisma.auditLog.create({ data: { entityType: "pricing_v7", entityId: pricingSettings.id, action: "create_pricing_demo", after: { profiles: pricingProfiles.length, candidates: 2, simulation: simulation.id } } })
+  ]);
 }
 
 main()

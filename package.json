@@ -8,6 +8,8 @@
   ],
   "scripts": {
     "dev": "node scripts/run-workspace.mjs --parallel apps/api:dev apps/web:dev",
+    "start:dev": "powershell -ExecutionPolicy Bypass -File scripts/start-dev.ps1",
+    "start:https": "powershell -ExecutionPolicy Bypass -File scripts/start-https-tunnel.ps1",
     "dev:api": "node scripts/run-workspace.mjs apps/api dev",
     "dev:web": "node scripts/run-workspace.mjs apps/web dev",
     "build": "node scripts/run-workspace.mjs --serial packages/shared:build apps/api:build apps/web:build",

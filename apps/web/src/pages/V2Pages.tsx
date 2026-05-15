@@ -119,7 +119,7 @@ export function ReconciliationPage() {
 export function CapacityPage({ scenarioId, horizon }: V2Context) {
   const { rows } = useRows(`/capacity?scenarioId=${scenarioId}&horizon=${horizon}`);
   return <TablePage title="Capacity planning" subtitle="Capacite disponible, besoins par competence et gaps mensuels." rows={rows} columns={[
-    ["month", "Mois"], ["skillId", "Competence"], ["availableFTE", "Dispo FTE"], ["requiredFTE", "Besoin FTE"], ["gapFTE", "Gap"], ["status", "Statut", (value: string) => <Badge tone={value === "shortage" ? "risk" : value === "surplus" ? "warn" : "good"}>{value}</Badge>]
+    ["month", "Mois"], ["skillLabel", "Competence"], ["availableFTE", "Dispo FTE"], ["requiredFTE", "Besoin FTE"], ["gapFTE", "Gap"], ["status", "Statut", (value: string) => <Badge tone={value === "shortage" ? "risk" : value === "surplus" ? "warn" : "good"}>{value}</Badge>]
   ]} />;
 }
 
