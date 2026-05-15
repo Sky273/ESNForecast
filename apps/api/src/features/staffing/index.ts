@@ -1,0 +1,1 @@
+export { assignmentsRouter } from "./assignmentsRoutes";

@@ -21,7 +21,7 @@ npm run seed
 npm run dev
 ```
 
-L'API écoute par défaut sur `http://localhost:4000`, le frontend sur `http://localhost:5173`, et PostgreSQL Docker sur `localhost:55432`.
+L'API écoûte par défaut sur `http://localhost:4000`, le frontend sur `http://localhost:5173`, et PostgreSQL Docker sur `localhost:55432`.
 
 ## V1 - Modules livrés
 
@@ -68,23 +68,23 @@ La V1 ajoute les modules opérationnels suivants :
 
 ## Limites V1
 
-Le produit reste un outil de pilotage prévisionnel. Il ne remplace pas un logiciel comptable, ne calcule pas une paie légale, ne gère pas une TVA exhaustive et ne fait pas de rapprochement bancaire.
+Le produit reste un outil de pilotage prévisionnel. Il ne remplace pas un logiciel comptable, ne calculé pas une paie légale, ne gère pas une TVA exhaustive et ne fait pas de rapprochement bancaire.
 ## V2 - Cockpit augmente
 
-La V2 ajoute une premiere tranche fonctionnelle reliant le previsionnel au reel :
+La V2 ajoute une première tranche fonctionnelle reliant le prévisionnel au réel :
 
 - CRA / timesheets avec statuts `draft`, `submitted`, `approved`, `rejected`, `locked` ;
-- factures reelles, paiements partiels et rapprochement facture prevue / facture reelle ;
-- saisie des actuals mensuels et calcul des ecarts previsionnel / reel ;
+- factures réelles, paiements partiels et rapprochement facture prévue / facture réelle ;
+- saisie des actuals mensuels et calcul des Écarts prévisionnel / réel ;
 - cloture mensuelle simplifiee avec snapshots JSON ;
-- capacity planning par competence, besoins mission et gaps FTE ;
-- recrutements previsionnels, offres/devis, documents, workflows et notifications ;
-- regles metier configurables declenchant des alertes dynamiques ;
+- capacity planning par compétence, besoins mission et gaps FTE ;
+- recrutements prévisionnels, offres/devis, documents, workflows et notifications ;
+- règles métier configurables déclenchant des alertes dynamiques ;
 - analyse Monte Carlo simplifiee P10/P50/P90 ;
-- risques strategiques par concentration client ;
-- analyse IA encadree, basee uniquement sur les chiffres calcules ;
+- risques stratégiques par concentration client ;
+- analyse IA encadrée, basée uniquement sur les chiffrés calculés ;
 - preparation SaaS avec `organizations`, `memberships`, API keys et webhooks ;
-- architecture de connecteurs CSV/CRM/compta/RH avec tables de synchro.
+- architecture de connectéurs CSV/CRM/compta/RH avec tables de synchro.
 
 ## API V2 principale
 
@@ -122,44 +122,44 @@ La V2 ajoute une premiere tranche fonctionnelle reliant le previsionnel au reel 
 
 Le package partage expose `calculateExecutiveSituation(input)` et des modules testables :
 
-- `calculateMonthlyVariance` pour les ecarts CA, couts, marge et cash ;
-- `generateInvoiceFromTimesheet` pour la facturation depuis CRA valide ;
-- `calculateCapacityPlan` pour les gaps de staffing par competence ;
+- `calculateMonthlyVariance` pour les Écarts CA, coûts, marge et cash ;
+- `generateInvoiceFromTimesheet` pour la facturation depuis CRA validé ;
+- `calculateCapacityPlan` pour les gaps de staffing par compétence ;
 - `runMonteCarloSimulation` pour les fourchettes probabilistes ;
 - `runRuleEngine` pour alertes et notifications ;
 - `analyzeStrategicDependencies` pour concentration client ;
-- `buildAiExecutiveAnalysis` pour une synthese IA sans invention de chiffres.
+- `buildAiExecutiveAnalysis` pour une synthese IA sans invention de chiffrés.
 
 Les tests couvrent V1 et V2 via `npm run test`.
 
 ## Limites V2
 
-La V2 reste volontairement un cockpit de pilotage. Les connecteurs externes sont prepares et simules via tables/imports CSV, mais les integrations completes HubSpot, Pennylane, Lucca ou Salesforce ne sont pas implementees. L'analyse IA ne modifie aucune donnee et ne doit pas etre traitee comme une expertise comptable.
+La V2 reste volontairement un cockpit de pilotage. Les connectéurs externes sont préparés et simulés via tables/imports CSV, mais les intégrations complètes HubSpot, Pennylane, Lucca ou Salesforce ne sont pas implémentées. L'analyse IA ne modifie aucune donnée et ne doit pas être traitée comme une expertise comptable.
 
-## V3 - Connexion au reel financier
+## V3 - Connexion au réel financier
 
-La V3 ferme la boucle `prevision -> reel bancaire/comptable -> rapprochement -> ecarts -> recalibrage -> decision`.
+La V3 ferme la boucle `prévision -> réel bancaire/comptable -> rapprochement -> Écarts -> recalibrage -> décision`.
 
 Modules ajoutes :
 
-- architecture generique de connecteurs avec `connectors` et `connector_sync_runs` ;
-- provider bancaire mock et connecteur comptable mock pour demonstration et tests ;
+- architecture generique de connectéurs avec `connectors` et `connector_sync_runs` ;
+- provider bancaire mock et connectéur comptable mock pour démonstration et tests ;
 - comptes bancaires, consentements, soldes et transactions bancaires ;
-- imports CSV bancaire et comptable via endpoints robustes avec detection basique des lignes invalides ;
-- categories financieres et regles de categorisation bancaire ;
+- imports CSV bancaire et comptable via endpoints robustes avec détection basique des lignes invalides ;
+- catégories financières et règles de catégorisation bancaire ;
 - suggestions de rapprochement bancaire avec score de confiance ;
 - rapprochements financiers validables et annulables ;
-- chaine facture prevue / facture reelle / paiement / transaction ;
+- chaine facture prévue / facture réelle / paiement / transaction ;
 - profils de paiement clients et analyse des retards ;
-- tresorerie reelle vs previsionnelle et projection recalibree ;
-- cash runway base sur cash bancaire et burn importe ;
+- trésorerie réelle vs prévisionnelle et projection recalibrée ;
+- cash runway basé sur cash bancaire et burn importe ;
 - suggestions de reforecast ;
-- score de fiabilite previsionnelle ;
-- detection d'anomalies financieres ;
-- sante des donnees ;
-- supervision connecteurs et gouvernance des consentements ;
+- score de fiabilité prévisionnelle ;
+- détection d'anomalies financières ;
+- santé des données ;
+- supervision connectéurs et gouvernance des consentements ;
 - rapport CODIR JSON/PDF simple ;
-- assistant IA V3 base sur donnees internes calculees.
+- assistant IA V3 basé sur données internes calculées.
 
 ## API V3 principale
 
@@ -220,13 +220,13 @@ Le package partage expose :
 
 ## Limites V3
 
-La V3 ne stocke pas d'identifiants bancaires et n'initie aucun paiement. Les providers bancaire et comptable livres sont mock/CSV : ils preparent l'integration d'agregateurs type Bridge, Powens, Tink ou Plaid, mais aucune connexion bancaire reelle OAuth/API n'est active sans credentials et contrat fournisseur. ESN Forecast reste un cockpit de pilotage, pas un logiciel comptable certifie.
+La V3 ne stocke pas d'identifiants bancaires et n'initie aucun paiement. Les providers bancaire et comptable livrés sont mock/CSV : ils préparent l'intégration d'agrégateurs type Bridge, Powens, Tink ou Plaid, mais aucune connexion bancaire réelle OAuth/API n'est active sans credentials et contrat fournisseur. ESN Forecast reste un cockpit de pilotage, pas un logiciel comptable certifié.
 
 ## V4 - Connecteurs production-grade
 
-La V4 ajoute une couche provider commune pour passer du mock/CSV vers des connecteurs reels supervisables.
+La V4 ajoute une couche provider commune pour passer du mock/CSV vers des connectéurs réels supervisables.
 
-Capacites livrees :
+Capacités livrées :
 
 - interface `FinancialConnectorProvider` commune ;
 - providers Bridge, Powens, Tink, Plaid, Pennylane et Sage ;
@@ -234,16 +234,16 @@ Capacites livrees :
 - `SecretManager` AES-GCM pour tokens et credentials ;
 - sessions OAuth avec `state`, expiration et callback ;
 - Plaid Link token et exchange public token cote backend ;
-- tokens provider chiffres en base, jamais exposes au frontend ;
+- tokens provider chiffrés en base, jamais exposés au frontend ;
 - sync full/incrementale avec cursors ;
 - normalisation comptes, transactions, factures et paiements ;
 - ingestion webhooks par provider avec stockage brut ;
 - mapping d'erreurs provider ;
 - rate limit state ;
-- detection de doublons multi-source ;
+- détection de doublons multi-source ;
 - politiques de source de verite ;
 - supervision provider, errors, syncs, webhooks, rate limits ;
-- page conformite connecteurs avec tokens masques.
+- page conformit? connectéurs avec tokens masqués.
 
 ## API V4 principale
 
@@ -291,8 +291,8 @@ Les variables providers sont declarees dans `apps/api/.env.example` :
 - Pennylane : `PENNYLANE_CLIENT_ID`, `PENNYLANE_CLIENT_SECRET`, `PENNYLANE_API_BASE_URL`, `PENNYLANE_REDIRECT_URI`, `PENNYLANE_WEBHOOK_SECRET`, `PENNYLANE_ENV`
 - Sage : `SAGE_CLIENT_ID`, `SAGE_CLIENT_SECRET`, `SAGE_API_BASE_URL`, `SAGE_REDIRECT_URI`, `SAGE_WEBHOOK_SECRET`, `SAGE_ENV`
 
-`SECRET_ENCRYPTION_KEY` doit etre defini avec une valeur forte en production. Sans credentials provider, ESN Forecast reste exploitable en mode mock/sandbox, ce qui permet tests, demo et developpement local.
+`SECRET_ENCRYPTION_KEY` doit être défini avec une valeur forte en production. Sans credentials provider, ESN Forecast reste exploitable en mode mock/sandbox, ce qui permet tests, démo et développement local.
 
 ## Limites V4
 
-La V4 n'initie aucun paiement et ne stocke aucun identifiant bancaire utilisateur. Les appels providers reels dependent des contrats, credentials, scopes et URLs actives chez Bridge, Powens, Tink, Plaid, Pennylane ou Sage. En absence de credentials, les flux OAuth/sync utilisent un mode mock explicite et auditable.
+La V4 n'initie aucun paiement et ne stocke aucun identifiant bancaire utilisateur. Les appels providers réels dépendent des contrats, credentials, scopes et URLs actives chez Bridge, Powens, Tink, Plaid, Pennylane ou Sage. En absence de credentials, les flux OAuth/sync utilisent un mode mock explicite et auditable.

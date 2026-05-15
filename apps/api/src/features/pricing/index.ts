@@ -1,0 +1,1 @@
+export { pricingRouter } from "./routes";

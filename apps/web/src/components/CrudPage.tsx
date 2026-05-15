@@ -1,5 +1,5 @@
 import { Download, Plus, Save, Trash2 } from "lucide-react";
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { api } from "../api";
 import type { Field } from "../types";
 import { Badge } from "./Format";
@@ -20,6 +20,15 @@ export function CrudPage<T extends Record<string, any>>({
 }) {
   const { data, loading, error, reload } = useApiList<T>(path);
   const [draft, setDraft] = useState<Record<string, any>>(initial);
+  const optionSources = useCrudOptionSources(fields, draft);
+  const optionLabelsByField = useMemo(() => {
+    return Object.fromEntries(
+      fields.map((field) => [
+        field.name,
+        new Map((field.options ?? optionSources[field.name] ?? []).map((option) => [String(option.value), option.label]))
+      ])
+    ) as Record<string, Map<string, string>>;
+  }, [fields, optionSources]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
 
@@ -55,15 +64,16 @@ export function CrudPage<T extends Record<string, any>>({
             <label key={field.name} className={field.type === "textarea" ? "md:col-span-3" : ""}>
               <span className="mb-1 block text-xs font-medium text-muted">{field.label}</span>
               {field.type === "select" ? (
-                <select className="w-full rounded-md border border-line px-3 py-2" value={String(draft[field.name] ?? "")} onChange={(event) => setDraft({ ...draft, [field.name]: event.target.value })}>
-                  {field.options?.map((option) => <option key={String(option.value)} value={String(option.value)}>{option.label}</option>)}
+                <select className="w-full rounded-md border border-line px-3 py-2" value={String(draft[field.name] ?? "")} onChange={(event) => setDraft(updateDraftSelectValue(fields, draft, field.name, event.target.value))}>
+                  {field.placeholder ? <option value="">{field.placeholder}</option> : null}
+                  {(field.options ?? optionSources[field.name] ?? []).map((option) => <option key={String(option.value)} value={String(option.value)}>{option.label}</option>)}
                 </select>
               ) : field.type === "checkbox" ? (
                 <input type="checkbox" checked={Boolean(draft[field.name])} onChange={(event) => setDraft({ ...draft, [field.name]: event.target.checked })} />
               ) : field.type === "textarea" ? (
                 <textarea className="min-h-20 w-full rounded-md border border-line px-3 py-2" value={draft[field.name] ?? ""} onChange={(event) => setDraft({ ...draft, [field.name]: event.target.value })} />
               ) : (
-                <input className="w-full rounded-md border border-line px-3 py-2" type={field.type ?? "text"} value={draft[field.name] ?? ""} onChange={(event) => setDraft({ ...draft, [field.name]: field.type === "number" ? Number(event.target.value) : event.target.value })} />
+                <input className="w-full rounded-md border border-line px-3 py-2" type={field.type ?? "text"} value={formatInputValue(draft[field.name], field.type)} onChange={(event) => setDraft({ ...draft, [field.name]: field.type === "number" ? Number(event.target.value) : event.target.value })} />
               )}
             </label>
           ))}
@@ -93,7 +103,7 @@ export function CrudPage<T extends Record<string, any>>({
               <tbody>
                 {visibleRows.map((row) => (
                   <tr key={row.id} className="border-t border-line">
-                    {columns.map((column) => <td key={column.key} className="px-3 py-3">{column.render ? column.render(row) : String(row[column.key] ?? "")}</td>)}
+                    {columns.map((column) => <td key={column.key} className="px-3 py-3">{column.render ? column.render(row) : formatCellValue(row[column.key], optionLabelsByField[column.key])}</td>)}
                     <td className="flex gap-2 px-3 py-3">
                       <button className="rounded-md border border-line px-2 py-1" onClick={() => { setEditingId(row.id); setDraft(row); }}>Editer</button>
                       <button className="rounded-md border border-line p-1 text-risk" title="Supprimer" onClick={async () => { await api(`${path}/${row.id}`, { method: "DELETE" }); await reload(); }}><Trash2 size={16} /></button>
@@ -108,4 +118,73 @@ export function CrudPage<T extends Record<string, any>>({
       </div>
     </section>
   );
+}
+
+function useCrudOptionSources(fields: Field[], draft: Record<string, any>) {
+  const [options, setOptions] = useState<Record<string, Array<{ label: string; value: string | number | boolean }>>>({});
+  const dynamicSources = fields
+    .filter((field) => field.type === "select" && (field.optionsPath || field.optionSourcesByValue))
+    .map((field) => {
+      const dependentValue = field.optionDependsOn ? String(draft[field.optionDependsOn] ?? "") : "";
+      const dependentSource = field.optionDependsOn ? field.optionSourcesByValue?.[dependentValue] : undefined;
+      return {
+        fieldName: field.name,
+        path: dependentSource?.path ?? field.optionsPath,
+        labelKey: dependentSource?.optionLabelKey ?? field.optionLabelKey ?? "name",
+        labelFields: dependentSource?.optionLabelFields ?? field.optionLabelFields,
+        valueKey: dependentSource?.optionValueKey ?? field.optionValueKey ?? "id"
+      };
+    });
+  const dynamicSourcesKey = JSON.stringify(dynamicSources);
+
+  useEffect(() => {
+    dynamicSources.forEach((source) => {
+      if (!source.path) {
+        setOptions((current) => ({ ...current, [source.fieldName]: [] }));
+        return;
+      }
+      api<any[]>(source.path)
+        .then((rows) => {
+          setOptions((current) => ({
+            ...current,
+            [source.fieldName]: rows.map((row) => ({
+              label: formatOptionLabel(row, source.labelKey, source.valueKey, source.labelFields),
+              value: row[source.valueKey]
+            }))
+          }));
+        })
+        .catch(() => {
+          setOptions((current) => ({ ...current, [source.fieldName]: [] }));
+        });
+    });
+  }, [dynamicSourcesKey]);
+
+  return options;
+}
+
+function updateDraftSelectValue(fields: Field[], draft: Record<string, any>, fieldName: string, value: string) {
+  const next = { ...draft, [fieldName]: value };
+  fields.forEach((field) => {
+    if (field.optionDependsOn === fieldName) next[field.name] = "";
+  });
+  return next;
+}
+
+function formatOptionLabel(row: Record<string, any>, labelKey: string, valueKey: string, labelFields?: string[]) {
+  if (labelFields?.length) {
+    const label = labelFields.map((field) => row[field]).filter(Boolean).join(" ");
+    if (label) return label;
+  }
+  return String(row[labelKey] ?? row.name ?? row.title ?? row.email ?? row[valueKey]);
+}
+
+function formatCellValue(value: unknown, labels?: Map<string, string>) {
+  if (value === null || value === undefined) return "";
+  return labels?.get(String(value)) ?? String(value);
+}
+
+function formatInputValue(value: unknown, type?: Field["type"]) {
+  if (value === null || value === undefined) return "";
+  if (type === "date" && typeof value === "string") return value.slice(0, 10);
+  return value as string | number;
 }

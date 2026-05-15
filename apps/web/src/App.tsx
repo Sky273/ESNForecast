@@ -16,40 +16,39 @@ import { ResetPasswordPage } from "./auth/pages/ResetPasswordPage";
 import { SessionExpiredPage } from "./auth/pages/SessionExpiredPage";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { CrudPage } from "./components/CrudPage";
-import { Assignments } from "./pages/Assignments";
-import { Dashboard } from "./pages/Dashboard";
-import { Projections } from "./pages/Projections";
-import { Settings } from "./pages/Settings";
+import { Settings } from "./features/administration";
 import {
-  AdminPage, AlertsPage, AuditPage, BenchPage, BillingPage, CashInPage, CashOutPage, ProfitabilityMissionsPage, ProfitabilityResourcesPage,
-  ReportsPage, ScenariosPage, SimulationsPage, TreasuryPage
-} from "./pages/V1Pages";
-import {
-  ActualsVariancesPage, AiAnalysisPage, CapacityPage, ExecutiveCockpitPage, MonthlyClosePage, MonteCarloPage, PaymentsPage, RealInvoicesPage,
-  ReconciliationPage, StrategicRisksPage, TimesheetsPage, V2CrudPage
-} from "./pages/V2Pages";
+  ActionPlansPage, AnnualLandingPage, BudgetDetailPage, BudgetForecastActualPage, BudgetStaffingPage, BudgetsPage, ObjectivesPage,
+  RequiredPipelinePage, RollingForecastPage, TrajectoryDashboardPage, VarianceAnalysesPage, WhatMustBeTruePage
+} from "./features/budget";
 import {
   BankAccountsPage, BankConsentsPage, BankReconciliationPage, BankTransactionsPage, ClientPaymentProfilesPage, CodirReportPage,
   ConnectedFinanceDashboard, ConnectorSupervisionPage, DataQualityPage, FinancialAnomaliesPage, FinancialAuditPage, FinancialRulesPage,
   ForecastReliabilityPage, ImportedAccountingPage, RealTreasuryPage, RunwayPage
-} from "./pages/V3Pages";
+} from "./features/connected-finance";
 import {
-  ConnectorCompliancePage, ConsentCompliancePage, DataSourcePoliciesPage, DuplicatesPage, ProviderConnectionPage, ProviderErrorsPage,
-  ProviderHealthPage, ProviderRateLimitsPage, ProviderWebhooksPage, RealConnectorsPage
-} from "./pages/V4Pages";
+  ActualsVariancesPage, AiAnalysisPage, CapacityPage, ExecutiveCockpitPage, MonthlyClosePage, MonteCarloPage, PaymentsPage, RealInvoicesPage,
+  ReconciliationPage, StrategicRisksPage, TimesheetsPage, V2CrudPage
+} from "./features/delivery";
+import {
+  AdminPage, AlertsPage, AuditPage, BenchPage, BillingPage, CashInPage, CashOutPage, ProfitabilityMissionsPage, ProfitabilityResourcesPage,
+  Projections, ReportsPage, ScenariosPage, SimulationsPage, TreasuryPage
+} from "./features/forecasting";
+import { Dashboard } from "./features/pilotage";
 import {
   BackofficeSupportPage, BackupsPage, FeatureFlagsPage, HelpPage, JobsPage, ObservabilityPage, OnboardingPage, PerformancePage,
   SecurityPage, SystemStatusPage
-} from "./pages/V5Pages";
-import {
-  ActionPlansPage, AnnualLandingPage, BudgetDetailPage, BudgetForecastActualPage, BudgetStaffingPage, BudgetsPage, ObjectivesPage,
-  RequiredPipelinePage, RollingForecastPage, TrajectoryDashboardPage, VarianceAnalysesPage, WhatMustBeTruePage
-} from "./pages/V6Pages";
+} from "./features/platform";
 import {
   MissionPricingProfilePage, PricingDashboardPage, PricingHistoryPage, PricingReportPage, PricingSettingsPage, PricingSimulatorPage,
   RenegotiationCandidatesPage, UnderpricedMissionsPage
-} from "./pages/V7Pages";
-import { configs } from "./pages/crudConfigs";
+} from "./features/pricing";
+import {
+  ConnectorCompliancePage, ConsentCompliancePage, DataSourcePoliciesPage, DuplicatesPage, ProviderConnectionPage, ProviderErrorsPage,
+  ProviderHealthPage, ProviderRateLimitsPage, ProviderWebhooksPage, RealConnectorsPage
+} from "./features/providers";
+import { configs } from "./features/shared-crud";
+import { Assignments } from "./features/staffing";
 
 type NavItem = { id: string; label: string; icon: ComponentType<{ size?: number; className?: string }>; badge?: string; keywords?: string };
 type NavGroup = { id: string; label: string; icon: ComponentType<{ size?: number; className?: string }>; items: NavItem[] };
@@ -63,8 +62,8 @@ const navGroups: NavGroup[] = [
       { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
       { id: "trajectory", label: "Trajectoire", icon: TrendingUp },
       { id: "executiveV2", label: "Vue direction", icon: Sparkles },
-      { id: "treasury", label: "Tresorerie", icon: TrendingUp },
-      { id: "actuals", label: "Previsionnel vs reel", icon: BarChart3 },
+      { id: "treasury", label: "Trésorerie", icon: TrendingUp },
+      { id: "actuals", label: "Prévisionnel vs réel", icon: BarChart3 },
       { id: "codirReport", label: "Rapport CODIR", icon: FileText },
       { id: "budgetForecastActual", label: "Rapport Budget / Forecast / Actual", icon: FileText }
     ]
@@ -75,28 +74,28 @@ const navGroups: NavGroup[] = [
     icon: Gauge,
     items: [
       { id: "budgets", label: "Budgets", icon: Calculator },
-      { id: "budgetDetail", label: "Detail budget", icon: FileText },
+      { id: "budgetDetail", label: "Détail budget", icon: FileText },
       { id: "objectives", label: "Objectifs", icon: Gauge },
       { id: "rollingForecast", label: "Rolling Forecast", icon: TrendingUp },
       { id: "annualLanding", label: "Atterrissage annuel", icon: HeartPulse },
-      { id: "variances", label: "Ecarts", icon: BarChart3, badge: "3" },
+      { id: "variances", label: "Écarts", icon: BarChart3, badge: "3" },
       { id: "actionPlans", label: "Plans d'action", icon: Workflow, badge: "4" },
-      { id: "requiredPipeline", label: "Pipeline necessaire", icon: BriefcaseBusiness },
-      { id: "budgetStaffing", label: "Staffing budgetaire", icon: Users },
-      { id: "whatMustBeTrue", label: "Conditions de reussite", icon: Shield }
+      { id: "requiredPipeline", label: "Pipeline nécessaire", icon: BriefcaseBusiness },
+      { id: "budgetStaffing", label: "Staffing budgétaire", icon: Users },
+      { id: "whatMustBeTrue", label: "Conditions de réussite", icon: Shield }
     ]
   },
   {
     id: "forecasts",
-    label: "Previsions & scenarios",
+    label: "Prévisions & scenarios",
     icon: Calculator,
     items: [
       { id: "projections", label: "Projections", icon: Calculator },
-      { id: "scenarios", label: "Scenarios", icon: BarChart3 },
+      { id: "scenarios", label: "Scénarios", icon: BarChart3 },
       { id: "simulations", label: "Simulations", icon: Workflow },
       { id: "monteCarlo", label: "Monte Carlo", icon: Gauge },
       { id: "reforecast", label: "Reforecast", icon: TrendingUp },
-      { id: "forecastReliability", label: "Fiabilite previsionnelle", icon: Shield }
+      { id: "forecastReliability", label: "Fiabilité prévisionnelle", icon: Shield }
     ]
   },
   {
@@ -119,12 +118,12 @@ const navGroups: NavGroup[] = [
     items: [
       { id: "employees", label: "Ressources internes", icon: Users },
       { id: "partners", label: "Partenaires", icon: Handshake },
-      { id: "freelancers", label: "Independants", icon: Contact },
+      { id: "freelancers", label: "Indépendants", icon: Contact },
       { id: "bench", label: "Intercontrat", icon: AlertTriangle },
-      { id: "staffingForecast", label: "Staffing previsionnel", icon: Users },
+      { id: "staffingForecast", label: "Staffing prévisionnel", icon: Users },
       { id: "capacity", label: "Capacity planning", icon: Gauge },
-      { id: "plannedHires", label: "Recrutements previsionnels", icon: Users },
-      { id: "skills", label: "Competences", icon: Sparkles }
+      { id: "plannedHires", label: "Recrutements prévisionnels", icon: Users },
+      { id: "skills", label: "Compétences", icon: Sparkles }
     ]
   },
   {
@@ -135,7 +134,7 @@ const navGroups: NavGroup[] = [
       { id: "realInvoices", label: "Factures", icon: Receipt },
       { id: "payments", label: "Paiements", icon: Euro },
       { id: "cashIn", label: "Encaissements", icon: TrendingUp },
-      { id: "cashOut", label: "Decaissements", icon: Euro },
+      { id: "cashOut", label: "Décaissements", icon: Euro },
       { id: "fixedCosts", label: "Frais fixes", icon: WalletCards },
       { id: "variableCosts", label: "Frais variables", icon: Euro },
       { id: "bankTransactions", label: "Transactions bancaires", icon: Receipt },
@@ -152,27 +151,27 @@ const navGroups: NavGroup[] = [
       { id: "pricingDashboard", label: "Dashboard pricing", icon: Gauge },
       { id: "pricingSimulator", label: "Simulateur pricing", icon: Calculator },
       { id: "missionPricingProfile", label: "Profil pricing mission", icon: FileText },
-      { id: "underpricedMissions", label: "Missions sous-margees", icon: AlertTriangle, badge: "3" },
-      { id: "renegotiationCandidates", label: "Missions a renegocier", icon: Handshake, badge: "2" },
-      { id: "pricingSettings", label: "Parametres pricing", icon: SettingsIcon },
+      { id: "underpricedMissions", label: "Missions sous-margées", icon: AlertTriangle, badge: "3" },
+      { id: "renegotiationCandidates", label: "Missions ? renégocier", icon: Handshake, badge: "2" },
+      { id: "pricingSettings", label: "Paramètres pricing", icon: SettingsIcon },
       { id: "pricingReport", label: "Rapport pricing", icon: FileText },
       { id: "pricingHistory", label: "Historique pricing", icon: History }
     ]
   },
   {
     id: "data",
-    label: "Connecteurs & donnees",
+    label: "Connecteurs & données",
     icon: Handshake,
     items: [
       { id: "realConnectors", label: "Connecteurs", icon: Handshake, badge: "!" },
       { id: "providerConnection", label: "Connexion provider", icon: Sparkles },
-      { id: "connectorSupervision", label: "Supervision connecteurs", icon: Gauge },
+      { id: "connectorSupervision", label: "Supervision connectéurs", icon: Gauge },
       { id: "bankAccounts", label: "Comptes bancaires", icon: Landmark },
       { id: "bankConsents", label: "Consentements bancaires", icon: Shield },
-      { id: "dataQuality", label: "Sante des donnees", icon: Shield, badge: "3" },
+      { id: "dataQuality", label: "Santé des données", icon: Shield, badge: "3" },
       { id: "sourcePolicies", label: "Sources de verite", icon: SettingsIcon },
       { id: "duplicates", label: "Doublons", icon: DatabaseBackup },
-      { id: "connectorCompliance", label: "Conformite connecteurs", icon: Shield },
+      { id: "connectorCompliance", label: "Conformit? connectéurs", icon: Shield },
       { id: "consentCompliance", label: "Consentements V4", icon: Shield }
     ]
   },
@@ -182,9 +181,9 @@ const navGroups: NavGroup[] = [
     icon: AlertTriangle,
     items: [
       { id: "alerts", label: "Alertes", icon: AlertTriangle, badge: "2" },
-      { id: "financialAnomalies", label: "Anomalies financieres", icon: AlertTriangle },
-      { id: "strategicRisks", label: "Risques strategiques", icon: Shield },
-      { id: "financialRules", label: "Regles metier", icon: SettingsIcon },
+      { id: "financialAnomalies", label: "Anomalies financières", icon: AlertTriangle },
+      { id: "strategicRisks", label: "Risques stratégiques", icon: Shield },
+      { id: "financialRules", label: "Règles métier", icon: SettingsIcon },
       { id: "notifications", label: "Notifications", icon: Bell, badge: "4" },
       { id: "aiAnalysis", label: "Analyse IA", icon: Sparkles }
     ]
@@ -200,7 +199,7 @@ const navGroups: NavGroup[] = [
     ]
   },
   {
-    id: "operations",
+    id: "opérations",
     label: "Exploitation",
     icon: Gauge,
     items: [
@@ -221,10 +220,10 @@ const navGroups: NavGroup[] = [
     items: [
       { id: "admin", label: "Utilisateurs", icon: Users },
       { id: "rules", label: "Roles & permissions", icon: Shield },
-      { id: "settings", label: "Parametres", icon: SettingsIcon },
+      { id: "settings", label: "Paramètres", icon: SettingsIcon },
       { id: "audit", label: "Audit", icon: History },
       { id: "financialAudit", label: "Audit financier", icon: History },
-      { id: "security", label: "Securite", icon: LockKeyhole },
+      { id: "security", label: "Sécurité", icon: LockKeyhole },
       { id: "featureFlags", label: "Feature flags", icon: Workflow },
       { id: "backofficeSupport", label: "Backoffice support", icon: Shield },
       { id: "onboarding", label: "Onboarding", icon: BookOpenCheck },
@@ -238,7 +237,7 @@ const AUTHENTICATION_DISABLED = false;
 const AUTH_DISABLED_USER = {
   id: "auth-disabled-local-user",
   email: "local@esnforecast.local",
-  name: "Acces local",
+  name: "Accès local",
   role: "admin"
 } as const;
 
@@ -368,7 +367,7 @@ function AppContent() {
             <div className="text-lg font-semibold tracking-normal">ESN Forecast</div>
             <div className="text-xs text-muted">Pilotage financier ESN</div>
           </div>
-          <button className="rounded-md border border-line p-2 text-muted hover:bg-surface" aria-label={compact ? "Etendre le menu" : "Compacter le menu"} onClick={() => setCompact((value) => !value)}>
+          <button className="rounded-md border border-line p-2 text-muted hover:bg-surface" aria-label={compact ? "Étendre le menu" : "Compacter le menu"} onClick={() => setCompact((value) => !value)}>
             {compact ? <ChevronsRight size={17} /> : <ChevronsLeft size={17} />}
           </button>
         </div>
@@ -420,7 +419,7 @@ function AppContent() {
           })}
         </nav>
         <div className="shrink-0 border-t border-line px-3 py-2 text-xs text-muted">
-          {compact ? <HeartPulse size={17} className="mx-auto text-emerald-600" /> : <div className="flex items-center justify-between"><span>V5 exploitation</span><span className="text-emerald-700">operationnel</span></div>}
+          {compact ? <HeartPulse size={17} className="mx-auto text-emerald-600" /> : <div className="flex items-center justify-between"><span>V5 exploitation</span><span className="text-emerald-700">opérationnel</span></div>}
         </div>
       </aside>
 
@@ -439,9 +438,9 @@ function AppContent() {
                 {[3, 6, 12, 24].map((value) => <option key={value} value={value}>{value} mois</option>)}
               </select>
               <button className="rounded-md border border-line p-2 text-muted hover:bg-surface" aria-label="Notifications"><Bell size={17} /></button>
-              {AUTHENTICATION_DISABLED ? <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-800">Auth desactivee</span> : null}
+              {AUTHENTICATION_DISABLED ? <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-800">Auth désactivée</span> : null}
               {!AUTHENTICATION_DISABLED ? <button className="rounded-md border border-line p-2 text-muted hover:bg-surface" aria-label="Changer mon mot de passe" title="Changer mon mot de passe" onClick={() => { window.location.hash = "#/change-password"; setAuthRoute(readAuthRoute()); }}><KeyRound size={17} /></button> : null}
-              {!AUTHENTICATION_DISABLED ? <button className="rounded-md border border-line p-2 text-muted hover:bg-surface" aria-label="Deconnexion" title={`Deconnexion - ${currentUser.name}`} onClick={() => void auth.logout()}><LogOut size={17} /></button> : null}
+              {!AUTHENTICATION_DISABLED ? <button className="rounded-md border border-line p-2 text-muted hover:bg-surface" aria-label="Déconnexion" title={`Déconnexion - ${currentUser.name}`} onClick={() => void auth.logout()}><LogOut size={17} /></button> : null}
             </div>
           </div>
         </header>
@@ -495,7 +494,7 @@ function renderPage(page: string, scenarioId: string, horizon: number, setHorizo
   if (page === "pricingReport") return <PricingReportPage />;
   if (page === "pricingHistory") return <PricingHistoryPage />;
   if (page === "executiveV2") return <ExecutiveCockpitPage scenarioId={scenarioId} horizon={horizon} />;
-  if (page === "connectedFinance") return <ConnectedFinanceDashboard scenarioId={scenarioId} horizon={horizon} />;
+  if (page === "connectédFinance") return <ConnectedFinanceDashboard scenarioId={scenarioId} horizon={horizon} />;
   if (page === "realConnectors") return <RealConnectorsPage />;
   if (page === "providerConnection") return <ProviderConnectionPage />;
   if (page === "projections") return <Projections horizon={horizon} />;

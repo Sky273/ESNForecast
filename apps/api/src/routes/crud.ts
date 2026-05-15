@@ -4,7 +4,7 @@ import { coerceDates, serializeDates } from "../utils/serialize";
 
 type ModelName = keyof Pick<
   PrismaClient,
-  "employee" | "partner" | "partnerResource" | "freelancer" | "client" | "mission" | "fixedCost" | "variableCost"
+  "organization" | "company" | "employee" | "partner" | "partnerResource" | "freelancer" | "client" | "mission" | "fixedCost" | "variableCost"
 >;
 
 const dateFields = ["startDate", "endDate", "availableFrom", "availableTo", "estimatedEndDate", "actualEndDate", "date"];

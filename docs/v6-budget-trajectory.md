@@ -1,30 +1,30 @@
-# ESN Forecast V6 - Pilotage budgetaire et trajectoire
+# ESN Forecast V6 - Pilotage budgétaire et trajectoire
 
-La V6 ajoute une couche de pilotage de trajectoire au-dessus du previsionnel, du reel et du reforecast.
+La V6 ajoute une couche de pilotage de trajectoire au-dessus du prévisionnel, du réel et du reforecast.
 
-## Concepts metier
+## Concepts métier
 
-- **Budget** : trajectoire cible annuelle validee. Un budget approuve ou verrouille n'est pas modifie directement ; une nouvelle version est creee.
-- **Budget revise** : nouvelle version de budget tenant compte d'hypotheses actualisees.
-- **Forecast** : projection connue a date.
-- **Reforecast** : projection recalibree apres integration du reel ou d'evenements nouveaux.
-- **Rolling forecast** : forecast glissant. Les mois passes utilisent le reel, les mois futurs utilisent forecast/reforecast.
-- **Actual** : reel constate.
-- **Atterrissage annuel** : estimation de fin d'annee probable, calculee avec le reel a date et le forecast restant.
-- **Ecart** : difference entre budget, forecast, reforecast et reel.
-- **Cause d'ecart** : explication rattachee a un client, mission, facture, ressource ou transaction.
-- **Plan d'action** : actions correctives rattachees a un objectif ou un ecart.
-- **Pipeline necessaire** : volume commercial brut requis pour combler le gap de CA selon le taux de conversion.
-- **Staffing budgetaire** : capacite necessaire pour produire le chiffre d'affaires budgete.
-- **Conditions de reussite** : conditions qui doivent etre vraies pour atteindre le budget.
+- **Budget** : trajectoire cible annuelle validée. Un budget approuvé ou verrouillé n'est pas modifie directement ; une nouvelle version est créée.
+- **Budget revise** : nouvelle version de budget tenant compte d'hypothèses actualisees.
+- **Forecast** : projection connue à date.
+- **Reforecast** : projection recalibrée après intégration du réel ou d'événements nouveaux.
+- **Rolling forecast** : forecast glissant. Les mois passes utilisent le réel, les mois futurs utilisent forecast/reforecast.
+- **Actual** : réel constaté.
+- **Atterrissage annuel** : estimation de fin d'année probable, calculée avec le réel à date et le forecast restant.
+- **Écart** : difference entre budget, forecast, reforecast et réel.
+- **Cause d?Écart** : explication rattachée à un client, mission, facture, ressource ou transaction.
+- **Plan d'action** : actions correctives rattachées à un objectif ou un Écart.
+- **Pipeline nécessaire** : volume commercial brut requis pour combler le gap de CA selon le taux de conversion.
+- **Staffing budgétaire** : capacit? nécessaire pour produire le chiffre d'affaires budgété.
+- **Conditions de réussite** : conditions qui doivent être vraies pour atteindre le budget.
 
 ## Flux de pilotage
 
 ```mermaid
 flowchart LR
   Budget["Budget annuel"] --> Forecast["Rolling forecast"]
-  Forecast --> Actual["Reel"]
-  Actual --> Variance["Ecarts"]
+  Forecast --> Actual["Réel"]
+  Actual --> Variance["Écarts"]
   Variance --> Causes["Causes"]
   Causes --> Actions["Plans d'action"]
   Actions --> Landing["Atterrissage annuel"]
@@ -48,22 +48,22 @@ flowchart LR
 - `GET /api/what-must-be-true`
 - `GET /api/reports/budget-forecast-actual.json`
 
-## Ecrans V6
+## Écrans V6
 
 - Trajectoire
 - Budgets
-- Detail budget
+- Détail budget
 - Objectifs
 - Rolling Forecast
 - Atterrissage annuel
 - Budget / Forecast / Actual
-- Ecarts commentes
+- Écarts commentés
 - Plans d'action
-- Pipeline necessaire
-- Staffing budgetaire
-- Conditions de reussite
+- Pipeline nécessaire
+- Staffing budgétaire
+- Conditions de réussite
 
 ## Limites
 
-La V6 reste un outil de pilotage budgetaire operationnel. Elle ne remplace pas une comptabilite legale, un data warehouse BI ou une planification RH complete.
+La V6 reste un outil de pilotage budgétaire opérationnel. Elle ne remplace pas une comptabilite legale, un data warehouse BI ou une planification RH complète.
 

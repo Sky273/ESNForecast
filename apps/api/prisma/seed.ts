@@ -3,7 +3,7 @@ import { randomBytes, scryptSync } from "node:crypto";
 import { SecretManager } from "../src/connectors/secretManager";
 
 const prisma = new PrismaClient();
-const secrets = new SecretManager(process.env.SECRET_ENCRYPTION_KEY ?? "seed-demo-key");
+const secrets = new SecretManager(process.env.SECRET_ENCRYPTION_KEY ?? "seed-démo-key");
 const d = (value: string) => new Date(`${value}T00:00:00.000Z`);
 const hashPassword = (password: string) => {
   const salt = randomBytes(16).toString("hex");
@@ -132,7 +132,7 @@ async function main() {
   await prisma.company.deleteMany();
   await prisma.user.deleteMany();
 
-  const organization = await prisma.organization.create({ data: { name: "ESN Forecast Demo Group", slug: "demo-group" } });
+  const organization = await prisma.organization.create({ data: { name: "ESN Forecast Demo Group", slug: "démo-group" } });
 
   const company = await prisma.company.create({
     data: {
@@ -166,9 +166,9 @@ async function main() {
   });
 
   await Promise.all([
-    prisma.user.create({ data: { organizationId: organization.id, email: "admin@esnforecast.local", name: "Admin ESN", role: "admin", passwordHash: hashPassword("demo") } }),
-    prisma.user.create({ data: { organizationId: organization.id, email: "direction@esnforecast.local", name: "Direction ESN", role: "direction", passwordHash: hashPassword("demo") } }),
-    prisma.user.create({ data: { organizationId: organization.id, email: "finance@esnforecast.local", name: "Finance ESN", role: "finance", passwordHash: hashPassword("demo") } })
+    prisma.user.create({ data: { organizationId: organization.id, email: "admin@esnforecast.local", name: "Admin ESN", role: "admin", passwordHash: hashPassword("démo") } }),
+    prisma.user.create({ data: { organizationId: organization.id, email: "direction@esnforecast.local", name: "Direction ESN", role: "direction", passwordHash: hashPassword("démo") } }),
+    prisma.user.create({ data: { organizationId: organization.id, email: "finance@esnforecast.local", name: "Finance ESN", role: "finance", passwordHash: hashPassword("démo") } })
   ]);
 
   const [referenceScenario, pessimisticScenario, optimisticScenario] = await Promise.all([
@@ -218,7 +218,7 @@ async function main() {
     prisma.mission.create({ data: { title: "Refonte portail bancaire", clientId: clients[0].id, status: "active", type: "time_material", startDate: d("2026-02-01"), estimatedEndDate: d("2026-12-31"), defaultDailyRate: 1080, signatureProbability: 1, notes: "Mission très rentable" } }),
     prisma.mission.create({ data: { title: "Run data assurance", clientId: clients[1].id, status: "active", type: "service_center", startDate: d("2026-04-01"), estimatedEndDate: d("2026-09-30"), defaultDailyRate: 860, signatureProbability: 1 } }),
     prisma.mission.create({ data: { title: "Migration cloud retail", clientId: clients[2].id, status: "active", type: "technical_assistance", startDate: d("2026-05-01"), estimatedEndDate: d("2026-08-31"), defaultDailyRate: 930, signatureProbability: 1 } }),
-    prisma.mission.create({ data: { title: "Audit sécurité santé", clientId: clients[3].id, status: "active", type: "fixed_price", startDate: d("2026-06-01"), estimatedEndDate: d("2026-07-31"), defaultDailyRate: 800, fixedPriceAmount: 36000, signatureProbability: 1, notes: "Peu rentable à cause d'un coût externe élevé" } }),
+    prisma.mission.create({ data: { title: "Audit sécurité santé", clientId: clients[3].id, status: "active", type: "fixed_price", startDate: d("2026-06-01"), estimatedEndDate: d("2026-07-31"), defaultDailyRate: 800, fixedPriceAmount: 36000, signatureProbability: 1, notes: "Peu rentable ? cause d'un coût externe élevé" } }),
     prisma.mission.create({ data: { title: "Plateforme IA conformité", clientId: clients[0].id, status: "planned", type: "time_material", startDate: d("2026-09-01"), estimatedEndDate: d("2027-03-31"), defaultDailyRate: 850, signatureProbability: 0.65 } }),
     prisma.mission.create({ data: { title: "Centre de service énergie", clientId: clients[4].id, status: "planned", type: "service_center", startDate: d("2026-10-01"), estimatedEndDate: d("2027-05-31"), defaultDailyRate: 760, signatureProbability: 0.35 } }),
     prisma.mission.create({ data: { title: "Cadrage CRM retail", clientId: clients[2].id, status: "completed", type: "fixed_price", startDate: d("2026-01-01"), estimatedEndDate: d("2026-03-31"), actualEndDate: d("2026-03-20"), defaultDailyRate: 700, fixedPriceAmount: 24000, signatureProbability: 1 } }),
@@ -318,7 +318,7 @@ async function main() {
     prisma.simulationEvent.create({ data: { scenarioId: optimisticScenario.id, type: "mission_extension", label: "Extension portail bancaire", startDate: d("2026-12-01"), relatedMissionId: missions[0].id, parameters: { days: 90 }, isActive: true } }),
     prisma.alert.create({ data: { scenarioId: pessimisticScenario.id, type: "treasury_below_threshold", severity: "critical", message: "Tresorerie sous seuil dans le scenario pessimiste", month: "2026-09", recommendedAction: "Securiser encaissement ou reduire sous-traitance", status: "new" } }),
     prisma.alert.create({ data: { scenarioId: referenceScenario.id, type: "client_concentration", severity: "warning", message: "Banque Horizon concentre une part importante du CA", recommendedAction: "Diversifier le pipe commercial", status: "new" } }),
-    prisma.auditLog.create({ data: { entityType: "seed", entityId: "v1", action: "create_demo_data", after: { scenarios: 3, users: 3 } } })
+    prisma.auditLog.create({ data: { entityType: "seed", entityId: "v1", action: "create_démo_data", after: { scenarios: 3, users: 3 } } })
   ]);
 
   const realInvoice = await prisma.invoice.create({
@@ -345,7 +345,7 @@ async function main() {
     prisma.timesheet.create({ data: { companyId: company.id, resourceType: "employee", resourceId: employees[2].id, missionId: missions[1].id, month: 6, year: 2026, workedDays: 18, billableDays: 14, nonBillableDays: 4, absenceDays: 2, vacationDays: 2, sickLeaveDays: 0, trainingDays: 0, internalDays: 2, status: "submitted", submittedAt: d("2026-07-02"), notes: "A valider par finance" } }),
     prisma.timesheet.create({ data: { companyId: company.id, resourceType: "freelancer", resourceId: freelancers[1].id, missionId: missions[3].id, month: 6, year: 2026, workedDays: 20, billableDays: 20, nonBillableDays: 0, absenceDays: 0, vacationDays: 0, sickLeaveDays: 0, trainingDays: 0, internalDays: 0, status: "locked", lockedAt: d("2026-07-05"), notes: "CRA verrouille apres validation client" } }),
     prisma.monthlyActual.create({ data: { companyId: company.id, month: 6, year: 2026, actualRevenueGenerated: 92500, actualRevenueInvoiced: 81200, actualCashIn: 28000, actualEmployeeCosts: 43800, actualExternalCosts: 21800, actualFixedCosts: 17020, actualVariableCosts: 4300, actualCashOut: 86920, actualGrossMargin: 26900, actualNetMargin: 5580, actualClosingCash: 61080, notes: "Mois reel avec encaissement partiel" } }),
-    prisma.monthlyClose.create({ data: { companyId: company.id, month: 5, year: 2026, status: "closed", closedAt: d("2026-06-07"), closedBy: "finance@esnforecast.local", initialForecastSnapshot: { revenue: 78000 }, revisedForecastSnapshot: { revenue: 82000 }, actualSnapshot: { revenue: 79500, cash: 69000 }, notes: "Mois cloture demo" } }),
+    prisma.monthlyClose.create({ data: { companyId: company.id, month: 5, year: 2026, status: "closed", closedAt: d("2026-06-07"), closedBy: "finance@esnforecast.local", initialForecastSnapshot: { revenue: 78000 }, revisedForecastSnapshot: { revenue: 82000 }, actualSnapshot: { revenue: 79500, cash: 69000 }, notes: "Mois cloture démo" } }),
     prisma.payment.create({ data: { invoiceId: realInvoice.id, clientId: clients[0].id, paymentDate: d("2026-08-05"), amount: 28000, paymentMethod: "wire", status: "received", notes: "Paiement partiel" } }),
     prisma.billingReconciliation.create({ data: { invoiceId: realInvoice.id, status: "partially_matched", amountVariance: -8040, dateVarianceDays: 7, notes: "Paiement partiel rapproche" } })
   ]);
@@ -368,17 +368,17 @@ async function main() {
 
   await Promise.all([
     prisma.plannedHire.create({ data: { scenarioId: referenceScenario.id, title: "Recrutement Java senior", targetRole: "Consultant Java senior", targetSkills: ["java", "spring"], expectedStartDate: d("2026-09-01"), expectedMonthlyCost: 5200, expectedEmployerCharges: 2340, expectedFullCost: 8040, expectedTJM: 900, expectedUtilizationRate: 0.8, onboardingMonths: 1, probability: 0.75, status: "approved", notes: "Couvre le gap Java du pipe banque" } }),
-    prisma.probabilisticAssumption.create({ data: { scenarioId: referenceScenario.id, entityType: "mission", entityId: missions[4].id, field: "revenueGenerated", distributionType: "triangular", minValue: 45000, mostLikelyValue: 72000, maxValue: 95000, probability: 0.65, notes: "Opportunite IA conformite incertaine" } }),
+    prisma.probabilisticAssumption.create({ data: { scenarioId: referenceScenario.id, entityType: "mission", entityId: missions[4].id, field: "revenueGenerated", distributionType: "triangular", minValue: 45000, mostLikelyValue: 72000, maxValue: 95000, probability: 0.65, notes: "Opportunite IA conformit? incertaine" } }),
     prisma.businessRule.create({ data: { companyId: company.id, name: "Tresorerie critique", description: "Alerte si la tresorerie de cloture passe sous 50k", triggerType: "monthly_projection", condition: { metric: "closingCash", operator: "lt", value: 50000 }, action: { type: "alert", message: "Tresorerie sous seuil de vigilance" }, severity: "critical", isActive: true } }),
-    prisma.businessRule.create({ data: { companyId: company.id, name: "Marge faible", description: "Alerte marge inferieure a 22%", triggerType: "monthly_projection", condition: { metric: "marginRate", operator: "lt", value: 0.22 }, action: { type: "alert", message: "Marge previsionnelle inferieure au seuil" }, severity: "warning", isActive: true } }),
+    prisma.businessRule.create({ data: { companyId: company.id, name: "Marge faible", description: "Alerte marge inferieure ? 22%", triggerType: "monthly_projection", condition: { metric: "marginRate", operator: "lt", value: 0.22 }, action: { type: "alert", message: "Marge previsionnelle inferieure au seuil" }, severity: "warning", isActive: true } }),
     prisma.notification.create({ data: { type: "invoice_overdue", severity: "warning", title: "Relance paiement Banque Horizon", message: "La facture F-2026-0001 reste partiellement payee.", relatedEntityType: "invoice", relatedEntityId: realInvoice.id, status: "unread" } }),
-    prisma.approvalWorkflow.create({ data: { entityType: "timesheet", entityId: "demo-cra", status: "pending_approval", requestedBy: "consultant@esnforecast.local", requestedAt: d("2026-07-02"), comment: "CRA juin a valider" } }),
-    prisma.crmOpportunity.create({ data: { externalSource: "csv-demo", externalId: "opp-001", clientName: "Banque Horizon", opportunityName: "Modernisation paiement instantane", stage: "proposal", probability: 0.55, expectedAmount: 180000, expectedStartDate: d("2026-11-01"), expectedEndDate: d("2027-04-30"), expectedTJM: 920, expectedStaffingNeeds: { java: 2, cloud: 1 }, owner: "Julien Moreau", lastSyncedAt: d("2026-06-15"), rawPayload: { source: "seed" } } }),
+    prisma.approvalWorkflow.create({ data: { entityType: "timesheet", entityId: "démo-cra", status: "pending_approval", requestedBy: "consultant@esnforecast.local", requestedAt: d("2026-07-02"), comment: "CRA juin ? valider" } }),
+    prisma.crmOpportunity.create({ data: { externalSource: "csv-démo", externalId: "opp-001", clientName: "Banque Horizon", opportunityName: "Modernisation paiement instantane", stage: "proposal", probability: 0.55, expectedAmount: 180000, expectedStartDate: d("2026-11-01"), expectedEndDate: d("2027-04-30"), expectedTJM: 920, expectedStaffingNeeds: { java: 2, cloud: 1 }, owner: "Julien Moreau", lastSyncedAt: d("2026-06-15"), rawPayload: { source: "seed" } } }),
     prisma.accountingSync.create({ data: { provider: "csv-accounting", status: "completed", lastSyncAt: d("2026-07-05"), importedInvoicesCount: 1, importedPaymentsCount: 1, importedExpensesCount: 2, errors: [] } }),
     prisma.hrSync.create({ data: { provider: "csv-hr", status: "completed", lastSyncAt: d("2026-07-04"), importedEmployeesCount: 8, importedAbsencesCount: 1, errors: [] } }),
-    prisma.document.create({ data: { companyId: company.id, entityType: "invoice", entityId: realInvoice.id, fileName: "F-2026-0001.pdf", mimeType: "application/pdf", size: 128000, storagePath: "local/demo/F-2026-0001.pdf", category: "invoice", uploadedBy: "finance@esnforecast.local", notes: "Document fictif seed" } }),
-    prisma.apiKey.create({ data: { companyId: company.id, name: "Demo API", keyHash: hashPassword("demo-api-key"), scopes: ["read:projection", "read:invoices"] } }),
-    prisma.webhookSubscription.create({ data: { companyId: company.id, url: "https://example.invalid/webhooks/esn-forecast", events: ["invoice.paid", "monthly_close.completed"], secret: "demo-secret", isActive: true, lastDeliveryStatus: "never_sent" } })
+    prisma.document.create({ data: { companyId: company.id, entityType: "invoice", entityId: realInvoice.id, fileName: "F-2026-0001.pdf", mimeType: "application/pdf", size: 128000, storagePath: "local/démo/F-2026-0001.pdf", category: "invoice", uploadedBy: "finance@esnforecast.local", notes: "Document fictif seed" } }),
+    prisma.apiKey.create({ data: { companyId: company.id, name: "Demo API", keyHash: hashPassword("démo-api-key"), scopes: ["read:projection", "read:invoices"] } }),
+    prisma.webhookSubscription.create({ data: { companyId: company.id, url: "https://example.invalid/webhooks/esn-forecast", events: ["invoice.paid", "monthly_close.complèted"], secret: "démo-secret", isActive: true, lastDeliveryStatus: "never_sent" } })
   ]);
 
   const offer = await prisma.offer.create({
@@ -397,7 +397,7 @@ async function main() {
   });
   await prisma.offerLine.create({ data: { offerId: offer.id, label: "Equipe cloud et run", role: "Cloud engineer", skillNeeds: { cloud: 2 }, quantity: 2, durationDays: 120, tjmSale: 825, estimatedCost: 134000, expectedMargin: 64000 } });
 
-  await prisma.auditLog.create({ data: { entityType: "seed", entityId: "v2", action: "create_demo_data", after: { timesheets: 3, invoices: 1, skills: 3, rules: 2 } } });
+  await prisma.auditLog.create({ data: { entityType: "seed", entityId: "v2", action: "create_démo_data", after: { timesheets: 3, invoices: 1, skills: 3, rules: 2 } } });
 
   const [bankConnector, accountingConnector, expiredConnector] = await Promise.all([
     prisma.connector.create({ data: { organizationId: organization.id, companyId: company.id, type: "banking", provider: "mock_bank_provider", name: "Banque mock principale", status: "connected", configuration: { mode: "mock" }, lastSyncAt: d("2026-07-01"), nextSyncAt: d("2026-07-02"), createdBy: "admin@esnforecast.local" } }),
@@ -485,14 +485,14 @@ async function main() {
     prisma.reforecastSuggestion.create({ data: { organizationId: organization.id, scenarioId: referenceScenario.id, type: "adjust_payment_delay", targetType: "client", targetId: clients[3].id, currentValue: { delay: 60 }, suggestedValue: { delay: 75 }, impactAmount: -43200, impactMonth: "2026-08", explanation: "HealthLink paie historiquement plus tard que le delai contractuel.", confidenceScore: 0.82, status: "pending" } }),
     prisma.forecastReliabilityScore.create({ data: { scenarioId: referenceScenario.id, month: "2026-06", score: 71, confidenceLevel: "medium", factors: { cashVarianceRate: 0.08, unreconciledTransactions: 5, connectorIssues: 1 }, explanation: "Fiabilite penalisee par des transactions non rapprochees et un connecteur expire." } }),
     prisma.financialAnomaly.create({ data: { organizationId: organization.id, type: "duplicate_payment", severity: "warning", entityType: "bank_transaction", entityId: tx3.id, amount: 9000, explanation: "Deux prelevements URSSAF tres proches ont le meme montant.", suggestedAction: "Verifier s'il s'agit d'une regularisation ou d'un double paiement.", status: "new" } }),
-    prisma.financialAnomaly.create({ data: { organizationId: organization.id, type: "uncategorized_large_transaction", severity: "warning", entityType: "bank_transaction", entityId: tx5.id, amount: 6200, explanation: "Transaction significative a valider dans les couts fixes.", suggestedAction: "Confirmer la categorie et rapprocher avec le loyer prevu.", status: "new" } }),
-    prisma.dataQualityIssue.create({ data: { organizationId: organization.id, type: "uncategorized_transactions", severity: "warning", entityType: "bank_transaction", entityId: "multiple", message: "1 transaction bancaire reste non categorisee.", suggestedFix: "Creer une regle ou categoriser manuellement.", status: "open" } }),
+    prisma.financialAnomaly.create({ data: { organizationId: organization.id, type: "uncategorized_large_transaction", severity: "warning", entityType: "bank_transaction", entityId: tx5.id, amount: 6200, explanation: "Transaction significative ? valider dans les couts fixes.", suggestedAction: "Confirmer la categorie et rapprocher avec le loyer prevu.", status: "new" } }),
+    prisma.dataQualityIssue.create({ data: { organizationId: organization.id, type: "uncategorized_transactions", severity: "warning", entityType: "bank_transaction", entityId: "multiple", message: "1 transaction bancaire reste non categorisee.", suggestedFix: "Creer une r?gle ou categoriser manuellement.", status: "open" } }),
     prisma.dataQualityIssue.create({ data: { organizationId: organization.id, type: "connector_health", severity: "critical", entityType: "connector", entityId: expiredConnector.id, message: "Un consentement bancaire est expire.", suggestedFix: "Renouveler ou revoquer le consentement.", status: "open" } }),
     prisma.codirReport.create({ data: { organizationId: organization.id, companyId: company.id, scenarioId: referenceScenario.id, month: "2026-06", format: "json", payload: { cash: 77000, runway: "fragile", anomalies: 2, recommendations: ["Rapprocher les transactions URSSAF", "Relancer HealthLink"] }, generatedBy: "direction@esnforecast.local" } }),
     prisma.financialExportLog.create({ data: { organizationId: organization.id, companyId: company.id, userId: "direction@esnforecast.local", exportType: "codir_report", filters: { month: "2026-06" }, sensitivityLevel: "financial" } })
   ]);
 
-  await prisma.auditLog.create({ data: { entityType: "financial_v3", entityId: "seed", action: "create_connected_finance_demo", after: { connectors: 3, bankTransactions: 6, reconciliations: 1, anomalies: 2 } } });
+  await prisma.auditLog.create({ data: { entityType: "financial_v3", entityId: "seed", action: "create_connected_finance_démo", after: { connectors: 3, bankTransactions: 6, reconciliations: 1, anomalies: 2 } } });
 
   await Promise.all([
     prisma.providerCapability.create({ data: { provider: "bridge", connectorType: "banking", environment: "sandbox", capabilities: { supportsOAuth: true, supportsAccounts: true, supportsTransactions: true, supportsWebhooks: true }, isConfigured: false } }),
@@ -504,19 +504,19 @@ async function main() {
   ]);
 
   await Promise.all([
-    prisma.providerCredential.create({ data: { organizationId: organization.id, provider: "bridge", environment: "sandbox", clientIdMasked: "brid********demo", clientSecretEncrypted: secrets.encryptSecret("bridge-demo-secret"), apiBaseUrl: "https://api.bridgeapi.io", redirectUri: "http://localhost:4000/api/connectors/bridge/oauth/callback", webhookSecretEncrypted: secrets.encryptSecret("bridge-webhook-demo"), status: "configured", createdBy: "admin@esnforecast.local" } }),
-    prisma.providerCredential.create({ data: { organizationId: organization.id, provider: "plaid", environment: "sandbox", clientIdMasked: "plai********demo", clientSecretEncrypted: secrets.encryptSecret("plaid-demo-secret"), apiBaseUrl: "https://sandbox.plaid.com", redirectUri: "http://localhost:5173", webhookSecretEncrypted: secrets.encryptSecret("plaid-webhook-demo"), status: "configured", createdBy: "admin@esnforecast.local" } }),
-    prisma.providerCredential.create({ data: { organizationId: organization.id, provider: "pennylane", environment: "sandbox", clientIdMasked: "penn********demo", clientSecretEncrypted: secrets.encryptSecret("pennylane-demo-secret"), apiBaseUrl: "https://app.pennylane.com/api/external/v1", redirectUri: "http://localhost:4000/api/connectors/pennylane/oauth/callback", webhookSecretEncrypted: secrets.encryptSecret("pennylane-webhook-demo"), status: "configured", createdBy: "finance@esnforecast.local" } })
+    prisma.providerCredential.create({ data: { organizationId: organization.id, provider: "bridge", environment: "sandbox", clientIdMasked: "brid********démo", clientSecretEncrypted: secrets.encryptSecret("bridge-démo-secret"), apiBaseUrl: "https://api.bridgeapi.io", redirectUri: "http://localhost:4000/api/connectors/bridge/oauth/callback", webhookSecretEncrypted: secrets.encryptSecret("bridge-webhook-démo"), status: "configured", createdBy: "admin@esnforecast.local" } }),
+    prisma.providerCredential.create({ data: { organizationId: organization.id, provider: "plaid", environment: "sandbox", clientIdMasked: "plai********démo", clientSecretEncrypted: secrets.encryptSecret("plaid-démo-secret"), apiBaseUrl: "https://sandbox.plaid.com", redirectUri: "http://localhost:5173", webhookSecretEncrypted: secrets.encryptSecret("plaid-webhook-démo"), status: "configured", createdBy: "admin@esnforecast.local" } }),
+    prisma.providerCredential.create({ data: { organizationId: organization.id, provider: "pennylane", environment: "sandbox", clientIdMasked: "penn********démo", clientSecretEncrypted: secrets.encryptSecret("pennylane-démo-secret"), apiBaseUrl: "https://app.pennylane.com/api/external/v1", redirectUri: "http://localhost:4000/api/connectors/pennylane/oauth/callback", webhookSecretEncrypted: secrets.encryptSecret("pennylane-webhook-démo"), status: "configured", createdBy: "finance@esnforecast.local" } })
   ]);
 
   await Promise.all([
-    prisma.providerToken.create({ data: { organizationId: organization.id, companyId: company.id, connectorId: bankConnector.id, provider: "bridge", accessTokenEncrypted: secrets.encryptSecret("bridge-access-demo"), refreshTokenEncrypted: secrets.encryptSecret("bridge-refresh-demo"), expiresAt: d("2026-07-01"), scopes: ["accounts", "transactions"], tokenType: "Bearer", providerAccountId: "bridge-item-demo" } }),
-    prisma.providerToken.create({ data: { organizationId: organization.id, companyId: company.id, connectorId: accountingConnector.id, provider: "pennylane", accessTokenEncrypted: secrets.encryptSecret("pennylane-access-demo"), refreshTokenEncrypted: secrets.encryptSecret("pennylane-refresh-demo"), expiresAt: d("2026-07-01"), scopes: ["customer_invoices", "supplier_invoices", "payments"], tokenType: "Bearer", providerAccountId: "pennylane-company-demo" } }),
+    prisma.providerToken.create({ data: { organizationId: organization.id, companyId: company.id, connectorId: bankConnector.id, provider: "bridge", accessTokenEncrypted: secrets.encryptSecret("bridge-access-démo"), refreshTokenEncrypted: secrets.encryptSecret("bridge-refresh-démo"), expiresAt: d("2026-07-01"), scopes: ["accounts", "transactions"], tokenType: "Bearer", providerAccountId: "bridge-item-démo" } }),
+    prisma.providerToken.create({ data: { organizationId: organization.id, companyId: company.id, connectorId: accountingConnector.id, provider: "pennylane", accessTokenEncrypted: secrets.encryptSecret("pennylane-access-démo"), refreshTokenEncrypted: secrets.encryptSecret("pennylane-refresh-démo"), expiresAt: d("2026-07-01"), scopes: ["customer_invoices", "supplier_invoices", "payments"], tokenType: "Bearer", providerAccountId: "pennylane-company-démo" } }),
     prisma.secretAccessLog.create({ data: { organizationId: organization.id, provider: "bridge", connectorId: bankConnector.id, action: "store_token", sensitivityLevel: "secret" } })
   ]);
 
   await Promise.all([
-    prisma.oAuthConnectionSession.create({ data: { organizationId: organization.id, companyId: company.id, provider: "plaid", connectorType: "banking", state: "demo-oauth-state-plaid", redirectUri: "http://localhost:5173", status: "token_exchanged", expiresAt: d("2026-07-01") } }),
+    prisma.oAuthConnectionSession.create({ data: { organizationId: organization.id, companyId: company.id, provider: "plaid", connectorType: "banking", state: "démo-oauth-state-plaid", redirectUri: "http://localhost:5173", status: "token_exchanged", expiresAt: d("2026-07-01") } }),
     prisma.syncCursor.create({ data: { connectorId: bankConnector.id, resourceType: "transactions", cursor: "cursor-bank-2026-06-30", lastSuccessfulSyncAt: d("2026-07-01"), metadata: { mode: "incremental" } } }),
     prisma.syncCursor.create({ data: { connectorId: accountingConnector.id, resourceType: "invoices", cursor: "cursor-invoices-2026-06-30", lastSuccessfulSyncAt: d("2026-07-01"), metadata: { mode: "incremental" } } }),
     prisma.providerWebhookEvent.create({ data: { provider: "bridge", connectorId: bankConnector.id, eventType: "transactions.updated", externalEventId: "bridge-event-001", payload: { account_id: "mock-account-main" }, signatureValid: true, status: "processed", processedAt: d("2026-07-01") } }),
@@ -530,7 +530,7 @@ async function main() {
     prisma.dataSourcePolicy.create({ data: { organizationId: organization.id, domain: "bank_transactions", primarySource: "bank_provider", conflictResolution: "provider_wins" } }),
     prisma.dataSourcePolicy.create({ data: { organizationId: organization.id, domain: "invoices", primarySource: "pennylane", conflictResolution: "manual" } }),
     prisma.dataSourcePolicy.create({ data: { organizationId: organization.id, domain: "missions", primarySource: "esn_forecast", conflictResolution: "esn_forecast_wins" } }),
-    prisma.auditLog.create({ data: { entityType: "financial_connector", entityId: bankConnector.id, action: "sync_completed", after: { provider: "bridge", imported: 6 }, } }),
+    prisma.auditLog.create({ data: { entityType: "financial_connector", entityId: bankConnector.id, action: "sync_complèted", after: { provider: "bridge", imported: 6 }, } }),
     prisma.auditLog.create({ data: { entityType: "financial_connector", entityId: expiredConnector.id, action: "consent_expired", after: { provider: "tink", requiresUserAction: true } } })
   ]);
 
@@ -540,11 +540,11 @@ async function main() {
     prisma.jobRun.create({ data: { organizationId: organization.id, companyId: company.id, type: "reforecast", status: "retrying", startedAt: d("2026-07-01"), durationMs: 900, progressPercent: 40, inputSummary: { scenarioId: referenceScenario.id }, errorMessage: "Rate limit provider temporaire", triggeredBy: "webhook", correlationId: "seed-reforecast-retry" } }),
     prisma.systemEvent.create({ data: { organizationId: organization.id, companyId: company.id, level: "warning", module: "connectors", message: "Consentement bancaire proche expiration", metadata: { connectorId: expiredConnector.id }, correlationId: "seed-system-event" } }),
     prisma.applicationLog.create({ data: { level: "info", service: "api", route: "/api/connectors", organizationId: organization.id, companyId: company.id, correlationId: "seed-log-1", durationMs: 74, message: "Liste connecteurs chargee", metadata: { count: 3 } } }),
-    prisma.applicationLog.create({ data: { level: "error", service: "api", route: "/api/reports/codir.pdf", organizationId: organization.id, companyId: company.id, correlationId: "seed-report-failed", durationMs: 4200, errorCode: "REPORT_ERROR", message: "Generation rapport CODIR echouee" } }),
+    prisma.applicationLog.create({ data: { level: "error", service: "api", route: "/api/reports/codir.pdf", organizationId: organization.id, companyId: company.id, correlationId: "seed-report-failed", durationMs: 4200, errorCode: "REPORT_ERROR", message: "Generation rapport CODIR ?chou?e" } }),
     prisma.errorReport.create({ data: { organizationId: organization.id, companyId: company.id, code: "REPORT_ERROR", message: "Le rapport CODIR n'a pas pu etre genere.", userAction: "Relancer le job ou verifier le template.", status: "open", severity: "warning", correlationId: "seed-report-failed" } }),
-    prisma.backupRun.create({ data: { organizationId: organization.id, companyId: company.id, type: "full_organization", status: "success", filePath: "backups/demo-full-organization.json", sizeBytes: 42800, createdBy: "admin@esnforecast.local", completedAt: d("2026-07-01") } }),
+    prisma.backupRun.create({ data: { organizationId: organization.id, companyId: company.id, type: "full_organization", status: "success", filePath: "backups/démo-full-organization.json", sizeBytes: 42800, createdBy: "admin@esnforecast.local", completedAt: d("2026-07-01") } }),
     prisma.restoreRun.create({ data: { organizationId: organization.id, mode: "dry_run", status: "success", resultSummary: { valid: true, conflicts: 0, excludedSecrets: true }, createdBy: "admin@esnforecast.local", completedAt: d("2026-07-01") } }),
-    prisma.exportRun.create({ data: { organizationId: organization.id, companyId: company.id, type: "full", format: "zip_csv", status: "success", filePath: "exports/demo-full.zip", sizeBytes: 64000, createdBy: "direction@esnforecast.local", completedAt: d("2026-07-01") } }),
+    prisma.exportRun.create({ data: { organizationId: organization.id, companyId: company.id, type: "full", format: "zip_csv", status: "success", filePath: "exports/démo-full.zip", sizeBytes: 64000, createdBy: "direction@esnforecast.local", completedAt: d("2026-07-01") } }),
     prisma.retentionPolicy.create({ data: { organizationId: organization.id, domain: "application_logs", retentionDays: 90, action: "delete", isActive: true } }),
     prisma.retentionPolicy.create({ data: { organizationId: organization.id, domain: "webhook_payloads", retentionDays: 180, action: "archive", isActive: true } }),
     prisma.purgeRun.create({ data: { organizationId: organization.id, domain: "application_logs", status: "success", deletedCount: 120, startedAt: d("2026-07-01"), completedAt: d("2026-07-01") } }),
@@ -556,18 +556,18 @@ async function main() {
     prisma.featureFlag.create({ data: { key: "command_palette", name: "Palette de commande", description: "Recherche rapide des pages et actions.", enabledGlobally: true, enabledForRoles: ["admin", "direction", "finance"], rolloutPercent: 100, status: "beta" } }),
     prisma.featureFlag.create({ data: { key: "ai_assistant", name: "Assistant IA", description: "Analyse assistee basee sur les donnees calculees.", enabledGlobally: false, enabledForOrganizations: [organization.id], rolloutPercent: 25, status: "experimental" } }),
     prisma.onboardingState.create({ data: { organizationId: organization.id, userId: "admin@esnforecast.local", steps: { company: true, clients: true, employees: true, missions: true, bank: false, accounting: false, dataQuality: false, firstProjection: true, codirReport: false } } }),
-    prisma.supportAction.create({ data: { organizationId: organization.id, companyId: company.id, action: "recalculate_data_quality", status: "success", requestedBy: "admin@esnforecast.local", result: { scoresUpdated: 6 }, reason: "Controle support demo", correlationId: "seed-support-action", completedAt: d("2026-07-01") } }),
+    prisma.supportAction.create({ data: { organizationId: organization.id, companyId: company.id, action: "recalculate_data_quality", status: "success", requestedBy: "admin@esnforecast.local", result: { scoresUpdated: 6 }, reason: "Controle support démo", correlationId: "seed-support-action", completedAt: d("2026-07-01") } }),
     prisma.performanceSnapshot.create({ data: { organizationId: organization.id, metric: "api_latency_ms", value: 380, unit: "ms", route: "/api/projections/scenario", metadata: { percentile: "p95" }, capturedAt: d("2026-07-01") } }),
     prisma.performanceSnapshot.create({ data: { organizationId: organization.id, metric: "projection_duration_ms", value: 1280, unit: "ms", route: "/api/projections/scenario", metadata: { horizon: 24 }, capturedAt: d("2026-07-01") } }),
     prisma.dataQualityScore.create({ data: { organizationId: organization.id, domain: "transactions", score: 72, issuesCount: 4, criticalCount: 1, recommendations: ["Categoriser les transactions importantes", "Renouveler le consentement expire"] } }),
     prisma.dataQualityScore.create({ data: { organizationId: organization.id, domain: "connectors", score: 68, issuesCount: 2, criticalCount: 1, recommendations: ["Reconnecter le connecteur Tink", "Relancer la sync comptable"] } }),
     prisma.dataQualityScore.create({ data: { organizationId: organization.id, domain: "missions", score: 86, issuesCount: 1, criticalCount: 0, recommendations: ["Verifier les dates de fin estimees"] } }),
-    prisma.helpArticle.create({ data: { pageKey: "dashboard", title: "Lire le dashboard direction", category: "pilotage", body: "Le dashboard combine reel, previsionnel et alertes. Commencez par la tresorerie, les ecarts et les alertes critiques.", links: [{ label: "Documentation exploitation", href: "/docs/v5-operations.md" }] } }),
-    prisma.helpArticle.create({ data: { pageKey: "bankReconciliation", title: "Rapprochement partiel", category: "finance", body: "Un rapprochement partiel relie une transaction a une facture sans couvrir tout le montant. Il doit rester visible jusqu'au solde complet." } }),
+    prisma.helpArticle.create({ data: { pageKey: "dashboard", title: "Lire le dashboard direction", category: "pilotage", body: "Le dashboard combine reel, previsionnel et alertes. Commencez par la tresorerie, les Ecarts et les alertes critiques.", links: [{ label: "Documentation exploitation", href: "/docs/v5-operations.md" }] } }),
+    prisma.helpArticle.create({ data: { pageKey: "bankReconciliation", title: "Rapprochement partiel", category: "finance", body: "Un rapprochement partiel relie une transaction ? une facture sans couvrir tout le montant. Il doit rester visible jusqu'au solde complet." } }),
     prisma.helpArticle.create({ data: { pageKey: "forecastReliability", title: "Score de fiabilite", category: "previsions", body: "Le score baisse si les donnees bancaires sont obsoletes, si les transactions ne sont pas rapprochees ou si une forte part du CA reste non signee." } })
   ]);
 
-  await prisma.auditLog.create({ data: { entityType: "product_hardening_v5", entityId: "seed", action: "create_operations_demo", after: { jobs: 3, featureFlags: 3, backups: 1, dataQualityScores: 3 } } });
+  await prisma.auditLog.create({ data: { entityType: "product_hardening_v5", entityId: "seed", action: "create_operations_démo", after: { jobs: 3, featureFlags: 3, backups: 1, dataQualityScores: 3 } } });
 
   const [initialBudget, revisedBudget] = await Promise.all([
     prisma.budget.create({ data: { organizationId: organization.id, companyId: company.id, fiscalYear: 2026, name: "Budget initial 2026", description: "Trajectoire annuelle validee CODIR", status: "locked", versionNumber: 1, budgetType: "initial", isReference: true, createdBy: "direction@esnforecast.local", approvedBy: "direction@esnforecast.local", lockedBy: "direction@esnforecast.local", approvedAt: d("2026-01-15"), lockedAt: d("2026-01-20"), notes: "Budget ambitieux avec croissance du pipe bancaire et energie" } }),
@@ -623,12 +623,12 @@ async function main() {
   const cashVariance = await prisma.varianceAnalysis.create({ data: { organizationId: organization.id, companyId: company.id, fiscalYear: 2026, month: 6, quarter: 2, category: "closing_cash", budgetValue: 162200, actualValue: 61080, forecastValue: 145980, varianceAmount: -101120, variancePercent: -0.62, severity: "critical", status: "action_required", ownerUserId: "direction@esnforecast.local" } });
 
   await Promise.all([
-    prisma.varianceCause.create({ data: { varianceAnalysisId: revenueVariance.id, causeType: "delayed_mission", description: "Demarrage de Plateforme IA conformite decale de septembre a octobre", amountImpact: -42000, relatedMissionId: missions[4].id, relatedClientId: clients[0].id, confidenceScore: 0.83 } }),
+    prisma.varianceCause.create({ data: { varianceAnalysisId: revenueVariance.id, causeType: "delayed_mission", description: "Demarrage de Plateforme IA conformit? decale de septembre ? octobre", amountImpact: -42000, relatedMissionId: missions[4].id, relatedClientId: clients[0].id, confidenceScore: 0.83 } }),
     prisma.varianceCause.create({ data: { varianceAnalysisId: revenueVariance.id, causeType: "late_payment", description: "Encaissement HealthLink en retard et facture non payee", amountImpact: -43200, relatedClientId: clients[3].id, confidenceScore: 0.88 } }),
     prisma.varianceCause.create({ data: { varianceAnalysisId: marginVariance.id, causeType: "external_cost_increase", description: "Cout freelance cyber plus eleve que prevu sur audit sante", amountImpact: -18500, relatedMissionId: missions[3].id, confidenceScore: 0.8 } }),
     prisma.varianceCause.create({ data: { varianceAnalysisId: cashVariance.id, causeType: "late_payment", description: "Paiement partiel Banque Horizon et retard HealthLink", amountImpact: -62240, relatedInvoiceId: realInvoice.id, confidenceScore: 0.9 } }),
     prisma.varianceComment.create({ data: { varianceAnalysisId: revenueVariance.id, userId: "commercial@esnforecast.local", visibility: "direction", comment: "Le gap CA vient surtout du retard de demarrage IA et d'un pipe Q3 insuffisant. Deux offres sont prioritaires." } }),
-    prisma.varianceComment.create({ data: { varianceAnalysisId: marginVariance.id, userId: "finance@esnforecast.local", visibility: "finance", comment: "La marge de l'audit sante est degradee par un cout externe non anticipe. Action de renegociation fournisseur ouverte." } }),
+    prisma.varianceComment.create({ data: { varianceAnalysisId: marginVariance.id, userId: "finance@esnforecast.local", visibility: "finance", comment: "La marge de l'audit sante est dégradée par un cout externe non anticipe. Action de renegociation fournisseur ouverte." } }),
     prisma.varianceComment.create({ data: { varianceAnalysisId: cashVariance.id, userId: "direction@esnforecast.local", visibility: "direction", comment: "Point CODIR requis sur encaissements et gel temporaire des depenses non essentielles." } })
   ]);
 
@@ -646,8 +646,8 @@ async function main() {
   await Promise.all([
     prisma.requiredPipelineSnapshot.create({ data: { organizationId: organization.id, companyId: company.id, fiscalYear: 2026, targetRevenue: 2493000, actualRevenue: 92500, signedRemainingRevenue: 840000, weightedPipelineRevenue: 210000, revenueGap: 1350500, historicalConversionRate: 0.35, requiredGrossPipeline: 3858571, opportunitiesNeeded: 46, latestSignatureMonth: "2026-09", recommendations: ["Securiser prolongations", "Convertir GreenGrid", "Lancer campagne nouveaux comptes"] } }),
     prisma.whatMustBeTrueCondition.create({ data: { organizationId: organization.id, companyId: company.id, fiscalYear: 2026, conditionType: "revenue_condition", description: "Signer au moins 420 k EUR de nouvelles missions avant fin septembre", targetValue: 420000, currentValue: 210000, gap: -210000, riskLevel: "high", relatedActions: ["Securiser prolongation Banque Horizon", "Convertir offre GreenGrid"], status: "at_risk" } }),
-    prisma.whatMustBeTrueCondition.create({ data: { organizationId: organization.id, companyId: company.id, fiscalYear: 2026, conditionType: "staffing_condition", description: "Maintenir un taux d'occupation interne superieur a 86 %", targetValue: 0.86, currentValue: 0.81, gap: -0.05, riskLevel: "medium", relatedActions: ["Placer Sarah Leroy sur mission QA retail"], status: "at_risk" } }),
-    prisma.whatMustBeTrueCondition.create({ data: { organizationId: organization.id, companyId: company.id, fiscalYear: 2026, conditionType: "payment_condition", description: "Encaisser 80 % des factures a moins de 45 jours", targetValue: 0.8, currentValue: 0.64, gap: -0.16, riskLevel: "high", relatedActions: ["Relancer HealthLink"], status: "not_satisfied" } })
+    prisma.whatMustBeTrueCondition.create({ data: { organizationId: organization.id, companyId: company.id, fiscalYear: 2026, conditionType: "staffing_condition", description: "Maintenir un taux d'occupation interne superieur ? 86 %", targetValue: 0.86, currentValue: 0.81, gap: -0.05, riskLevel: "medium", relatedActions: ["Placer Sarah Leroy sur mission QA retail"], status: "at_risk" } }),
+    prisma.whatMustBeTrueCondition.create({ data: { organizationId: organization.id, companyId: company.id, fiscalYear: 2026, conditionType: "payment_condition", description: "Encaisser 80 % des factures ? moins de 45 jours", targetValue: 0.8, currentValue: 0.64, gap: -0.16, riskLevel: "high", relatedActions: ["Relancer HealthLink"], status: "not_satisfied" } })
   ]);
 
   for (const month of Array.from({ length: 12 }, (_, index) => index + 1)) {
@@ -675,11 +675,11 @@ async function main() {
 
   await Promise.all([
     prisma.alert.create({ data: { scenarioId: referenceScenario.id, type: "budget_revenue_gap", severity: "critical", message: "Atterrissage annuel sous budget CA", month: "2026-07", recommendedAction: "Activer plan de redressement S2 et pipeline necessaire", status: "new" } }),
-    prisma.alert.create({ data: { scenarioId: referenceScenario.id, type: "objective_at_risk", severity: "warning", message: "Objectif occupation interne a risque", month: "2026-07", recommendedAction: "Placer les consultants en intercontrat avant fin juillet", status: "new" } }),
-    prisma.auditLog.create({ data: { entityType: "budget_v6", entityId: initialBudget.id, action: "create_budget_trajectory_demo", after: { fiscalYear: 2026, objectives: 5, landing: annualLanding.projectedAnnualRevenue, actionPlan: actionPlan.title } } }),
-    prisma.helpArticle.create({ data: { pageKey: "trajectory", title: "Budget, forecast et reel", category: "budget", body: "Le budget est la trajectoire cible verrouillee. Le rolling forecast est la trajectoire actualisee. Le reel explique les ecarts." } }),
-    prisma.helpArticle.create({ data: { pageKey: "annualLanding", title: "Atterrissage annuel", category: "budget", body: "L'atterrissage combine le reel a date et le forecast restant pour estimer la fin d'annee probable." } }),
-    prisma.helpArticle.create({ data: { pageKey: "actionPlans", title: "Plans d'action", category: "pilotage", body: "Chaque action doit etre rattachee a un objectif ou un ecart, avec responsable, echeance et impact attendu." } })
+    prisma.alert.create({ data: { scenarioId: referenceScenario.id, type: "objective_at_risk", severity: "warning", message: "Objectif occupation interne ? risque", month: "2026-07", recommendedAction: "Placer les consultants en intercontrat avant fin juillet", status: "new" } }),
+    prisma.auditLog.create({ data: { entityType: "budget_v6", entityId: initialBudget.id, action: "create_budget_trajectory_démo", after: { fiscalYear: 2026, objectives: 5, landing: annualLanding.projectedAnnualRevenue, actionPlan: actionPlan.title } } }),
+    prisma.helpArticle.create({ data: { pageKey: "trajectory", title: "Budget, forecast et reel", category: "budget", body: "Le budget est la trajectoire cible verrouillee. Le rolling forecast est la trajectoire actualisee. Le reel explique les Ecarts." } }),
+    prisma.helpArticle.create({ data: { pageKey: "annualLanding", title: "Atterrissage annuel", category: "budget", body: "L'atterrissage combine le reel ? date et le forecast restant pour estimer la fin d'annee probable." } }),
+    prisma.helpArticle.create({ data: { pageKey: "actionPlans", title: "Plans d'action", category: "pilotage", body: "Chaque action doit etre rattachee ? un objectif ou un Ecart, avec responsable, Echeance et impact attendu." } })
   ]);
 
   const pricingSettings = await prisma.pricingSettings.create({
@@ -699,10 +699,10 @@ async function main() {
 
   const pricingProfiles = [
     { mission: missions[0], status: "healthy", current: 720, floor: 580, recommended: 690, margin: 0.34, impact: 0, note: "Mission rentable, TJM coherent avec la cible." },
-    { mission: missions[1], status: "renegotiation_recommended", current: 610, floor: 590, recommended: 710, margin: 0.24, impact: 2800, note: "TJM proche du plancher, marge inferieure a la cible." },
+    { mission: missions[1], status: "renegotiation_recommended", current: 610, floor: 590, recommended: 710, margin: 0.24, impact: 2800, note: "TJM proche du plancher, marge inferieure ? la cible." },
     { mission: missions[2], status: "underpriced", current: 560, floor: 620, recommended: 740, margin: 0.16, impact: 3600, note: "Remise commerciale durable non compensee." },
-    { mission: missions[3], status: "critical", current: 540, floor: 650, recommended: 780, margin: -0.08, impact: 5200, note: "Hausse cout freelance cyber non repercutee." },
-    { mission: missions[4], status: "watch", current: 760, floor: 640, recommended: 820, margin: 0.28, impact: 1200, note: "Mission longue a revoir avant prolongation." }
+    { mission: missions[3], status: "critical", current: 540, floor: 650, recommended: 780, margin: -0.08, impact: 5200, note: "Hausse cout freelance cyber non répercutée." },
+    { mission: missions[4], status: "watch", current: 760, floor: 640, recommended: 820, margin: 0.28, impact: 1200, note: "Mission longue ? revoir avant prolongation." }
   ];
 
   for (const profile of pricingProfiles) {
@@ -787,7 +787,7 @@ async function main() {
   const renegotiationAction = await prisma.actionItem.create({
     data: {
       actionPlanId: pricingPlan.id,
-      title: "Renegocier audit securite sante a 780 EUR",
+      title: "Renegocier audit securite sante ? 780 EUR",
       description: "Argumentaire base sur hausse cout freelance et TJM recommande V7.",
       actionType: "client_renegotiation",
       ownerUserId: "commercial@esnforecast.local",
@@ -822,16 +822,16 @@ async function main() {
 
   await Promise.all([
     prisma.pricingDecision.create({ data: { organizationId: organization.id, companyId: company.id, missionId: missions[0].id, decisionType: "initial_pricing", previousDailyRate: 680, newDailyRate: 720, floorDailyRateAtDecision: 580, recommendedDailyRateAtDecision: 690, marginBefore: 0.29, marginAfter: 0.34, reason: "Prix initial valide au-dessus du TJM recommande", decidedBy: "direction@esnforecast.local", decidedAt: d("2026-06-01") } }),
-    prisma.pricingDecision.create({ data: { organizationId: organization.id, companyId: company.id, missionId: missions[2].id, decisionType: "discount_accepted", previousDailyRate: 610, newDailyRate: 560, floorDailyRateAtDecision: 620, recommendedDailyRateAtDecision: 740, marginBefore: 0.22, marginAfter: 0.16, reason: "Remise acceptee pour prolongation courte, a revoir au prochain avenant", decidedBy: "commercial@esnforecast.local", decidedAt: d("2026-06-15"), relatedSimulationId: simulation.id } }),
+    prisma.pricingDecision.create({ data: { organizationId: organization.id, companyId: company.id, missionId: missions[2].id, decisionType: "discount_accepted", previousDailyRate: 610, newDailyRate: 560, floorDailyRateAtDecision: 620, recommendedDailyRateAtDecision: 740, marginBefore: 0.22, marginAfter: 0.16, reason: "Remise acceptee pour prolongation courte, ? revoir au prochain avenant", decidedBy: "commercial@esnforecast.local", decidedAt: d("2026-06-15"), relatedSimulationId: simulation.id } }),
     prisma.pricingDecision.create({ data: { organizationId: organization.id, companyId: company.id, missionId: missions[3].id, decisionType: "renegotiation", previousDailyRate: 540, newDailyRate: 780, floorDailyRateAtDecision: 650, recommendedDailyRateAtDecision: 780, marginBefore: -0.08, marginAfter: 0.3, reason: "Renegociation lancee apres hausse du cout freelance", decidedBy: "finance@esnforecast.local", decidedAt: d("2026-07-01"), relatedActionItemId: renegotiationAction.id } }),
     prisma.marginException.create({ data: { organizationId: organization.id, companyId: company.id, missionId: missions[1].id, reason: "Entree strategique chez client energie avec potentiel de phase 2", approvedBy: "direction@esnforecast.local", approvedAt: d("2026-06-20"), expirationDate: d("2026-09-30"), targetReviewDate: d("2026-09-15"), comment: "Exception visible en rapport pricing, pas de masquage de la marge.", status: "active" } }),
-    prisma.alert.create({ data: { scenarioId: referenceScenario.id, type: "pricing_floor_rate", severity: "critical", message: "Audit securite sante est sous le TJM plancher", month: "2026-07", recommendedAction: "Renegocier a 780 EUR ou reduire le cout freelance", status: "new" } }),
-    prisma.alert.create({ data: { scenarioId: referenceScenario.id, type: "pricing_discount", severity: "warning", message: "Migration cloud retail subit une remise durable superieure au seuil", month: "2026-07", recommendedAction: "Preparer avenant ou limiter la remise a la prochaine reconduction", status: "new" } }),
+    prisma.alert.create({ data: { scenarioId: referenceScenario.id, type: "pricing_floor_rate", severity: "critical", message: "Audit securite sante est sous le TJM plancher", month: "2026-07", recommendedAction: "Renegocier ? 780 EUR ou reduire le cout freelance", status: "new" } }),
+    prisma.alert.create({ data: { scenarioId: referenceScenario.id, type: "pricing_discount", severity: "warning", message: "Migration cloud retail subit une remise durable superieure au seuil", month: "2026-07", recommendedAction: "Preparer avenant ou limiter la remise ? la prochaine reconduction", status: "new" } }),
     prisma.actionSuggestion.create({ data: { organizationId: organization.id, sourceType: "pricing", sourceId: candidateA.id, title: "Preparer argumentaire TJM audit sante", description: "Utiliser cout complet et marge cible pour justifier le TJM 780 EUR", expectedImpactAmount: 5200, expectedImpactMonth: "2026-08", confidenceScore: 0.84, priority: "critical", status: "suggested" } }),
     prisma.actionSuggestion.create({ data: { organizationId: organization.id, sourceType: "pricing", sourceId: candidateB.id, title: "Revoir remise migration retail", description: "Limiter la remise ou compenser par extension de volume", expectedImpactAmount: 3600, expectedImpactMonth: "2026-08", confidenceScore: 0.78, priority: "high", status: "suggested" } }),
     prisma.helpArticle.create({ data: { pageKey: "pricingDashboard", title: "TJM plancher et TJM recommande", category: "pricing", body: "Le TJM plancher couvre le cout complet et la marge minimum. Le TJM recommande vise la marge cible de l'entreprise ou de la mission." } }),
-    prisma.helpArticle.create({ data: { pageKey: "pricingSimulator", title: "Simuler une remise", category: "pricing", body: "Une remise doit etre analysee en impact CA, marge mensuelle, marge annuelle et ecart au TJM recommande." } }),
-    prisma.auditLog.create({ data: { entityType: "pricing_v7", entityId: pricingSettings.id, action: "create_pricing_demo", after: { profiles: pricingProfiles.length, candidates: 2, simulation: simulation.id } } })
+    prisma.helpArticle.create({ data: { pageKey: "pricingSimulator", title: "Simuler une remise", category: "pricing", body: "Une remise doit etre analysee en impact CA, marge mensuelle, marge annuelle et Ecart au TJM recommande." } }),
+    prisma.auditLog.create({ data: { entityType: "pricing_v7", entityId: pricingSettings.id, action: "create_pricing_démo", after: { profiles: pricingProfiles.length, candidates: 2, simulation: simulation.id } } })
   ]);
 }
 

@@ -24,7 +24,7 @@ export function LoginPage({ onAuthenticated, onForgotPassword }: { onAuthenticat
   };
 
   return (
-    <AuthLayout title="Connexion" description="Accedez a votre cockpit financier et previsionnel.">
+    <AuthLayout title="Connexion" description="Accédez ? votre cockpit financier et prévisionnel.">
       <div className="mb-4">
         <SecurityProtocolAlert />
       </div>

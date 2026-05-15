@@ -31,4 +31,16 @@ export type Field = {
   label: string;
   type?: "text" | "number" | "date" | "select" | "checkbox" | "textarea";
   options?: Array<{ label: string; value: string | number | boolean }>;
+  optionsPath?: string;
+  optionDependsOn?: string;
+  optionSourcesByValue?: Record<string, {
+    path: string;
+    optionLabelKey?: string;
+    optionLabelFields?: string[];
+    optionValueKey?: string;
+  }>;
+  optionLabelKey?: string;
+  optionLabelFields?: string[];
+  optionValueKey?: string;
+  placeholder?: string;
 };

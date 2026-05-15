@@ -26,7 +26,7 @@ export function LoginForm({ initialEmail = "", error, loading, onSubmit, onForgo
       return;
     }
     if (!emailPattern.test(email.trim())) {
-      setFieldError("Saisissez une adresse email valide.");
+      setFieldError("Saisissez une adresse email validé.");
       return;
     }
     setFieldError("");
@@ -59,7 +59,7 @@ export function LoginForm({ initialEmail = "", error, loading, onSubmit, onForgo
       {fieldError || error ? <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{fieldError || error}</div> : null}
       <button disabled={loading} className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-brand px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60">
         <LogIn size={17} />
-        {loading ? "Connexion..." : "Se connecter"}
+        {loading ? "Connexion..." : "Se connectér"}
       </button>
     </form>
   );

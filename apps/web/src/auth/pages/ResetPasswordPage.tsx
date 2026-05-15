@@ -16,7 +16,7 @@ export function ResetPasswordPage({ token, onBack }: { token?: string; onBack: (
     event.preventDefault();
     if (!token) return;
     if (!validatePasswordRules(password).valid) {
-      setError("Le nouveau mot de passe ne respecte pas les regles minimales.");
+      setError("Le nouveau mot de passe ne respecte pas les règles minimales.");
       return;
     }
     if (password !== confirm) {
@@ -27,7 +27,7 @@ export function ResetPasswordPage({ token, onBack }: { token?: string; onBack: (
     setError("");
     try {
       await authService.resetPassword(token, password);
-      setMessage("Votre mot de passe a ete mis a jour. Vous pouvez vous connecter.");
+      setMessage("Votre mot de passe ? ete mis ? jour. Vous pouvez vous connectér.");
     } catch {
       setError("Le lien est invalide ou expire.");
     } finally {
@@ -36,15 +36,15 @@ export function ResetPasswordPage({ token, onBack }: { token?: string; onBack: (
   };
 
   return (
-    <AuthLayout title="Nouveau mot de passe" description="Definissez un mot de passe conforme aux regles de securite.">
+    <AuthLayout title="Nouveau mot de passe" description="Définissez un mot de passe conforme aux règles de sécurité.">
       <form className="space-y-4" onSubmit={submit}>
         <PasswordField id="reset-password" label="Nouveau mot de passe" value={password} autoComplete="new-password" onChange={setPassword} />
         <PasswordStrength password={password} />
         <PasswordField id="reset-confirm" label="Confirmation" value={confirm} autoComplete="new-password" onChange={setConfirm} />
         {error ? <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div> : null}
         {message ? <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">{message}</div> : null}
-        <button disabled={loading || !token} className="w-full rounded-md bg-brand px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60">{loading ? "Mise a jour..." : "Definir le mot de passe"}</button>
-        <button type="button" className="w-full rounded-md border border-line px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-surface" onClick={onBack}>Retour a la connexion</button>
+        <button disabled={loading || !token} className="w-full rounded-md bg-brand px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60">{loading ? "Mise ? jour..." : "Definir le mot de passe"}</button>
+        <button type="button" className="w-full rounded-md border border-line px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-surface" onClick={onBack}>Retour ? la connexion</button>
       </form>
     </AuthLayout>
   );
