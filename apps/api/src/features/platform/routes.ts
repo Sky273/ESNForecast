@@ -1,6 +1,9 @@
 import { Router } from "express";
 import { prisma } from "../../db";
 import { ApiError } from "../../middleware/requestContext";
+import { runReforecastJob } from "../connected-finance/connectedFinanceService";
+import { runConnectorSyncJob } from "../providers/connectorSyncJobService";
+import { runReportPdfJob } from "../reports/reportPdfJobService";
 
 const db = prisma as any;
 export const platformRouter = Router();
@@ -108,8 +111,88 @@ platformRouter.get("/jobs/:id", async (req, res, next) => {
   }
 });
 
+async function runExecutableJob(jobId: string, correlationId?: string) {
+  const job = await db.jobRun.findUnique({ where: { id: jobId } });
+  if (!job) throw new ApiError(404, "NOT_FOUND", "Job introuvable.");
+  const input = (job.inputSummary ?? {}) as Record<string, unknown>;
+  if (job.type === "connector_sync") {
+    return runConnectorSyncJob({
+      existingJobId: job.id,
+      organizationId: typeof input.organizationId === "string" ? input.organizationId : job.organizationId ?? undefined,
+      connectorId: typeof input.connectorId === "string" ? input.connectorId : undefined,
+      mode: input.mode === "full" ? "full" : "incremental",
+      triggeredBy: "user",
+      correlationId
+    });
+  }
+  if (job.type === "report_pdf") {
+    return runReportPdfJob({
+      existingJobId: job.id,
+      report: typeof input.report === "string" ? input.report : undefined,
+      scenarioId: typeof input.scenarioId === "string" ? input.scenarioId : undefined,
+      horizon: typeof input.horizon === "number" ? input.horizon : undefined,
+      month: typeof input.month === "string" ? input.month : undefined,
+      triggeredBy: "user",
+      correlationId
+    });
+  }
+  if (job.type !== "reforecast") {
+    throw new ApiError(409, "CONFLICT", "Ce type de job n'a pas encore de runner applicatif.", { action: "Seuls les jobs connector_sync, reforecast et report_pdf sont executables pour le moment." });
+  }
+  return runReforecastJob({
+    existingJobId: job.id,
+    scenarioId: typeof input.scenarioId === "string" ? input.scenarioId : undefined,
+    horizon: typeof input.horizon === "number" ? input.horizon : undefined,
+    materialityThreshold: typeof input.materialityThreshold === "number" ? input.materialityThreshold : undefined,
+    triggeredBy: "user",
+    correlationId
+  });
+}
+
+platformRouter.post("/jobs/:id/run", async (req, res, next) => {
+  try {
+    res.json(await runExecutableJob(req.params.id, req.correlationId));
+  } catch (error) {
+    next(error);
+  }
+});
+
+platformRouter.post("/jobs/report-pdf", async (req, res, next) => {
+  try {
+    res.status(202).json(await runReportPdfJob({
+      report: req.body?.report,
+      scenarioId: req.body?.scenarioId,
+      horizon: req.body?.horizon,
+      month: req.body?.month,
+      triggeredBy: "user",
+      triggeredByUserId: req.body?.triggeredByUserId,
+      correlationId: req.correlationId
+    }));
+  } catch (error) {
+    next(error);
+  }
+});
+
+platformRouter.post("/jobs/connector-sync", async (req, res, next) => {
+  try {
+    res.status(202).json(await runConnectorSyncJob({
+      organizationId: req.body?.organizationId,
+      connectorId: req.body?.connectorId,
+      mode: req.body?.mode === "full" ? "full" : "incremental",
+      triggeredBy: "user",
+      triggeredByUserId: req.body?.triggeredByUserId,
+      correlationId: req.correlationId
+    }));
+  } catch (error) {
+    next(error);
+  }
+});
+
 platformRouter.post("/jobs/:id/retry", async (req, res, next) => {
   try {
+    const job = await db.jobRun.findUnique({ where: { id: req.params.id } });
+    if (!job) throw new ApiError(404, "NOT_FOUND", "Job introuvable.");
+    if (job.type === "connector_sync" || job.type === "reforecast" || job.type === "report_pdf") return res.json(await runExecutableJob(job.id, req.correlationId));
     res.json(await db.jobRun.update({ where: { id: req.params.id }, data: { status: "retrying", progressPercent: 0, errorMessage: null, correlationId: req.correlationId } }));
   } catch (error) {
     next(error);
@@ -180,7 +263,7 @@ platformRouter.post("/backoffice/organizations/:id/recalculate", async (req, res
 
 platformRouter.post("/backoffice/organizations/:id/resync", async (req, res, next) => {
   try {
-    await db.jobRun.create({ data: { organizationId: req.params.id, type: "connector_sync", status: "queued", triggeredBy: "user", correlationId: req.correlationId, inputSummary: { source: "backoffice" } } });
+    await db.jobRun.create({ data: { organizationId: req.params.id, type: "connector_sync", status: "queued", triggeredBy: "user", correlationId: req.correlationId, inputSummary: { source: "backoffice", organizationId: req.params.id, mode: "incremental" } } });
     res.json(await createSupportAction(req, "resync_connectors"));
   } catch (error) {
     next(error);

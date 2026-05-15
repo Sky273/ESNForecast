@@ -5,8 +5,10 @@ import {
   calculateForecastReliability,
   calculateRunway,
   categorizeTransactions,
+  generateReforecastSuggestions,
   generateReconciliationSuggestions
 } from "@esn-forecast/shared";
+import { Prisma } from "@prisma/client";
 import type { V3FinancialInput } from "@esn-forecast/shared";
 import { prisma } from "../../db";
 import { serializeDates } from "../../utils/serialize";
@@ -45,6 +47,118 @@ export async function buildV3Input(scenarioId?: string, horizon?: number): Promi
 
 export async function buildV3Situation(scenarioId?: string, horizon?: number) {
   return buildV3FinancialSituation(await buildV3Input(scenarioId, horizon));
+}
+
+export async function runReforecastJob(options: {
+  scenarioId?: string;
+  horizon?: number;
+  materialityThreshold?: number;
+  triggeredBy?: string;
+  triggeredByUserId?: string;
+  correlationId?: string;
+  existingJobId?: string;
+} = {}) {
+  const startedAt = new Date();
+  const threshold = Number(options.materialityThreshold ?? 5000);
+  const input = await buildV3Input(options.scenarioId, options.horizon);
+  const inputSummary = {
+    scenarioId: input.scenarioId,
+    horizon: options.horizon,
+    materialityThreshold: threshold
+  };
+  const job = options.existingJobId
+    ? await prisma.jobRun.update({
+        where: { id: options.existingJobId },
+        data: {
+          status: "running",
+          startedAt,
+          finishedAt: null,
+          durationMs: null,
+          progressPercent: 10,
+          inputSummary,
+          resultSummary: Prisma.DbNull,
+          errorMessage: null,
+          errorDetails: Prisma.DbNull,
+          correlationId: options.correlationId
+        }
+      })
+    : await prisma.jobRun.create({
+        data: {
+          organizationId: input.organizationId,
+          companyId: input.companyId,
+          type: "reforecast",
+          status: "running",
+          startedAt,
+          progressPercent: 10,
+          inputSummary,
+          triggeredBy: options.triggeredBy ?? "user",
+          triggeredByUserId: options.triggeredByUserId,
+          correlationId: options.correlationId
+        }
+      });
+
+  try {
+    const suggestions = generateReforecastSuggestions(input, threshold);
+    await prisma.$transaction([
+      prisma.reforecastSuggestion.deleteMany({
+        where: {
+          organizationId: input.organizationId,
+          scenarioId: input.scenarioId,
+          status: "pending"
+        }
+      }),
+      ...suggestions.map((suggestion) =>
+        prisma.reforecastSuggestion.create({
+          data: {
+            organizationId: input.organizationId,
+            scenarioId: input.scenarioId,
+            type: suggestion.type,
+            targetType: suggestion.targetType,
+            targetId: suggestion.targetId,
+            currentValue: suggestion.currentValue,
+            suggestedValue: suggestion.suggestedValue,
+            impactAmount: suggestion.impactAmount,
+            impactMonth: suggestion.impactMonth,
+            explanation: suggestion.explanation,
+            confidenceScore: suggestion.confidenceScore,
+            status: suggestion.status
+          }
+        })
+      )
+    ]);
+
+    const finishedAt = new Date();
+    const resultSummary = {
+      suggestionsCount: suggestions.length,
+      totalImpactAmount: suggestions.reduce((total, suggestion) => total + suggestion.impactAmount, 0),
+      impactMonths: suggestions.map((suggestion) => suggestion.impactMonth)
+    };
+    const completedJob = await prisma.jobRun.update({
+      where: { id: job.id },
+      data: {
+        status: "success",
+        finishedAt,
+        durationMs: finishedAt.getTime() - startedAt.getTime(),
+        progressPercent: 100,
+        resultSummary
+      }
+    });
+    return { job: serializeDates(completedJob), suggestions };
+  } catch (error) {
+    const finishedAt = new Date();
+    await prisma.jobRun.update({
+      where: { id: job.id },
+      data: {
+        status: "failed",
+        finishedAt,
+        durationMs: finishedAt.getTime() - startedAt.getTime(),
+        progressPercent: 100,
+        errorMessage: error instanceof Error ? error.message : "Erreur reforecast inconnue",
+        errorDetails: { name: error instanceof Error ? error.name : "UnknownError" }
+      }
+    });
+    throw error;
+  }
 }
 
 export async function evaluateBankCategorization() {

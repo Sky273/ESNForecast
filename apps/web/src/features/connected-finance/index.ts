@@ -14,5 +14,6 @@ export {
   ForecastReliabilityPage,
   ImportedAccountingPage,
   RealTreasuryPage,
+  ReforecastPage,
   RunwayPage
 } from "./pages";

@@ -25,7 +25,7 @@ import {
 import {
   BankAccountsPage, BankConsentsPage, BankReconciliationPage, BankTransactionsPage, ClientPaymentProfilesPage, CodirReportPage,
   ConnectedFinanceDashboard, ConnectorSupervisionPage, DataQualityPage, FinancialAnomaliesPage, FinancialAuditPage, FinancialRulesPage,
-  ForecastReliabilityPage, ImportedAccountingPage, RealTreasuryPage, RunwayPage
+  ForecastReliabilityPage, ImportedAccountingPage, RealTreasuryPage, ReforecastPage, RunwayPage
 } from "./features/connected-finance";
 import {
   ActualsVariancesPage, AiAnalysisPage, CapacityPage, ExecutiveCockpitPage, MonthlyClosePage, MonteCarloPage, PaymentsPage, RealInvoicesPage,
@@ -510,7 +510,8 @@ function renderPage(page: string, scenarioId: string, horizon: number, setHorizo
   if (page === "timesheets") return <TimesheetsPage />;
   if (page === "monthlyClose") return <MonthlyClosePage />;
   if (page === "treasury") return <TreasuryPage scenarioId={scenarioId} horizon={horizon} />;
-  if (page === "realTreasury" || page === "reforecast") return <RealTreasuryPage scenarioId={scenarioId} horizon={horizon} />;
+  if (page === "realTreasury") return <RealTreasuryPage scenarioId={scenarioId} horizon={horizon} />;
+  if (page === "reforecast") return <ReforecastPage scenarioId={scenarioId} horizon={horizon} />;
   if (page === "runway") return <RunwayPage scenarioId={scenarioId} horizon={horizon} />;
   if (page === "scenarios") return <ScenariosPage scenarioId={scenarioId} horizon={horizon} />;
   if (page === "simulations") return <SimulationsPage />;

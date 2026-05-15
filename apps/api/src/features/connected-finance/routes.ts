@@ -9,7 +9,8 @@ import {
   recalculateClientPaymentProfiles,
   recalculateDataQuality,
   recalculateForecastReliability,
-  refreshReconciliationSuggestions
+  refreshReconciliationSuggestions,
+  runReforecastJob
 } from "./connectedFinanceService";
 import { coerceDates, serializeDates } from "../../utils/serialize";
 import { buildCodirPdf } from "../reports/executivePdfReport";
@@ -395,8 +396,15 @@ connectedFinanceRouter.post("/client-payment-profiles/recalculate", async (_req,
 
 connectedFinanceRouter.post("/reforecast/recalculate", async (req, res, next) => {
   try {
-    const situation = await buildV3Situation(req.body.scenarioId, req.body.horizon);
-    res.json({ suggestions: situation.treasury.filter((row) => Math.abs(row.variance) > 5000).map((row) => ({ type: "adjust_cash_balance", impactMonth: row.month, impactAmount: row.variance, explanation: "Ecart entre cash bancaire et prevision" })) });
+    const result = await runReforecastJob({
+      scenarioId: req.body.scenarioId,
+      horizon: req.body.horizon,
+      materialityThreshold: req.body.materialityThreshold,
+      triggeredBy: "user",
+      triggeredByUserId: req.body.triggeredByUserId,
+      correlationId: req.correlationId
+    });
+    res.status(202).json(result);
   } catch (error) {
     next(error);
   }

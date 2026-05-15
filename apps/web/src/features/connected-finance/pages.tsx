@@ -103,6 +103,44 @@ export function RealTreasuryPage({ scenarioId, horizon }: V3Context) {
   ]} />;
 }
 
+export function ReforecastPage({ scenarioId, horizon }: V3Context) {
+  const { rows } = useRows(`/treasury/actual-vs-forecast?scenarioId=${scenarioId}&horizon=${horizon}`);
+  const [jobResult, setJobResult] = useState<any>(null);
+  const [isRunning, setIsRunning] = useState(false);
+  const [error, setError] = useState("");
+  const runReforecast = async () => {
+    setIsRunning(true);
+    setError("");
+    try {
+      setJobResult(await api("/reforecast/recalculate", { method: "POST", body: JSON.stringify({ scenarioId, horizon }) }));
+    } catch {
+      setError("Le job reforecast n'a pas pu etre lance.");
+    } finally {
+      setIsRunning(false);
+    }
+  };
+  return (
+    <section className="space-y-5">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <PageTitle title="Reforecast" subtitle="Calcul controle des ecarts de tresorerie et generation de suggestions tracables." />
+        <button className="rounded-md bg-brand px-3 py-2 text-sm font-medium text-white disabled:opacity-60" onClick={runReforecast} disabled={isRunning}>
+          {isRunning ? "Recalcul en cours..." : "Lancer le reforecast"}
+        </button>
+      </div>
+      {error ? <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div> : null}
+      {jobResult ? <div className="rounded-lg border border-line bg-white p-4 text-sm"><div className="font-medium">Job {jobResult.job?.status ?? "termine"}</div><div className="mt-1 text-muted">{jobResult.suggestions?.length ?? 0} suggestion(s) generee(s). Impact total : {money(jobResult.job?.resultSummary?.totalImpactAmount ?? 0)}.</div></div> : null}
+      <SimpleTable rows={rows} columns={[
+        ["month", "Mois"],
+        ["forecastClosingCash", "Prevu", money],
+        ["actualClosingCash", "Reel bancaire", money],
+        ["recalibratedClosingCash", "Recalibre", money],
+        ["variance", "Ecart", money],
+        ["reliabilityScore", "Fiabilite", (value: number) => `${value}/100`]
+      ]} />
+    </section>
+  );
+}
+
 export function RunwayPage({ scenarioId, horizon }: V3Context) {
   const { data } = useObject(`/treasury/runway?scenarioId=${scenarioId}&horizon=${horizon}`);
   return (

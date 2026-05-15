@@ -130,6 +130,19 @@ export interface TreasuryActualVsForecastRow {
   reliabilityScore: number;
 }
 
+export interface ReforecastSuggestionV3 {
+  type: "adjust_cash_balance";
+  targetType: "treasury_month";
+  targetId: string;
+  currentValue: Record<string, number | string>;
+  suggestedValue: Record<string, number | string>;
+  impactAmount: number;
+  impactMonth: string;
+  explanation: string;
+  confidenceScore: number;
+  status: "pending";
+}
+
 export interface RunwayAnalysis {
   currentCash: number;
   averageMonthlyBurn: number;

@@ -6,6 +6,7 @@ import type {
   DataQualityIssue,
   FinancialAnomaly,
   ForecastReliabilityScore,
+  ReforecastSuggestionV3,
   ReconciliationSuggestionV3,
   RunwayAnalysis,
   TreasuryActualVsForecastRow,
@@ -149,6 +150,28 @@ export function calculateTreasuryActualVsForecast(input: V3FinancialInput): Trea
       reliabilityScore: reliability[index]?.score ?? 0
     };
   });
+}
+
+export function generateReforecastSuggestions(input: V3FinancialInput, materialityThreshold = 5000): ReforecastSuggestionV3[] {
+  return calculateTreasuryActualVsForecast(input)
+    .filter((row) => Math.abs(row.variance) > materialityThreshold)
+    .map((row) => ({
+      type: "adjust_cash_balance",
+      targetType: "treasury_month",
+      targetId: row.month,
+      currentValue: {
+        forecastClosingCash: row.forecastClosingCash,
+        actualClosingCash: row.actualClosingCash
+      },
+      suggestedValue: {
+        recalibratedClosingCash: row.recalibratedClosingCash
+      },
+      impactAmount: row.variance,
+      impactMonth: row.month,
+      explanation: `Ecart de tresorerie de ${roundCurrency(row.variance)} EUR entre le solde bancaire reel et la prevision.`,
+      confidenceScore: roundRatio(Math.max(0.2, Math.min(0.95, row.reliabilityScore / 100))),
+      status: "pending"
+    }));
 }
 
 export function calculateRunway(input: V3FinancialInput): RunwayAnalysis {

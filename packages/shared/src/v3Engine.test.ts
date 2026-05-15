@@ -6,6 +6,7 @@ import {
   calculateRunway,
   categorizeTransactions,
   detectFinancialAnomalies,
+  generateReforecastSuggestions,
   generateReconciliationSuggestions
 } from "./v3Engine";
 import type { V3FinancialInput } from "./v3Types";
@@ -117,6 +118,20 @@ describe("V3 real finance engine", () => {
     const runway = calculateRunway(input);
     expect(runway.currentCash).toBe(77000);
     expect(runway.runwayWithoutNewRevenueMonths).toBeGreaterThan(0);
+  });
+
+  it("generates reforecast suggestions for material treasury variances", () => {
+    const suggestions = generateReforecastSuggestions(input, 5000);
+    expect(suggestions).toHaveLength(1);
+    expect(suggestions[0]).toMatchObject({
+      type: "adjust_cash_balance",
+      targetType: "treasury_month",
+      targetId: "2026-06",
+      impactAmount: -7000,
+      impactMonth: "2026-06",
+      status: "pending"
+    });
+    expect(suggestions[0].confidenceScore).toBeGreaterThan(0);
   });
 
   it("detects duplicate debit anomaly", () => {

@@ -86,12 +86,49 @@ export function ObservabilityPage() {
 
 export function JobsPage() {
   const { data: jobs, refetch } = useApi<any[]>("/jobs");
-  const retry = async (id: string) => { await api(`/jobs/${id}/retry`, { method: "POST" }); refetch(); };
-  const cancel = async (id: string) => { await api(`/jobs/${id}/cancel`, { method: "POST" }); refetch(); };
+  const [actionError, setActionError] = useState("");
+  const launchReforecast = async () => {
+    setActionError("");
+    try {
+      await api("/reforecast/recalculate", { method: "POST", body: JSON.stringify({}) });
+      await refetch();
+    } catch (caught) {
+      setActionError(caught instanceof Error ? caught.message : "Le reforecast n'a pas pu etre lance.");
+    }
+  };
+  const launchReportPdf = async () => {
+    setActionError("");
+    try {
+      await api("/jobs/report-pdf", { method: "POST", body: JSON.stringify({ report: "codir" }) });
+      await refetch();
+    } catch (caught) {
+      setActionError(caught instanceof Error ? caught.message : "Le rapport PDF n'a pas pu etre lance.");
+    }
+  };
+  const launchConnectorSync = async () => {
+    setActionError("");
+    try {
+      await api("/jobs/connector-sync", { method: "POST", body: JSON.stringify({ mode: "incremental" }) });
+      await refetch();
+    } catch (caught) {
+      setActionError(caught instanceof Error ? caught.message : "La synchronisation connecteurs n'a pas pu etre lancee.");
+    }
+  };
+  const retry = async (row: any) => {
+    setActionError("");
+    try {
+      await api(`/jobs/${row.id}/${["connector_sync", "reforecast", "report_pdf"].includes(row.type) ? "run" : "retry"}`, { method: "POST" });
+      await refetch();
+    } catch (caught) {
+      setActionError(caught instanceof Error ? caught.message : "Le job n'a pas pu etre relance.");
+    }
+  };
+  const cancel = async (id: string) => { await api(`/jobs/${id}/cancel`, { method: "POST" }); await refetch(); };
 
   return (
     <>
-      <PageHeader title="Supervision jobs" description="Suivi des synchronisations, imports, projections, reforecast et rapports." />
+      <PageHeader title="Supervision jobs" description="Suivi des synchronisations, imports, projections, reforecast et rapports." actions={<><button className="rounded-md bg-brand px-3 py-2 text-sm font-medium text-white" onClick={launchReforecast}>Lancer un reforecast</button><button className="rounded-md border border-line bg-white px-3 py-2 text-sm font-medium" onClick={launchConnectorSync}>Lancer sync connecteurs</button><button className="rounded-md border border-line bg-white px-3 py-2 text-sm font-medium" onClick={launchReportPdf}>Lancer rapport PDF</button></>} />
+      {actionError ? <div className="mb-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{actionError}</div> : null}
       <Table rows={jobs ?? []} columns={[
         { key: "type", label: "Type" },
         { key: "status", label: "Statut", render: (row) => <StatusBadge label={row.status} tone={tone(row.status)} /> },
@@ -100,7 +137,7 @@ export function JobsPage() {
         { key: "errorMessage", label: "Erreur" },
         { key: "actions", label: "Actions", render: (row) => (
           <div className="flex gap-2">
-            <button className="rounded-md border border-line px-2 py-1 text-xs" onClick={() => retry(row.id)}>Relancer</button>
+            <button className="rounded-md border border-line px-2 py-1 text-xs" onClick={() => retry(row)}>{["connector_sync", "reforecast", "report_pdf"].includes(row.type) ? "Executer" : "Mettre en retry"}</button>
             <button className="rounded-md border border-line px-2 py-1 text-xs" onClick={() => cancel(row.id)}>Annuler</button>
           </div>
         ) }
