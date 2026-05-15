@@ -129,7 +129,7 @@ export function ForecastReliabilityPage() {
 export function ClientPaymentProfilesPage() {
   const { rows } = useRows("/client-payment-profiles");
   return <TablePage title="Paiements clients" subtitle="Delais réels, retards et fiabilité de paiement." rows={rows} columns={[
-    ["clientId", "Client"],
+    ["clientName", "Client"],
     ["averagePaymentDelayDays", "Delai moyen"],
     ["averageLateDays", "Retard moyen"],
     ["latePaymentRate", "Taux retard", percent],

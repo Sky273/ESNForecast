@@ -115,6 +115,22 @@ deliveryRouter.post("/actuals/monthly", async (req, res, next) => {
     next(error);
   }
 });
+deliveryRouter.put("/actuals/monthly/:id", async (req, res, next) => {
+  try {
+    const data = sanitize(coerceDates(req.body, dateFields));
+    res.json(serializeDates(await prisma.monthlyActual.update({ where: { id: req.params.id }, data: data as any })));
+  } catch (error) {
+    next(error);
+  }
+});
+deliveryRouter.delete("/actuals/monthly/:id", async (req, res, next) => {
+  try {
+    await prisma.monthlyActual.delete({ where: { id: req.params.id } });
+    res.status(204).send();
+  } catch (error) {
+    next(error);
+  }
+});
 
 deliveryRouter.get("/variances/monthly", async (req, res, next) => {
   try {
@@ -127,6 +143,30 @@ deliveryRouter.get("/variances/monthly", async (req, res, next) => {
 deliveryRouter.get("/monthly-closes", async (_req, res, next) => {
   try {
     res.json(serializeDates(await prisma.monthlyClose.findMany({ orderBy: [{ year: "desc" }, { month: "desc" }] })));
+  } catch (error) {
+    next(error);
+  }
+});
+deliveryRouter.post("/monthly-closes", async (req, res, next) => {
+  try {
+    const data = sanitize(coerceDates(req.body, dateFields));
+    res.status(201).json(serializeDates(await prisma.monthlyClose.create({ data: data as any })));
+  } catch (error) {
+    next(error);
+  }
+});
+deliveryRouter.put("/monthly-closes/:id", async (req, res, next) => {
+  try {
+    const data = sanitize(coerceDates(req.body, dateFields));
+    res.json(serializeDates(await prisma.monthlyClose.update({ where: { id: req.params.id }, data: data as any })));
+  } catch (error) {
+    next(error);
+  }
+});
+deliveryRouter.delete("/monthly-closes/:id", async (req, res, next) => {
+  try {
+    await prisma.monthlyClose.delete({ where: { id: req.params.id } });
+    res.status(204).send();
   } catch (error) {
     next(error);
   }
@@ -237,6 +277,15 @@ deliveryRouter.get("/capacity", async (req, res, next) => {
   }
 });
 
+const normalizedSkillName = (value: unknown) =>
+  String(value ?? "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+
 deliveryRouter.get("/capacity/skills", async (_req, res, next) => {
   try {
     res.json(serializeDates(await prisma.skill.findMany({ orderBy: { name: "asc" } })));
@@ -244,6 +293,45 @@ deliveryRouter.get("/capacity/skills", async (_req, res, next) => {
     next(error);
   }
 });
+deliveryRouter.post("/capacity/skills", async (req, res, next) => {
+  try {
+    const name = String(req.body?.name ?? "").trim();
+    res.status(201).json(serializeDates(await prisma.skill.create({
+      data: {
+        name,
+        category: req.body?.category,
+        aliases: req.body?.aliases ? String(req.body.aliases).split(",").map((alias) => alias.trim()).filter(Boolean) : [],
+        normalizedName: req.body?.normalizedName ?? normalizedSkillName(name)
+      }
+    })));
+  } catch (error) {
+    next(error);
+  }
+});
+deliveryRouter.put("/capacity/skills/:id", async (req, res, next) => {
+  try {
+    const data = sanitize(req.body);
+    if (data.name && !data.normalizedName) data.normalizedName = normalizedSkillName(data.name);
+    if (typeof data.aliases === "string") data.aliases = data.aliases.split(",").map((alias) => alias.trim()).filter(Boolean);
+    res.json(serializeDates(await prisma.skill.update({ where: { id: req.params.id }, data: data as any })));
+  } catch (error) {
+    next(error);
+  }
+});
+deliveryRouter.delete("/capacity/skills/:id", async (req, res, next) => {
+  try {
+    await prisma.$transaction([
+      prisma.resourceSkill.deleteMany({ where: { skillId: req.params.id } }),
+      prisma.missionSkillNeed.deleteMany({ where: { skillId: req.params.id } }),
+      prisma.skill.delete({ where: { id: req.params.id } })
+    ]);
+    res.status(204).send();
+  } catch (error) {
+    next(error);
+  }
+});
+deliveryRouter.use("/capacity/resource-skills", crud("resourceSkill" as any));
+deliveryRouter.use("/capacity/mission-skill-needs", crud("missionSkillNeed" as any));
 
 deliveryRouter.get("/staffing/forecast", async (req, res, next) => {
   try {

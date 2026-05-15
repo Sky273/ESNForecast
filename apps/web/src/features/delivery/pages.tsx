@@ -123,6 +123,66 @@ export function CapacityPage({ scenarioId, horizon }: V2Context) {
   ]} />;
 }
 
+export function SkillsPage() {
+  const { rows: employees } = useRows("/employees");
+  const { rows: partners } = useRows("/partner-resources");
+  const { rows: freelancers } = useRows("/freelancers");
+  const { rows: skills } = useRows("/capacity/skills");
+  const { rows: missions } = useRows("/missions");
+  const resourceLabels = useMemo(() => {
+    const pairs = [...employees, ...partners, ...freelancers].map((resource: any) => [
+      resource.id,
+      `${resource.firstName ?? ""} ${resource.lastName ?? ""}`.trim() || resource.name || resource.id
+    ] as [string, string]);
+    return new Map(pairs);
+  }, [employees, partners, freelancers]);
+  const skillLabels = useMemo(() => new Map(skills.map((skill: any) => [skill.id, skill.name])), [skills]);
+  const missionLabels = useMemo(() => new Map(missions.map((mission: any) => [mission.id, mission.title])), [missions]);
+
+  return (
+    <section className="space-y-8">
+      <CrudPage title="Compétences" path="/capacity/skills" initial={{ name: "", category: "", aliases: "" }} fields={[
+        { name: "name", label: "Nom" },
+        { name: "category", label: "Catégorie" },
+        { name: "aliases", label: "Alias (séparés par des virgules)" }
+      ]} columns={[
+        { key: "name", label: "Compétence" },
+        { key: "category", label: "Catégorie" },
+        { key: "aliases", label: "Alias", render: (row: any) => Array.isArray(row.aliases) ? row.aliases.join(", ") : row.aliases }
+      ]} />
+      <CrudPage title="Compétences des ressources" path="/capacity/resource-skills" initial={{ resourceType: "employee", resourceId: "", skillId: "", level: "intermediate", yearsExperience: 1, lastUsedAt: "" }} fields={[
+        { name: "resourceType", label: "Type ressource", type: "select", options: [{ label: "Salarié", value: "employee" }, { label: "Partenaire", value: "partner" }, { label: "Indépendant", value: "freelancer" }] },
+        { name: "resourceId", label: "Ressource", type: "select", optionDependsOn: "resourceType", optionSourcesByValue: { employee: { path: "/employees", optionLabelFields: ["firstName", "lastName"] }, partner: { path: "/partner-resources", optionLabelFields: ["firstName", "lastName"] }, freelancer: { path: "/freelancers", optionLabelFields: ["firstName", "lastName"] } }, placeholder: "Sélectionner une ressource" },
+        { name: "skillId", label: "Compétence", type: "select", optionsPath: "/capacity/skills", optionLabelKey: "name", optionValueKey: "id", placeholder: "Sélectionner une compétence" },
+        { name: "level", label: "Niveau", type: "select", options: ["junior", "intermediate", "senior", "expert"].map((value) => ({ label: value, value })) },
+        { name: "yearsExperience", label: "Années d'expérience", type: "number" },
+        { name: "lastUsedAt", label: "Dernière utilisation", type: "date" }
+      ]} columns={[
+        { key: "resourceType", label: "Type" },
+        { key: "resourceId", label: "Ressource", render: (row: any) => resourceLabels.get(row.resourceId) ?? row.resourceId },
+        { key: "skillId", label: "Compétence", render: (row: any) => skillLabels.get(row.skillId) ?? row.skillId },
+        { key: "level", label: "Niveau" },
+        { key: "yearsExperience", label: "Expérience" }
+      ]} />
+      <CrudPage title="Besoins de compétences mission" path="/capacity/mission-skill-needs" initial={{ missionId: "", skillId: "", requiredLevel: "intermediate", requiredFTE: 1, startDate: "2026-06-01", endDate: "", priority: "medium" }} fields={[
+        { name: "missionId", label: "Mission", type: "select", optionsPath: "/missions", optionLabelKey: "title", optionValueKey: "id", placeholder: "Sélectionner une mission" },
+        { name: "skillId", label: "Compétence", type: "select", optionsPath: "/capacity/skills", optionLabelKey: "name", optionValueKey: "id", placeholder: "Sélectionner une compétence" },
+        { name: "requiredLevel", label: "Niveau requis", type: "select", options: ["junior", "intermediate", "senior", "expert"].map((value) => ({ label: value, value })) },
+        { name: "requiredFTE", label: "ETP requis", type: "number" },
+        { name: "startDate", label: "Début", type: "date" },
+        { name: "endDate", label: "Fin", type: "date" },
+        { name: "priority", label: "Priorité", type: "select", options: ["low", "medium", "high", "critical"].map((value) => ({ label: value, value })) }
+      ]} columns={[
+        { key: "missionId", label: "Mission", render: (row: any) => missionLabels.get(row.missionId) ?? row.missionId },
+        { key: "skillId", label: "Compétence", render: (row: any) => skillLabels.get(row.skillId) ?? row.skillId },
+        { key: "requiredLevel", label: "Niveau" },
+        { key: "requiredFTE", label: "ETP" },
+        { key: "priority", label: "Priorité" }
+      ]} />
+    </section>
+  );
+}
+
 export function MonteCarloPage({ scenarioId, horizon }: V2Context) {
   const [data, setData] = useState<any>(null);
   useEffect(() => { if (scenarioId) void api("/monte-carlo/run", { method: "POST", body: JSON.stringify({ scenarioId, horizon, iterations: 500 }) }).then(setData); }, [scenarioId, horizon]);

@@ -366,7 +366,11 @@ connectedFinanceRouter.get("/reconciliation/chains", async (_req, res, next) => 
 
 connectedFinanceRouter.get("/client-payment-profiles", async (_req, res, next) => {
   try {
-    res.json(serializeDates(await prisma.clientPaymentProfile.findMany({ orderBy: { reliabilityScore: "asc" } })));
+    const rows = await prisma.clientPaymentProfile.findMany({ orderBy: { reliabilityScore: "asc" } });
+    const clientIds = rows.map((row) => row.clientId);
+    const clients = await prisma.client.findMany({ where: { id: { in: clientIds } } });
+    const clientsById = new Map(clients.map((client) => [client.id, client.name]));
+    res.json(serializeDates(rows.map((row) => ({ ...row, clientName: clientsById.get(row.clientId) ?? row.clientId }))));
   } catch (error) {
     next(error);
   }
@@ -375,7 +379,8 @@ connectedFinanceRouter.get("/client-payment-profiles/:clientId", async (req, res
   try {
     const row = await prisma.clientPaymentProfile.findUnique({ where: { clientId: req.params.clientId } });
     if (!row) return res.status(404).json({ error: "Profile not found" });
-    res.json(serializeDates(row));
+    const client = await prisma.client.findUnique({ where: { id: row.clientId } });
+    res.json(serializeDates({ ...row, clientName: client?.name ?? row.clientId }));
   } catch (error) {
     next(error);
   }

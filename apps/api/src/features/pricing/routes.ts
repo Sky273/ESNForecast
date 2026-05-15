@@ -5,6 +5,7 @@ import { ApiError } from "../../middleware/requestContext";
 import {
   calculateMissionProfile,
   createPricingSimulation,
+  enrichMissionLabels,
   ensurePricingSettings,
   getPricingContext,
   listUnderpricedMissions,
@@ -91,7 +92,8 @@ pricingRouter.post("/pricing/simulate-resource-change", async (req, res, next) =
 pricingRouter.post("/pricing/simulate-cost-increase", async (req, res, next) => { req.body.name = req.body.name ?? "Simulation hausse cout"; return createPricingSimulation(req.body?.missionId, req.body).then((value) => res.status(201).json(value)).catch(next); });
 pricingRouter.get("/pricing/simulations", async (_req, res, next) => {
   try {
-    res.json(await db.pricingSimulation.findMany({ include: { variants: true }, orderBy: { createdAt: "desc" } }));
+    const rows = await db.pricingSimulation.findMany({ include: { variants: true }, orderBy: { createdAt: "desc" } });
+    res.json(await enrichMissionLabels(rows));
   } catch (error) {
     next(error);
   }
@@ -133,12 +135,12 @@ pricingRouter.get("/pricing/underpriced-missions", async (_req, res, next) => {
 pricingRouter.get("/pricing/renegotiation-candidates", async (_req, res, next) => {
   try {
     const rows = await db.renegotiationCandidate.findMany({ orderBy: [{ priorityScore: "desc" }, { createdAt: "desc" }] });
-    res.json(rows.length ? rows : await recalculateRenegotiationCandidates());
+    res.json(await enrichMissionLabels(rows.length ? rows : await recalculateRenegotiationCandidates()));
   } catch (error) {
     next(error);
   }
 });
-pricingRouter.get("/pricing/renegotiation-candidates/:id", async (req, res, next) => { try { const row = await db.renegotiationCandidate.findUnique({ where: { id: req.params.id } }); if (!row) throw new ApiError(404, "NOT_FOUND", "Candidat introuvable."); res.json(row); } catch (error) { next(error); } });
+pricingRouter.get("/pricing/renegotiation-candidates/:id", async (req, res, next) => { try { const row = await db.renegotiationCandidate.findUnique({ where: { id: req.params.id } }); if (!row) throw new ApiError(404, "NOT_FOUND", "Candidat introuvable."); res.json((await enrichMissionLabels([row]))[0]); } catch (error) { next(error); } });
 pricingRouter.post("/pricing/renegotiation-candidates/recalculate", async (_req, res, next) => { try { res.json(await recalculateRenegotiationCandidates()); } catch (error) { next(error); } });
 pricingRouter.put("/pricing/renegotiation-candidates/:id", async (req, res, next) => { try { res.json(await db.renegotiationCandidate.update({ where: { id: req.params.id }, data: req.body })); } catch (error) { next(error); } });
 pricingRouter.delete("/pricing/renegotiation-candidates/:id", async (req, res, next) => { try { await db.renegotiationCandidate.delete({ where: { id: req.params.id } }); res.status(204).send(); } catch (error) { next(error); } });
@@ -172,19 +174,19 @@ pricingRouter.post("/pricing/renegotiation-candidates/:id/create-action", async 
   }
 });
 
-pricingRouter.get("/pricing/decisions", async (_req, res, next) => { try { res.json(await db.pricingDecision.findMany({ orderBy: { decidedAt: "desc" } })); } catch (error) { next(error); } });
+pricingRouter.get("/pricing/decisions", async (_req, res, next) => { try { res.json(await enrichMissionLabels(await db.pricingDecision.findMany({ orderBy: { decidedAt: "desc" } }))); } catch (error) { next(error); } });
 pricingRouter.post("/pricing/decisions", async (req, res, next) => { try { const { organization, company } = await getPricingContext(); res.status(201).json(await db.pricingDecision.create({ data: { organizationId: organization.id, companyId: company.id, ...req.body } })); } catch (error) { next(error); } });
 pricingRouter.put("/pricing/decisions/:id", async (req, res, next) => { try { const { id, organizationId, companyId, createdAt, updatedAt, ...data } = req.body; res.json(await db.pricingDecision.update({ where: { id: req.params.id }, data })); } catch (error) { next(error); } });
 pricingRouter.delete("/pricing/decisions/:id", async (req, res, next) => { try { await db.pricingDecision.delete({ where: { id: req.params.id } }); res.status(204).send(); } catch (error) { next(error); } });
-pricingRouter.get("/pricing/missions/:missionId/decisions", async (req, res, next) => { try { res.json(await db.pricingDecision.findMany({ where: { missionId: req.params.missionId }, orderBy: { decidedAt: "desc" } })); } catch (error) { next(error); } });
+pricingRouter.get("/pricing/missions/:missionId/decisions", async (req, res, next) => { try { res.json(await enrichMissionLabels(await db.pricingDecision.findMany({ where: { missionId: req.params.missionId }, orderBy: { decidedAt: "desc" } }))); } catch (error) { next(error); } });
 
-pricingRouter.get("/pricing/margin-exceptions", async (_req, res, next) => { try { res.json(await db.marginException.findMany({ orderBy: { targetReviewDate: "asc" } })); } catch (error) { next(error); } });
+pricingRouter.get("/pricing/margin-exceptions", async (_req, res, next) => { try { res.json(await enrichMissionLabels(await db.marginException.findMany({ orderBy: { targetReviewDate: "asc" } }))); } catch (error) { next(error); } });
 pricingRouter.post("/pricing/margin-exceptions", async (req, res, next) => { try { const { organization, company } = await getPricingContext(); res.status(201).json(await db.marginException.create({ data: { organizationId: organization.id, companyId: company.id, ...req.body } })); } catch (error) { next(error); } });
 pricingRouter.put("/pricing/margin-exceptions/:id", async (req, res, next) => { try { res.json(await db.marginException.update({ where: { id: req.params.id }, data: req.body })); } catch (error) { next(error); } });
 pricingRouter.delete("/pricing/margin-exceptions/:id", async (req, res, next) => { try { await db.marginException.delete({ where: { id: req.params.id } }); res.status(204).send(); } catch (error) { next(error); } });
 pricingRouter.post("/pricing/margin-exceptions/:id/revoke", async (req, res, next) => { try { res.json(await db.marginException.update({ where: { id: req.params.id }, data: { status: "revoked" } })); } catch (error) { next(error); } });
 
-pricingRouter.get("/reports/pricing-margin.json", async (_req, res, next) => { try { res.json({ generatedAt: new Date().toISOString(), dashboard: await pricingDashboard(), candidates: await db.renegotiationCandidate.findMany({ orderBy: { priorityScore: "desc" } }), exceptions: await db.marginException.findMany() }); } catch (error) { next(error); } });
+pricingRouter.get("/reports/pricing-margin.json", async (_req, res, next) => { try { res.json({ generatedAt: new Date().toISOString(), dashboard: await pricingDashboard(), candidates: await enrichMissionLabels(await db.renegotiationCandidate.findMany({ orderBy: { priorityScore: "desc" } })), exceptions: await enrichMissionLabels(await db.marginException.findMany()) }); } catch (error) { next(error); } });
 pricingRouter.get("/reports/pricing-margin.csv", async (_req, res, next) => { try { const rows = await listUnderpricedMissions(); res.type("text/csv").send(["mission,client,status,currentRate,floorRate,recommendedRate,monthlyImpact,annualImpact", ...rows.map((row) => `${row.missionTitle},${row.clientName},${row.pricingStatus},${row.currentDailyRate},${row.calculatedFloorDailyRate},${row.recommendedDailyRate},${row.monthlyImpactAmount},${row.annualizedImpactAmount}`)].join("\n")); } catch (error) { next(error); } });
 pricingRouter.get("/reports/pricing-margin.pdf", (_req, res) => res.type("application/pdf").send(Buffer.from("PDF démo V7 Pricing Margin")));
 

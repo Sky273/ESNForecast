@@ -4,6 +4,7 @@ import { api } from "../api";
 import type { Field } from "../types";
 import { Badge } from "./Format";
 import { useApiList } from "../hooks/useApi";
+import { useI18n } from "../i18n";
 
 export function CrudPage<T extends Record<string, any>>({
   title,
@@ -18,6 +19,7 @@ export function CrudPage<T extends Record<string, any>>({
   columns: Array<{ key: string; label: string; render?: (row: T) => React.ReactNode }>;
   initial: Record<string, any>;
 }) {
+  const { t } = useI18n();
   const { data, loading, error, reload } = useApiList<T>(path);
   const [draft, setDraft] = useState<Record<string, any>>(initial);
   const optionSources = useCrudOptionSources(fields, draft);
@@ -51,7 +53,7 @@ export function CrudPage<T extends Record<string, any>>({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold tracking-normal">{title}</h1>
-          <p className="text-sm text-muted">{data.length} enregistrement(s)</p>
+          <p className="text-sm text-muted">{data.length} {t("common.records")}</p>
         </div>
         <a className="inline-flex items-center gap-2 rounded-md border border-line bg-white px-3 py-2 text-sm" href="/api/export/resources.csv">
           <Download size={16} /> CSV
@@ -80,24 +82,24 @@ export function CrudPage<T extends Record<string, any>>({
         </div>
         <div className="mt-4 flex gap-2">
           <button className="inline-flex items-center gap-2 rounded-md bg-brand px-4 py-2 text-sm font-medium text-white" type="submit">
-            {editingId ? <Save size={16} /> : <Plus size={16} />} {editingId ? "Enregistrer" : "Créer"}
+            {editingId ? <Save size={16} /> : <Plus size={16} />} {editingId ? t("common.save") : t("common.create")}
           </button>
-          {editingId ? <button className="rounded-md border border-line px-4 py-2 text-sm" type="button" onClick={() => { setDraft(initial); setEditingId(null); }}>Annuler</button> : null}
+          {editingId ? <button className="rounded-md border border-line px-4 py-2 text-sm" type="button" onClick={() => { setDraft(initial); setEditingId(null); }}>{t("common.cancel")}</button> : null}
         </div>
       </form>
 
       <div className="rounded-lg border border-line bg-white">
         <div className="border-b border-line p-3">
-          <input className="w-full rounded-md border border-line px-3 py-2" placeholder="Filtrer..." value={query} onChange={(event) => setQuery(event.target.value)} />
+          <input className="w-full rounded-md border border-line px-3 py-2" placeholder={t("common.filter", "Filtrer...")} value={query} onChange={(event) => setQuery(event.target.value)} />
         </div>
         {error ? <div className="p-4 text-risk">{error}</div> : null}
-        {loading ? <div className="p-4 text-muted">Chargement...</div> : (
+        {loading ? <div className="p-4 text-muted">{t("common.loading")}</div> : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[760px] text-sm">
               <thead className="bg-surface text-left text-xs uppercase text-muted">
                 <tr>
                   {columns.map((column) => <th key={column.key} className="px-3 py-3">{column.label}</th>)}
-                  <th className="px-3 py-3">Actions</th>
+                  <th className="px-3 py-3">{t("common.actions")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -105,12 +107,12 @@ export function CrudPage<T extends Record<string, any>>({
                   <tr key={row.id} className="border-t border-line">
                     {columns.map((column) => <td key={column.key} className="px-3 py-3">{column.render ? column.render(row) : formatCellValue(row[column.key], optionLabelsByField[column.key])}</td>)}
                     <td className="flex gap-2 px-3 py-3">
-                      <button className="rounded-md border border-line px-2 py-1" onClick={() => { setEditingId(row.id); setDraft(row); }}>Editer</button>
-                      <button className="rounded-md border border-line p-1 text-risk" title="Supprimer" onClick={async () => { await api(`${path}/${row.id}`, { method: "DELETE" }); await reload(); }}><Trash2 size={16} /></button>
+                      <button className="rounded-md border border-line px-2 py-1" onClick={() => { setEditingId(row.id); setDraft(row); }}>{t("common.edit")}</button>
+                      <button className="rounded-md border border-line p-1 text-risk" title={t("common.delete")} onClick={async () => { await api(`${path}/${row.id}`, { method: "DELETE" }); await reload(); }}><Trash2 size={16} /></button>
                     </td>
                   </tr>
                 ))}
-                {!visibleRows.length ? <tr><td colSpan={columns.length + 1} className="px-3 py-8 text-center text-muted"><Badge>Aucune donnée</Badge></td></tr> : null}
+                {!visibleRows.length ? <tr><td colSpan={columns.length + 1} className="px-3 py-8 text-center text-muted"><Badge>{t("common.noData")}</Badge></td></tr> : null}
               </tbody>
             </table>
           </div>
@@ -185,6 +187,7 @@ function formatCellValue(value: unknown, labels?: Map<string, string>) {
 
 function formatInputValue(value: unknown, type?: Field["type"]) {
   if (value === null || value === undefined) return "";
+  if (Array.isArray(value)) return value.join(", ");
   if (type === "date" && typeof value === "string") return value.slice(0, 10);
   return value as string | number;
 }

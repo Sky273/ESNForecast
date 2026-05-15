@@ -16,6 +16,7 @@ import { ResetPasswordPage } from "./auth/pages/ResetPasswordPage";
 import { SessionExpiredPage } from "./auth/pages/SessionExpiredPage";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { CrudPage } from "./components/CrudPage";
+import { I18nProvider, useI18n } from "./i18n";
 import { Settings } from "./features/administration";
 import {
   ActionPlansPage, AnnualLandingPage, BudgetDetailPage, BudgetForecastActualPage, BudgetStaffingPage, BudgetsPage, ObjectivesPage,
@@ -28,7 +29,7 @@ import {
 } from "./features/connected-finance";
 import {
   ActualsVariancesPage, AiAnalysisPage, CapacityPage, ExecutiveCockpitPage, MonthlyClosePage, MonteCarloPage, PaymentsPage, RealInvoicesPage,
-  ReconciliationPage, StrategicRisksPage, TimesheetsPage, V2CrudPage
+  ReconciliationPage, SkillsPage, StrategicRisksPage, TimesheetsPage, V2CrudPage
 } from "./features/delivery";
 import {
   AdminPage, AlertsPage, AuditPage, BenchPage, BillingPage, CashInPage, CashOutPage, ProfitabilityMissionsPage, ProfitabilityResourcesPage,
@@ -152,7 +153,7 @@ const navGroups: NavGroup[] = [
       { id: "pricingSimulator", label: "Simulateur pricing", icon: Calculator },
       { id: "missionPricingProfile", label: "Profil pricing mission", icon: FileText },
       { id: "underpricedMissions", label: "Missions sous-margées", icon: AlertTriangle, badge: "3" },
-      { id: "renegotiationCandidates", label: "Missions ? renégocier", icon: Handshake, badge: "2" },
+      { id: "renegotiationCandidates", label: "Missions à renégocier", icon: Handshake, badge: "2" },
       { id: "pricingSettings", label: "Paramètres pricing", icon: SettingsIcon },
       { id: "pricingReport", label: "Rapport pricing", icon: FileText },
       { id: "pricingHistory", label: "Historique pricing", icon: History }
@@ -171,7 +172,7 @@ const navGroups: NavGroup[] = [
       { id: "dataQuality", label: "Santé des données", icon: Shield, badge: "3" },
       { id: "sourcePolicies", label: "Sources de verite", icon: SettingsIcon },
       { id: "duplicates", label: "Doublons", icon: DatabaseBackup },
-      { id: "connectorCompliance", label: "Conformit? connectéurs", icon: Shield },
+      { id: "connectorCompliance", label: "Conformité connecteurs", icon: Shield },
       { id: "consentCompliance", label: "Consentements V4", icon: Shield }
     ]
   },
@@ -199,7 +200,7 @@ const navGroups: NavGroup[] = [
     ]
   },
   {
-    id: "opérations",
+    id: "operations",
     label: "Exploitation",
     icon: Gauge,
     items: [
@@ -232,7 +233,7 @@ const navGroups: NavGroup[] = [
   }
 ];
 
-const allItems = navGroups.flatMap((group) => group.items.map((item) => ({ ...item, group: group.label, groupId: group.id })));
+const allItems = navGroups.flatMap((group) => group.items.map((item) => ({ ...item, groupId: group.id })));
 const AUTHENTICATION_DISABLED = false;
 const AUTH_DISABLED_USER = {
   id: "auth-disabled-local-user",
@@ -243,13 +244,16 @@ const AUTH_DISABLED_USER = {
 
 export function App() {
   return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
+    <I18nProvider>
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
+    </I18nProvider>
   );
 }
 
 function AppContent() {
+  const { language, setLanguage, t } = useI18n();
   const auth = useAuth();
   const currentUser = AUTHENTICATION_DISABLED ? AUTH_DISABLED_USER : auth.user;
   const [page, setPage] = useState("dashboard");
@@ -308,10 +312,10 @@ function AppContent() {
     return navGroups
       .map((group) => ({
         ...group,
-        items: group.items.filter((item) => `${item.label} ${item.keywords ?? ""} ${group.label}`.toLowerCase().includes(value))
+        items: group.items.filter((item) => `${t(`nav.${item.id}`, item.label)} ${item.keywords ?? ""} ${t(`nav.group.${group.id}`, group.label)}`.toLowerCase().includes(value))
       }))
       .filter((group) => group.items.length);
-  }, [query]);
+  }, [query, t]);
 
   const toggleGroup = (id: string) => setOpenGroups((current) => ({ ...current, [id]: !Boolean(current[id]) }));
   const openPage = (id: string) => {
@@ -337,7 +341,7 @@ function AppContent() {
   };
 
   if (!AUTHENTICATION_DISABLED && auth.loading) {
-    return <div className="grid min-h-screen place-items-center bg-slate-50 text-sm text-muted">Chargement de la session...</div>;
+    return <div className="grid min-h-screen place-items-center bg-slate-50 text-sm text-muted">{t("common.loading")}</div>;
   }
 
   if (!AUTHENTICATION_DISABLED && (authRoute.name === "session-expired" || auth.sessionExpired)) {
@@ -364,10 +368,10 @@ function AppContent() {
       <aside className="hidden h-screen min-h-0 border-r border-line bg-white lg:flex lg:flex-col">
         <div className="flex shrink-0 items-center justify-between border-b border-line px-4 py-3">
           <div className={compact ? "sr-only" : ""}>
-            <div className="text-lg font-semibold tracking-normal">ESN Forecast</div>
-            <div className="text-xs text-muted">Pilotage financier ESN</div>
+            <div className="text-lg font-semibold tracking-normal">{t("app.name")}</div>
+            <div className="text-xs text-muted">{t("app.subtitle")}</div>
           </div>
-          <button className="rounded-md border border-line p-2 text-muted hover:bg-surface" aria-label={compact ? "Étendre le menu" : "Compacter le menu"} onClick={() => setCompact((value) => !value)}>
+          <button className="rounded-md border border-line p-2 text-muted hover:bg-surface" aria-label={compact ? t("common.expandMenu", "Étendre le menu") : t("common.compactMenu", "Compacter le menu")} onClick={() => setCompact((value) => !value)}>
             {compact ? <ChevronsRight size={17} /> : <ChevronsLeft size={17} />}
           </button>
         </div>
@@ -376,7 +380,7 @@ function AppContent() {
           <div className="shrink-0 border-b border-line p-3">
             <label className="relative block">
               <Search className="pointer-events-none absolute left-3 top-2.5 text-muted" size={16} />
-              <input ref={searchRef} className="w-full rounded-md border border-line py-2 pl-9 pr-3 text-sm outline-none focus:border-brand" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Rechercher une page (Ctrl+K)" />
+              <input ref={searchRef} className="w-full rounded-md border border-line py-2 pl-9 pr-3 text-sm outline-none focus:border-brand" value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("common.searchPage")} />
             </label>
           </div>
         ) : null}
@@ -387,10 +391,10 @@ function AppContent() {
             const isOpen = compact || Boolean(query) || Boolean(openGroups[group.id]);
             return (
               <div key={group.id} className="mb-2">
-                <button className={`flex w-full items-center gap-2 rounded-md px-2 py-2 text-xs font-semibold uppercase text-muted hover:bg-surface ${compact ? "justify-center" : "justify-between"}`} onClick={() => toggleGroup(group.id)} title={compact ? group.label : undefined}>
+                <button className={`flex w-full items-center gap-2 rounded-md px-2 py-2 text-xs font-semibold uppercase text-muted hover:bg-surface ${compact ? "justify-center" : "justify-between"}`} onClick={() => toggleGroup(group.id)} title={compact ? t(`nav.group.${group.id}`, group.label) : undefined}>
                   <span className="flex items-center gap-2">
                     <GroupIcon size={16} />
-                    {!compact ? group.label : null}
+                    {!compact ? t(`nav.group.${group.id}`, group.label) : null}
                   </span>
                   {!compact ? <ChevronDown size={15} className={`transition ${isOpen ? "" : "-rotate-90"}`} /> : null}
                 </button>
@@ -403,11 +407,11 @@ function AppContent() {
                         <button
                           key={item.id}
                           onClick={() => openPage(item.id)}
-                          title={compact ? item.label : undefined}
+                          title={compact ? t(`nav.${item.id}`, item.label) : undefined}
                           className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm transition ${compact ? "justify-center px-2" : ""} ${active ? "bg-emerald-50 font-medium text-brand" : "text-slate-700 hover:bg-surface"}`}
                         >
                           <Icon size={17} />
-                          {!compact ? <span className="min-w-0 flex-1 truncate">{item.label}</span> : null}
+                          {!compact ? <span className="min-w-0 flex-1 truncate">{t(`nav.${item.id}`, item.label)}</span> : null}
                           {!compact && item.badge ? <span className="rounded-full bg-slate-900 px-1.5 py-0.5 text-[10px] font-semibold text-white">{item.badge}</span> : null}
                         </button>
                       );
@@ -419,7 +423,7 @@ function AppContent() {
           })}
         </nav>
         <div className="shrink-0 border-t border-line px-3 py-2 text-xs text-muted">
-          {compact ? <HeartPulse size={17} className="mx-auto text-emerald-600" /> : <div className="flex items-center justify-between"><span>V5 exploitation</span><span className="text-emerald-700">opérationnel</span></div>}
+          {compact ? <HeartPulse size={17} className="mx-auto text-emerald-600" /> : <div className="flex items-center justify-between"><span>{t("app.version")}</span><span className="text-emerald-700">{t("app.status.operational")}</span></div>}
         </div>
       </aside>
 
@@ -427,20 +431,24 @@ function AppContent() {
         <header className="shrink-0 border-b border-line bg-white px-4 py-3">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <div className="text-xs text-muted">{activeItem?.group ?? "ESN Forecast"} /</div>
-              <div className="text-lg font-semibold tracking-normal">{activeItem?.label ?? "Dashboard"}</div>
+              <div className="text-xs text-muted">{activeItem ? t(`nav.group.${activeItem.groupId}`, t("app.name")) : t("app.name")} /</div>
+              <div className="text-lg font-semibold tracking-normal">{activeItem ? t(`nav.${activeItem.id}`, activeItem.label) : t("nav.dashboard")}</div>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <select className="rounded-md border border-line px-3 py-2 text-sm" value={scenarioId} onChange={(event) => setScenarioId(event.target.value)}>
                 {scenarios.map((scenario) => <option key={scenario.id} value={scenario.id}>{scenario.name}</option>)}
               </select>
               <select className="rounded-md border border-line px-3 py-2 text-sm" value={horizon} onChange={(event) => setHorizon(Number(event.target.value))}>
-                {[3, 6, 12, 24].map((value) => <option key={value} value={value}>{value} mois</option>)}
+                {[3, 6, 12, 24].map((value) => <option key={value} value={value}>{value} {t("common.months")}</option>)}
               </select>
-              <button className="rounded-md border border-line p-2 text-muted hover:bg-surface" aria-label="Notifications"><Bell size={17} /></button>
-              {AUTHENTICATION_DISABLED ? <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-800">Auth désactivée</span> : null}
-              {!AUTHENTICATION_DISABLED ? <button className="rounded-md border border-line p-2 text-muted hover:bg-surface" aria-label="Changer mon mot de passe" title="Changer mon mot de passe" onClick={() => { window.location.hash = "#/change-password"; setAuthRoute(readAuthRoute()); }}><KeyRound size={17} /></button> : null}
-              {!AUTHENTICATION_DISABLED ? <button className="rounded-md border border-line p-2 text-muted hover:bg-surface" aria-label="Déconnexion" title={`Déconnexion - ${currentUser.name}`} onClick={() => void auth.logout()}><LogOut size={17} /></button> : null}
+              <select className="rounded-md border border-line px-3 py-2 text-sm" aria-label={t("common.language")} value={language} onChange={(event) => setLanguage(event.target.value as "fr" | "en")}>
+                <option value="fr">FR</option>
+                <option value="en">EN</option>
+              </select>
+              <button className="rounded-md border border-line p-2 text-muted hover:bg-surface" aria-label={t("common.notifications")}><Bell size={17} /></button>
+              {AUTHENTICATION_DISABLED ? <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-800">{t("auth.disabled")}</span> : null}
+              {!AUTHENTICATION_DISABLED ? <button className="rounded-md border border-line p-2 text-muted hover:bg-surface" aria-label={t("auth.changePassword")} title={t("auth.changePassword")} onClick={() => { window.location.hash = "#/change-password"; setAuthRoute(readAuthRoute()); }}><KeyRound size={17} /></button> : null}
+              {!AUTHENTICATION_DISABLED ? <button className="rounded-md border border-line p-2 text-muted hover:bg-surface" aria-label={t("auth.logout")} title={`${t("auth.logout")} - ${currentUser.name}`} onClick={() => void auth.logout()}><LogOut size={17} /></button> : null}
             </div>
           </div>
         </header>
@@ -562,6 +570,6 @@ function renderPage(page: string, scenarioId: string, horizon: number, setHorizo
   if (page === "onboarding") return <OnboardingPage />;
   if (page === "help") return <HelpPage pageKey="dashboard" />;
   if (page === "performance") return <PerformancePage />;
-  if (page === "skills") return <CapacityPage scenarioId={scenarioId} horizon={horizon} />;
+  if (page === "skills") return <SkillsPage />;
   return cfg ? <CrudPage title={cfg.title} path={cfg.path} fields={cfg.fields} columns={cfg.columns} initial={cfg.initial} /> : <Dashboard horizon={horizon} setHorizon={setHorizon} />;
 }

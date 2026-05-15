@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { translateStatusKey, useI18n } from "../i18n";
 
 export function PageHeader({ title, description, actions }: { title: string; description?: string; actions?: ReactNode }) {
   return (
@@ -13,12 +14,12 @@ export function PageHeader({ title, description, actions }: { title: string; des
 }
 
 export function StatusBadge({ label, tone = "neutral" }: { label: string; tone?: "neutral" | "good" | "warn" | "risk" }) {
+  const { t } = useI18n();
   const classes = {
     neutral: "border-slate-200 bg-slate-50 text-slate-700",
     good: "border-emerald-200 bg-emerald-50 text-emerald-700",
     warn: "border-amber-200 bg-amber-50 text-amber-700",
     risk: "border-red-200 bg-red-50 text-red-700"
   };
-  return <span className={`inline-flex rounded-full border px-2 py-0.5 text-xs font-medium ${classes[tone]}`}>{label}</span>;
+  return <span className={`inline-flex rounded-full border px-2 py-0.5 text-xs font-medium ${classes[tone]}`}>{t(translateStatusKey(label), label)}</span>;
 }
-

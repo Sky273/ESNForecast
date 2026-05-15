@@ -186,6 +186,21 @@ export async function recalculateRenegotiationCandidates() {
   return created.sort((a, b) => b.priorityScore - a.priorityScore);
 }
 
+export async function enrichMissionLabels<T extends { missionId?: string | null }>(rows: T[]) {
+  const missionIds = [...new Set(rows.map((row) => row.missionId).filter(Boolean))] as string[];
+  if (!missionIds.length) return rows;
+  const missions = await db.mission.findMany({ where: { id: { in: missionIds } }, include: { client: true } });
+  const missionsById = new Map(missions.map((mission: any) => [
+    mission.id,
+    {
+      missionTitle: mission.title,
+      missionLabel: mission.client?.name ? `${mission.title} - ${mission.client.name}` : mission.title,
+      clientName: mission.client?.name
+    }
+  ]));
+  return rows.map((row) => ({ ...row, ...(missionsById.get(String(row.missionId)) ?? {}) }));
+}
+
 export async function createPricingSimulation(missionId: string, payload: any) {
   const input = await buildMissionPricingInput(missionId);
   const output = simulatePricing({ ...input, ...payload });
@@ -240,6 +255,7 @@ export async function pricingDashboard() {
   const missions = await db.mission.findMany();
   const rows = await listUnderpricedMissions();
   const candidates = await db.renegotiationCandidate.findMany({ orderBy: { priorityScore: "desc" } });
+  const topCandidates = await enrichMissionLabels(candidates.slice(0, 8));
   const healthyCount = Math.max(0, missions.length - rows.filter((row) => ["underpriced", "critical", "renegotiation_recommended"].includes(row.pricingStatus)).length);
   return {
     missionsAnalyzed: missions.length,
@@ -249,7 +265,7 @@ export async function pricingDashboard() {
     potentialMonthlyGain: round(candidates.reduce((total: number, row: any) => total + row.monthlyImpactAmount, 0)),
     potentialAnnualGain: round(candidates.reduce((total: number, row: any) => total + row.annualizedImpactAmount, 0)),
     averageCurrentMargin: rows.length ? round(rows.reduce((total, row) => total + row.currentMarginRate, 0) / rows.length) : 0,
-    topCandidates: candidates.slice(0, 8),
+    topCandidates,
     underpriced: rows.slice(0, 10)
   };
 }

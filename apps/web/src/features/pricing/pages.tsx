@@ -47,6 +47,8 @@ function ActionButton({ children, tone = "neutral", onClick }: { children: React
   );
 }
 
+const missionLabel = (row: any) => row.missionLabel ?? row.missionTitle ?? row.mission?.title ?? row.missionId ?? "-";
+
 export function PricingDashboardPage() {
   const { data, refetch } = useApi<any>("/pricing/dashboard");
   const recalculate = async () => { await api("/pricing/renegotiation-candidates/recalculate", { method: "POST" }); refetch(); };
@@ -77,7 +79,7 @@ export function PricingDashboardPage() {
         <div>
           <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted">Top priorites</h2>
           <Table rows={data?.topCandidates ?? []} columns={[
-            { key: "missionId", label: "Mission" },
+            { key: "missionLabel", label: "Mission", render: missionLabel },
             { key: "priorityScore", label: "Score" },
             { key: "severity", label: "Sévérité", render: (row) => <StatusBadge label={row.severity} tone={tone(row.severity)} /> },
             { key: "currentDailyRate", label: "TJM actuel", render: (row) => money(row.currentDailyRate) },
@@ -138,7 +140,7 @@ export function PricingSimulatorPage() {
       <h2 className="mb-2 mt-5 text-sm font-semibold uppercase tracking-wide text-muted">Simulations enregistrees</h2>
       <Table rows={simulations ?? []} columns={[
         { key: "name", label: "Nom" },
-        { key: "missionId", label: "Mission" },
+        { key: "missionLabel", label: "Mission", render: missionLabel },
         { key: "createdAt", label: "Creee le", render: (row) => String(row.createdAt ?? "").slice(0, 10) },
         { key: "actions", label: "Actions", render: (row) => <div className="flex gap-2"><ActionButton onClick={() => { setEditingSimulationId(row.id); setSimulationName(row.name); }}>Editer</ActionButton><ActionButton tone="risk" onClick={() => removeSimulation(row.id)}>Supprimer</ActionButton></div> }
       ]} />
@@ -182,7 +184,7 @@ export function RenegotiationCandidatesPage() {
     <>
       <PageHeader title="Missions a renegocier" description="Priorisation des missions a renegocier avec score explicable et gains attendus." actions={<button className="rounded-md bg-brand px-3 py-2 text-sm font-medium text-white" onClick={recalculate}>Recalculer</button>} />
       <Table rows={data ?? []} columns={[
-        { key: "missionId", label: "Mission" },
+        { key: "missionLabel", label: "Mission", render: missionLabel },
         { key: "reason", label: "Raison" },
         { key: "priorityScore", label: "Score" },
         { key: "severity", label: "Severite", render: (row) => <StatusBadge label={row.severity} tone={tone(row.severity)} /> },
@@ -274,7 +276,7 @@ export function PricingHistoryPage() {
       </form>
       <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted">Decisions</h2>
       <Table rows={decisions ?? []} columns={[
-        { key: "missionId", label: "Mission" },
+        { key: "missionLabel", label: "Mission", render: missionLabel },
         { key: "decisionType", label: "Decision" },
         { key: "previousDailyRate", label: "Ancien TJM", render: (row) => money(row.previousDailyRate) },
         { key: "newDailyRate", label: "Nouveau TJM", render: (row) => money(row.newDailyRate) },
@@ -295,7 +297,7 @@ export function PricingHistoryPage() {
       </form>
       <h2 className="mb-2 mt-5 text-sm font-semibold uppercase tracking-wide text-muted">Exceptions de marge</h2>
       <Table rows={exceptions ?? []} columns={[
-        { key: "missionId", label: "Mission" },
+        { key: "missionLabel", label: "Mission", render: missionLabel },
         { key: "reason", label: "Raison" },
         { key: "targetReviewDate", label: "Revue", render: (row) => String(row.targetReviewDate ?? "").slice(0, 10) },
         { key: "status", label: "Statut", render: (row) => <StatusBadge label={row.status} tone={tone(row.status)} /> },
@@ -317,7 +319,7 @@ export function PricingReportPage() {
         <KpiCard label="Gain annuel" value={money(data?.dashboard?.potentialAnnualGain)} />
       </div>
       <Table rows={data?.candidates ?? []} columns={[
-        { key: "missionId", label: "Mission" },
+        { key: "missionLabel", label: "Mission", render: missionLabel },
         { key: "priorityScore", label: "Score" },
         { key: "reason", label: "Raison" },
         { key: "annualizedImpactAmount", label: "Impact annuel", render: (row) => money(row.annualizedImpactAmount) }
