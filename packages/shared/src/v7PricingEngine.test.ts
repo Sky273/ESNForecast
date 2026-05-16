@@ -43,6 +43,45 @@ describe("v7 pricing engine", () => {
     expect(result.costDelta).toBe(500);
   });
 
+  it("uses simulated billable days when the mission has no current assignment days", () => {
+    const result = simulatePricing({
+      revenue: 0,
+      billableDays: 0,
+      changedBillableDays: 20,
+      directCosts: 0,
+      targetMarginRate: 0.3,
+      minimumMarginRate: 0.2,
+      overheadAllocationMode: "none",
+      simulatedDailyRate: 720,
+      discountRate: 0.05
+    });
+
+    expect(result.simulatedDailyRate).toBe(684);
+    expect(result.revenue).toBe(13680);
+    expect(result.billableDays).toBe(20);
+  });
+
+  it("uses simulated direct daily cost to calculate floor and recommended rates", () => {
+    const result = simulatePricing({
+      revenue: 0,
+      billableDays: 0,
+      changedBillableDays: 20,
+      directCosts: 0,
+      simulatedDirectDailyCost: 450,
+      targetMarginRate: 0.3,
+      minimumMarginRate: 0.2,
+      overheadAllocationMode: "percentage_of_direct_cost",
+      overheadRate: 0.08,
+      simulatedDailyRate: 720,
+      discountRate: 0.05,
+      roundingMode: "nearest_10"
+    });
+
+    expect(result.fullDailyCost).toBe(486);
+    expect(result.floorDailyRate).toBe(610);
+    expect(result.recommendedDailyRate).toBe(700);
+  });
+
   it("builds an explainable renegotiation priority score", () => {
     const priority = calculateRenegotiationPriority({
       marginGap: -0.14,

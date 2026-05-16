@@ -9,6 +9,7 @@ import {
   ensurePricingSettings,
   getPricingContext,
   listUnderpricedMissions,
+  previewPricingSimulation,
   pricingDashboard,
   recalculateRenegotiationCandidates,
   toMissionPricingRow
@@ -83,6 +84,15 @@ pricingRouter.post("/pricing/simulate", async (req, res, next) => {
     const missionId = req.body?.missionId;
     if (!missionId) throw new ApiError(400, "VALIDATION_ERROR", "missionId est requis.");
     res.status(201).json(await createPricingSimulation(missionId, req.body));
+  } catch (error) {
+    next(error);
+  }
+});
+pricingRouter.post("/pricing/simulate-preview", async (req, res, next) => {
+  try {
+    const missionId = req.body?.missionId;
+    if (!missionId) throw new ApiError(400, "VALIDATION_ERROR", "missionId est requis.");
+    res.json(await previewPricingSimulation(missionId, req.body));
   } catch (error) {
     next(error);
   }

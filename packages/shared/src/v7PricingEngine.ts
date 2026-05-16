@@ -37,6 +37,7 @@ export type PricingSimulationInput = MissionPricingInput & {
   costIncreaseAmount?: number;
   costIncreaseRate?: number;
   changedBillableDays?: number;
+  simulatedDirectDailyCost?: number;
 };
 
 const round = (value: number) => Math.round(value * 100) / 100;
@@ -132,7 +133,10 @@ export function simulatePricing(input: PricingSimulationInput) {
   const billableDays = input.changedBillableDays ?? input.billableDays;
   const baseDailyRate = input.simulatedDailyRate ?? (input.billableDays ? input.revenue / input.billableDays : 0);
   const discountedRate = baseDailyRate * (1 - (input.discountRate ?? 0));
-  const directCosts = input.directCosts * (1 + (input.costIncreaseRate ?? 0)) + (input.costIncreaseAmount ?? 0);
+  const directCostsBase = input.simulatedDirectDailyCost !== undefined
+    ? input.simulatedDirectDailyCost * billableDays
+    : input.directCosts;
+  const directCosts = directCostsBase * (1 + (input.costIncreaseRate ?? 0)) + (input.costIncreaseAmount ?? 0);
   const result = calculateMissionPricing({
     ...input,
     billableDays,

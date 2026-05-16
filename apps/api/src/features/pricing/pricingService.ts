@@ -202,28 +202,51 @@ export async function enrichMissionLabels<T extends { missionId?: string | null 
 }
 
 export async function createPricingSimulation(missionId: string, payload: any) {
-  const input = await buildMissionPricingInput(missionId);
-  const output = simulatePricing({ ...input, ...payload });
+  const { pricingInput, effectivePayload, output } = await previewPricingSimulation(missionId, payload);
   const simulation = await db.pricingSimulation.create({
     data: {
-      organizationId: input.organizationId,
-      companyId: input.companyId,
+      organizationId: pricingInput.organizationId,
+      companyId: pricingInput.companyId,
       missionId,
-      scenarioId: payload?.scenarioId,
-      name: payload?.name ?? "Simulation pricing",
-      input: payload ?? {},
+      scenarioId: effectivePayload?.scenarioId,
+      name: effectivePayload?.name ?? "Simulation pricing",
+      input: effectivePayload ?? {},
       output,
-      createdBy: payload?.createdBy ?? "finance",
+      createdBy: effectivePayload?.createdBy ?? "finance",
       variants: {
         create: [
-          { name: "Actuel", dailyRate: input.billableDays ? input.revenue / input.billableDays : 0, discountRate: 0, result: calculateMissionPricing(input), isSelected: false },
-          { name: "Simule", dailyRate: output.simulatedDailyRate, discountRate: payload?.discountRate ?? 0, costAssumptions: payload ?? {}, result: output, isSelected: true }
+          { name: "Actuel", dailyRate: pricingInput.billableDays ? pricingInput.revenue / pricingInput.billableDays : 0, discountRate: 0, result: calculateMissionPricing(pricingInput), isSelected: false },
+          { name: "Simule", dailyRate: output.simulatedDailyRate, discountRate: effectivePayload?.discountRate ?? 0, costAssumptions: effectivePayload ?? {}, result: output, isSelected: true }
         ]
       }
     },
     include: { variants: true }
   });
   return simulation;
+}
+
+export async function previewPricingSimulation(missionId: string, payload: any) {
+  const input = await buildMissionPricingInput(missionId);
+  const requestedBillableDays = Number(payload?.changedBillableDays ?? payload?.billableDays ?? input.billableDays);
+  const requestedDirectDailyCost = Number(payload?.simulatedDirectDailyCost ?? payload?.directDailyCost ?? 0);
+  const effectivePayload = {
+    ...payload,
+    changedBillableDays: requestedBillableDays > 0 ? requestedBillableDays : 20,
+    simulatedDirectDailyCost: requestedDirectDailyCost > 0
+      ? requestedDirectDailyCost
+      : input.billableDays > 0
+        ? round(input.directCosts / input.billableDays)
+        : undefined
+  };
+  const output = simulatePricing({ ...input, ...effectivePayload });
+  return {
+    missionId,
+    name: effectivePayload?.name ?? "Simulation pricing",
+    input: effectivePayload ?? {},
+    output,
+    pricingInput: input,
+    effectivePayload
+  };
 }
 
 export function toMissionPricingRow(analysis: any) {

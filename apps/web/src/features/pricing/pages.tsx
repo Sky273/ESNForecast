@@ -1,5 +1,5 @@
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { FormEvent, ReactNode, useState } from "react";
+import { FormEvent, ReactNode, useEffect, useMemo, useState } from "react";
 import { api } from "../../api";
 import { KpiCard } from "../../components/KpiCard";
 import { PageHeader, StatusBadge } from "../../components/PageHeader";
@@ -48,6 +48,24 @@ function ActionButton({ children, tone = "neutral", onClick }: { children: React
 }
 
 const missionLabel = (row: any) => row.missionLabel ?? row.missionTitle ?? row.mission?.title ?? row.missionId ?? "-";
+
+function estimateMissionBillableDays(mission: any) {
+  const assignments = Array.isArray(mission?.assignments) ? mission.assignments : [];
+  return assignments.reduce((total: number, assignment: any) => {
+    const days = Number(assignment.billedDaysPerMonth ?? 20 * Number(assignment.occupancyRate ?? 1));
+    return total + (Number.isFinite(days) ? days : 0);
+  }, 0);
+}
+
+function estimateMissionDirectDailyCost(mission: any, billableDays: number) {
+  const assignments = Array.isArray(mission?.assignments) ? mission.assignments : [];
+  const totalCost = assignments.reduce((total: number, assignment: any) => {
+    const days = Number(assignment.billedDaysPerMonth ?? 20 * Number(assignment.occupancyRate ?? 1));
+    const dailyCost = Number(assignment.specificDailyCost ?? 0);
+    return total + (Number.isFinite(days) && Number.isFinite(dailyCost) ? days * dailyCost : 0);
+  }, 0);
+  return billableDays > 0 ? Math.round(totalCost / billableDays) : 0;
+}
 
 export function PricingDashboardPage() {
   const { data, refetch } = useApi<any>("/pricing/dashboard");
@@ -102,13 +120,57 @@ export function PricingSimulatorPage() {
   const [simulationName, setSimulationName] = useState("Simulation interactive");
   const [editingSimulationId, setEditingSimulationId] = useState("");
   const [dailyRate, setDailyRate] = useState(720);
+  const [billableDays, setBillableDays] = useState(20);
+  const [directDailyCost, setDirectDailyCost] = useState(450);
   const [discountRate, setDiscountRate] = useState(0.05);
   const [result, setResult] = useState<any | null>(null);
-  const run = async () => {
+  const selectedMission = useMemo(() => (missions ?? []).find((mission) => mission.id === (missionId || firstMission)), [missions, missionId, firstMission]);
+  useEffect(() => {
+    const missionBillableDays = estimateMissionBillableDays(selectedMission);
+    setBillableDays(missionBillableDays > 0 ? missionBillableDays : 20);
+    const missionDirectDailyCost = estimateMissionDirectDailyCost(selectedMission, missionBillableDays);
+    setDirectDailyCost(missionDirectDailyCost > 0 ? missionDirectDailyCost : 450);
+  }, [selectedMission?.id]);
+  const resetDraft = () => {
+    setEditingSimulationId("");
+    setSimulationName("Nouvelle simulation pricing");
+    setMissionId(firstMission);
+    const mission = (missions ?? []).find((item) => item.id === firstMission);
+    const missionBillableDays = estimateMissionBillableDays(mission);
+    setBillableDays(missionBillableDays > 0 ? missionBillableDays : 20);
+    const missionDirectDailyCost = estimateMissionDirectDailyCost(mission, missionBillableDays);
+    setDirectDailyCost(missionDirectDailyCost > 0 ? missionDirectDailyCost : 450);
+    setDailyRate(720);
+    setDiscountRate(0);
+    setResult(null);
+  };
+  const simulationPayload = () => {
     const targetMissionId = missionId || firstMission;
-    if (!targetMissionId) return;
-    setResult(await api("/pricing/simulate", { method: "POST", body: JSON.stringify({ missionId: targetMissionId, simulatedDailyRate: dailyRate, discountRate, name: simulationName }) }));
+    return { missionId: targetMissionId, simulatedDailyRate: dailyRate, changedBillableDays: billableDays, simulatedDirectDailyCost: directDailyCost, discountRate, name: simulationName };
+  };
+  const previewSimulation = async () => {
+    const payload = simulationPayload();
+    if (!payload.missionId) return;
+    setResult(await api("/pricing/simulate-preview", { method: "POST", body: JSON.stringify(payload) }));
+  };
+  const createSimulation = async () => {
+    const payload = simulationPayload();
+    if (!payload.missionId) return;
+    setResult(await api("/pricing/simulate", { method: "POST", body: JSON.stringify(payload) }));
+    setEditingSimulationId("");
     refetch();
+  };
+  const editSimulation = (simulation: any) => {
+    const input = simulation.input ?? {};
+    const output = simulation.output ?? {};
+    setEditingSimulationId(simulation.id);
+    setSimulationName(simulation.name ?? "Simulation pricing");
+    setMissionId(simulation.missionId ?? input.missionId ?? firstMission);
+    setDailyRate(Number(input.simulatedDailyRate ?? output.simulatedDailyRate ?? 720));
+    setBillableDays(Number(input.changedBillableDays ?? output.billableDays ?? 20));
+    setDirectDailyCost(Number(input.simulatedDirectDailyCost ?? output.directDailyCost ?? output.fullDailyCost ?? 450));
+    setDiscountRate(Number(input.discountRate ?? 0));
+    setResult(simulation);
   };
   const updateSimulation = async () => {
     if (!editingSimulationId) return;
@@ -123,11 +185,13 @@ export function PricingSimulatorPage() {
   };
   return (
     <>
-      <PageHeader title="Simulateur pricing" description="Simuler un TJM, une remise et mesurer l'impact sur marge, TJM plancher et TJM recommandé." actions={<div className="flex gap-2"><button className="rounded-md bg-brand px-3 py-2 text-sm font-medium text-white" onClick={run}>Simuler</button>{editingSimulationId ? <button className="rounded-md border border-line px-3 py-2 text-sm" onClick={updateSimulation}>Renommer</button> : null}</div>} />
-      <div className="mb-5 grid gap-3 rounded-lg border border-line bg-white p-4 md:grid-cols-4">
+      <PageHeader title="Simulateur pricing" description="Simuler un TJM, une remise et mesurer l'impact sur marge, TJM plancher et TJM recommandé." actions={<div className="flex gap-2"><button className="rounded-md border border-line px-3 py-2 text-sm" onClick={resetDraft}>Nouvelle simulation</button><button className="rounded-md border border-line px-3 py-2 text-sm" onClick={previewSimulation}>Simuler</button><button className="rounded-md bg-brand px-3 py-2 text-sm font-medium text-white" onClick={createSimulation}>Créer la simulation</button>{editingSimulationId ? <button className="rounded-md border border-line px-3 py-2 text-sm" onClick={updateSimulation}>Renommer</button> : null}</div>} />
+      <div className="mb-5 grid gap-3 rounded-lg border border-line bg-white p-4 md:grid-cols-6">
         <label className="text-sm">Nom simulation<input className="mt-1 w-full rounded-md border border-line px-3 py-2" value={simulationName} onChange={(event) => setSimulationName(event.target.value)} /></label>
-        <label className="text-sm">Mission<select className="mt-1 w-full rounded-md border border-line px-3 py-2" value={missionId || firstMission} onChange={(event) => setMissionId(event.target.value)}>{(missions ?? []).map((mission) => <option key={mission.id} value={mission.id}>{mission.title}</option>)}</select></label>
+        <label className="text-sm">Mission<select className="mt-1 w-full rounded-md border border-line px-3 py-2" value={missionId || firstMission} onChange={(event) => { setMissionId(event.target.value); setResult(null); }}>{(missions ?? []).map((mission) => <option key={mission.id} value={mission.id}>{mission.title}</option>)}</select></label>
         <label className="text-sm">TJM simule<input className="mt-1 w-full rounded-md border border-line px-3 py-2" type="number" value={dailyRate} onChange={(event) => setDailyRate(Number(event.target.value))} /></label>
+        <label className="text-sm">Jours facturables<input className="mt-1 w-full rounded-md border border-line px-3 py-2" type="number" min="1" step="0.5" value={billableDays} onChange={(event) => setBillableDays(Number(event.target.value))} /></label>
+        <label className="text-sm">Coût direct / jour<input className="mt-1 w-full rounded-md border border-line px-3 py-2" type="number" min="0" step="10" value={directDailyCost} onChange={(event) => setDirectDailyCost(Number(event.target.value))} /></label>
         <label className="text-sm">Remise<input className="mt-1 w-full rounded-md border border-line px-3 py-2" type="number" step="0.01" value={discountRate} onChange={(event) => setDiscountRate(Number(event.target.value))} /></label>
       </div>
       {result ? <div className="grid gap-3 md:grid-cols-5">
@@ -142,7 +206,7 @@ export function PricingSimulatorPage() {
         { key: "name", label: "Nom" },
         { key: "missionLabel", label: "Mission", render: missionLabel },
         { key: "createdAt", label: "Creee le", render: (row) => String(row.createdAt ?? "").slice(0, 10) },
-        { key: "actions", label: "Actions", render: (row) => <div className="flex gap-2"><ActionButton onClick={() => { setEditingSimulationId(row.id); setSimulationName(row.name); }}>Éditer</ActionButton><ActionButton tone="risk" onClick={() => removeSimulation(row.id)}>Supprimer</ActionButton></div> }
+        { key: "actions", label: "Actions", render: (row) => <div className="flex gap-2"><ActionButton onClick={() => editSimulation(row)}>Éditer</ActionButton><ActionButton tone="risk" onClick={() => removeSimulation(row.id)}>Supprimer</ActionButton></div> }
       ]} />
     </>
   );
