@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   analyzeStrategicDependencies,
+  buildStaffingForecast,
   buildAiExecutiveAnalysis,
   calculateCapacityPlan,
   calculateExecutiveSituation,
@@ -163,6 +164,42 @@ describe("V2 executive engine", () => {
     const capacity = calculateCapacityPlan(input);
     expect(capacity[0].skillId).toBe("java");
     expect(capacity[0].gapFTE).toBe(-1);
+  });
+
+  it("builds mission-level staffing forecast rows from skill needs and assignments", () => {
+    const forecast = buildStaffingForecast({
+      months: ["2026-06"],
+      clients: input.clients,
+      missions: input.missions,
+      missionSkillNeeds: input.missionSkillNeeds,
+      resourceSkills: input.resourceSkills,
+      assignments: [{
+        id: "assign1",
+        missionId: "m1",
+        resourceType: "employee",
+        resourceId: "e1",
+        startDate: "2026-06-01",
+        estimatedEndDate: "2026-08-31",
+        occupancyRate: 0.75,
+        calculationMode: "business_days"
+      }],
+      skills: [{ id: "java", name: "Java", category: "Backend" }],
+      resources: [{ resourceType: "employee", resourceId: "e1", label: "Alice Martin" }]
+    });
+
+    expect(forecast.summary.partialNeeds).toBe(1);
+    expect(forecast.summary.uncoveredNeeds).toBe(0);
+    expect(forecast.rows[0]).toMatchObject({
+      month: "2026-06",
+      missionTitle: "Mission A",
+      clientName: "Client A",
+      skillLabel: "Java (Backend)",
+      requiredFTE: 2,
+      assignedFTE: 0.75,
+      gapFTE: -1.25,
+      status: "partial"
+    });
+    expect(forecast.rows[0].assignedResources[0].resourceName).toBe("Alice Martin");
   });
 
   it("runs a deterministic Monte Carlo summary", () => {

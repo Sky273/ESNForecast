@@ -5,6 +5,7 @@ import {
   buildAiAnalysis,
   buildCapacity,
   buildExecutiveSituation,
+  buildMissionStaffingForecast,
   buildMonteCarlo,
   buildRulesEvaluation,
   buildStrategicRisks,
@@ -335,8 +336,7 @@ deliveryRouter.use("/capacity/mission-skill-needs", crud("missionSkillNeed" as a
 
 deliveryRouter.get("/staffing/forecast", async (req, res, next) => {
   try {
-    const capacity = await buildCapacity(stringParam(req.query.scenarioId), numberParam(req.query.horizon));
-    res.json({ capacity, uncoveredNeeds: capacity.filter((row) => row.status === "shortage") });
+    res.json(await buildMissionStaffingForecast(stringParam(req.query.scenarioId), numberParam(req.query.horizon)));
   } catch (error) {
     next(error);
   }

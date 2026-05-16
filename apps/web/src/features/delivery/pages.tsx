@@ -123,6 +123,38 @@ export function CapacityPage({ scenarioId, horizon }: V2Context) {
   ]} />;
 }
 
+export function StaffingForecastPage({ scenarioId, horizon }: V2Context) {
+  const { data } = useObject(`/staffing/forecast?scenarioId=${scenarioId}&horizon=${horizon}`);
+  const rows = data?.rows ?? [];
+  const summary = data?.summary ?? {};
+  return (
+    <section className="space-y-5">
+      <PageTitle title="Staffing prévisionnel" subtitle="Vue par mission des besoins, affectations prévues et trous de staffing à traiter." />
+      <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
+        <KpiCard label="Besoins" value={String(summary.totalNeeds ?? 0)} />
+        <KpiCard label="Couverts" value={String(summary.staffedNeeds ?? 0)} tone="good" />
+        <KpiCard label="Partiels" value={String(summary.partialNeeds ?? 0)} tone={(summary.partialNeeds ?? 0) > 0 ? "risk" : "good"} />
+        <KpiCard label="Non couverts" value={String(summary.uncoveredNeeds ?? 0)} tone={(summary.uncoveredNeeds ?? 0) > 0 ? "risk" : "good"} />
+        <KpiCard label="ETP requis" value={String(summary.totalRequiredFTE ?? 0)} />
+        <KpiCard label="Gap ETP" value={String(summary.totalGapFTE ?? 0)} tone={(summary.totalGapFTE ?? 0) < 0 ? "risk" : "good"} />
+      </div>
+      <SimpleTable rows={rows} columns={[
+        ["month", "Mois"],
+        ["missionTitle", "Mission"],
+        ["clientName", "Client"],
+        ["skillLabel", "Compétence"],
+        ["requiredLevel", "Niveau"],
+        ["requiredFTE", "ETP requis"],
+        ["assignedFTE", "ETP affecté"],
+        ["gapFTE", "Gap"],
+        ["status", "Statut", (value: string) => <Badge tone={value === "uncovered" ? "risk" : value === "partial" || value === "surplus" ? "warn" : "good"}>{staffingStatusLabel(value)}</Badge>],
+        ["assignedResources", "Ressources", (value: any[]) => value?.length ? value.map((resource) => `${resource.resourceName} (${resource.occupancyRate} ETP)`).join(", ") : "Aucune"],
+        ["recommendedAction", "Action recommandée"]
+      ]} />
+    </section>
+  );
+}
+
 export function SkillsPage() {
   const { rows: employees } = useRows("/employees");
   const { rows: partners } = useRows("/partner-resources");
@@ -268,6 +300,16 @@ function PageTitle({ title, subtitle }: { title: string; subtitle: string }) {
 
 function ChartCard({ title, children }: { title: string; children: React.ReactElement }) {
   return <div className="rounded-lg border border-line bg-white p-4"><h2 className="mb-4 text-base font-semibold">{title}</h2><div className="h-80"><ResponsiveContainer>{children}</ResponsiveContainer></div></div>;
+}
+
+function staffingStatusLabel(value: string) {
+  const labels: Record<string, string> = {
+    staffed: "Couvert",
+    partial: "Partiel",
+    uncovered: "Non couvert",
+    surplus: "Sur-staffé"
+  };
+  return labels[value] ?? value;
 }
 
 function SimpleTable({ rows, columns }: { rows: any[]; columns: any[] }) {

@@ -26,7 +26,7 @@ export async function sendAccountActivationEmail(user: { id: string; email: stri
   const { token, expiresAt } = await createActivationToken(user.id);
   const email = buildAccountActivationEmail({
     appName: "ESN Forecast",
-    baseUrl: process.env.APP_PUBLIC_URL ?? "http://localhost:5173",
+    baseUrl: process.env.APP_PUBLIC_URL ?? process.env.PUBLIC_WEB_BASE_URL ?? "http://localhost:5173",
     token,
     userName: user.name
   });

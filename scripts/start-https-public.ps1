@@ -44,6 +44,45 @@ function Resolve-CloudflaredPath {
 
 $cloudflaredCommand = Resolve-CloudflaredPath
 
+function Start-LogRelay {
+  param([hashtable]$Entry, [string]$Pattern = "")
+  $Entry.LogOffset = 0
+  $Entry.LogPattern = $Pattern
+}
+
+function Receive-LogRelays {
+  foreach ($child in $script:children) {
+    if (-not $child.ContainsKey("LogOffset")) {
+      continue
+    }
+    $path = $child.Stdout
+    if (-not (Test-Path $path)) {
+      continue
+    }
+    $stream = [System.IO.File]::Open($path, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite)
+    try {
+      if ($child.LogOffset -gt $stream.Length) {
+        $child.LogOffset = 0
+      }
+      $stream.Seek([int64]$child.LogOffset, [System.IO.SeekOrigin]::Begin) | Out-Null
+      $reader = New-Object System.IO.StreamReader($stream)
+      $content = $reader.ReadToEnd()
+      $child.LogOffset = $stream.Position
+    } finally {
+      $stream.Dispose()
+    }
+    if (-not $content) {
+      continue
+    }
+    $lines = $content -split "`r?`n" | Where-Object { $_ }
+    foreach ($line in $lines) {
+      if (-not $child.LogPattern -or $line -match $child.LogPattern) {
+        Write-Host $line -ForegroundColor Cyan
+      }
+    }
+  }
+}
+
 function Start-LoggedProcess {
   param(
     [string]$Name,
@@ -260,6 +299,7 @@ try {
   $env:DATABASE_URL = $DatabaseUrl
   $env:PORT = "$ApiPort"
   $env:PUBLIC_WEB_BASE_URL = $publicWebBaseUrl
+  $env:APP_PUBLIC_URL = $publicWebBaseUrl
   $env:PUBLIC_API_BASE_URL = $publicApiBaseUrl
   $env:BRIDGE_REDIRECT_URI = "$publicApiBaseUrl/connectors/bridge/oauth/callback"
   $env:VITE_API_URL = $publicApiBaseUrl
@@ -297,6 +337,7 @@ try {
   }
 
   $api = Start-LoggedProcess -Name "api-public" -Command "node" -Arguments @("--import", "tsx", "src/server.ts") -WorkingDirectory (Join-Path $root "apps\api")
+  Start-LogRelay -Entry $api -Pattern "account-activation|mail:disabled"
   Wait-HttpOk -Url "http://127.0.0.1:$ApiPort/api/health" -TimeoutSeconds 30
   Update-TrackedProcessFromPort -Entry $api -Port $ApiPort
   Write-Host "API local ready: http://127.0.0.1:$ApiPort/api/health" -ForegroundColor Green
@@ -320,6 +361,7 @@ try {
 
   while ($true) {
     Start-Sleep -Seconds 2
+    Receive-LogRelays
     foreach ($child in $script:children) {
       $process = $child.Process
       $process.Refresh()

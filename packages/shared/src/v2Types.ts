@@ -1,4 +1,4 @@
-import type { Client, Mission } from "./types";
+import type { Client, Mission, MissionAssignment, ResourceType } from "./types";
 import type { ScenarioMonthProjection, ScenarioProjectionResult } from "./v1Types";
 
 export type ResourceTypeV2 = "employee" | "partner_resource" | "freelancer";
@@ -127,6 +127,72 @@ export interface CapacityPlanRow {
   requiredFTE: number;
   gapFTE: number;
   status: "surplus" | "covered" | "shortage";
+}
+
+export interface StaffingForecastResourceLabel {
+  resourceType: ResourceType;
+  resourceId: string;
+  label: string;
+}
+
+export interface StaffingForecastSkill {
+  id: string;
+  name: string;
+  category?: string | null;
+}
+
+export interface StaffingForecastInput {
+  months: string[];
+  clients: Client[];
+  missions: Mission[];
+  missionSkillNeeds: MissionSkillNeed[];
+  resourceSkills: ResourceSkill[];
+  assignments: MissionAssignment[];
+  skills: StaffingForecastSkill[];
+  resources: StaffingForecastResourceLabel[];
+}
+
+export interface StaffingForecastAssignedResource {
+  assignmentId: string;
+  resourceType: ResourceType;
+  resourceId: string;
+  resourceName: string;
+  occupancyRate: number;
+  startDate: string;
+  estimatedEndDate?: string | null;
+}
+
+export interface StaffingForecastRow {
+  id: string;
+  month: string;
+  missionId: string;
+  missionTitle: string;
+  clientId: string;
+  clientName: string;
+  skillId: string;
+  skillLabel: string;
+  requiredLevel: string;
+  priority: string;
+  requiredFTE: number;
+  assignedFTE: number;
+  gapFTE: number;
+  status: "staffed" | "partial" | "uncovered" | "surplus";
+  assignedResources: StaffingForecastAssignedResource[];
+  recommendedAction: string;
+}
+
+export interface StaffingForecastResult {
+  rows: StaffingForecastRow[];
+  summary: {
+    totalNeeds: number;
+    staffedNeeds: number;
+    partialNeeds: number;
+    uncoveredNeeds: number;
+    surplusNeeds: number;
+    totalRequiredFTE: number;
+    totalAssignedFTE: number;
+    totalGapFTE: number;
+  };
 }
 
 export interface BusinessRule {

@@ -29,7 +29,7 @@ import {
 } from "./features/connected-finance";
 import {
   ActualsVariancesPage, AiAnalysisPage, CapacityPage, ExecutiveCockpitPage, MonthlyClosePage, MonteCarloPage, PaymentsPage, RealInvoicesPage,
-  ReconciliationPage, SkillsPage, StrategicRisksPage, TimesheetsPage, V2CrudPage
+  ReconciliationPage, SkillsPage, StaffingForecastPage, StrategicRisksPage, TimesheetsPage, V2CrudPage
 } from "./features/delivery";
 import {
   AdminPage, AlertsPage, AuditPage, BenchPage, BillingPage, CashInPage, CashOutPage, ProfitabilityMissionsPage, ProfitabilityResourcesPage,
@@ -525,7 +525,8 @@ function renderPage(page: string, scenarioId: string, horizon: number, setHorizo
   if (page === "profitabilityMissions") return <ProfitabilityMissionsPage scenarioId={scenarioId} horizon={horizon} />;
   if (page === "assignments") return <Assignments />;
   if (page === "profitabilityResources") return <ProfitabilityResourcesPage scenarioId={scenarioId} horizon={horizon} />;
-  if (page === "capacity" || page === "staffingForecast") return <CapacityPage scenarioId={scenarioId} horizon={horizon} />;
+  if (page === "capacity") return <CapacityPage scenarioId={scenarioId} horizon={horizon} />;
+  if (page === "staffingForecast") return <StaffingForecastPage scenarioId={scenarioId} horizon={horizon} />;
   if (page === "bench") return <BenchPage scenarioId={scenarioId} horizon={horizon} />;
   if (page === "billing") return <BillingPage />;
   if (page === "realInvoices") return <RealInvoicesPage />;

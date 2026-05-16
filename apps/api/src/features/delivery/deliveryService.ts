@@ -1,6 +1,7 @@
 import {
   analyzeStrategicDependencies,
   buildAiExecutiveAnalysis,
+  buildStaffingForecast,
   calculateCapacityPlan,
   calculateExecutiveSituation,
   calculateMonthlyVariance,
@@ -94,6 +95,46 @@ export async function buildCapacity(scenarioId?: string, horizon?: number) {
       skillCategory: skill?.category ?? null,
       skillLabel: skill ? `${skill.name}${skill.category ? ` (${skill.category})` : ""}` : row.skillId
     };
+  });
+}
+
+export async function buildMissionStaffingForecast(scenarioId?: string, horizon?: number) {
+  const [input, assignments, skills, employees, partnerResources, freelancers] = await Promise.all([
+    buildV2Input(scenarioId, horizon),
+    prisma.missionAssignment.findMany(),
+    prisma.skill.findMany(),
+    prisma.employee.findMany(),
+    prisma.partnerResource.findMany(),
+    prisma.freelancer.findMany()
+  ]);
+
+  const resources = [
+    ...employees.map((resource) => ({
+      resourceType: "employee" as const,
+      resourceId: resource.id,
+      label: `${resource.firstName} ${resource.lastName}`.trim()
+    })),
+    ...partnerResources.map((resource) => ({
+      resourceType: "partner" as const,
+      resourceId: resource.id,
+      label: `${resource.firstName} ${resource.lastName}`.trim()
+    })),
+    ...freelancers.map((resource) => ({
+      resourceType: "freelancer" as const,
+      resourceId: resource.id,
+      label: `${resource.firstName} ${resource.lastName}`.trim()
+    }))
+  ];
+
+  return buildStaffingForecast({
+    months: input.scenarioProjection.months.map((month) => month.month),
+    clients: input.clients,
+    missions: input.missions,
+    missionSkillNeeds: input.missionSkillNeeds,
+    resourceSkills: input.resourceSkills,
+    assignments: serializeDates(assignments) as any,
+    skills,
+    resources
   });
 }
 

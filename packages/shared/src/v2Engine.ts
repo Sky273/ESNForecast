@@ -1,4 +1,4 @@
-import type { Client, Mission } from "./types";
+import type { Client, Mission, MissionAssignment, ResourceType } from "./types";
 import type { ScenarioMonthProjection } from "./v1Types";
 import type {
   AiExecutiveAnalysis,
@@ -12,6 +12,8 @@ import type {
   MonteCarloResult,
   ProbabilisticAssumption,
   RuleAlert,
+  StaffingForecastInput,
+  StaffingForecastResult,
   StrategicDependencyResult,
   Timesheet,
   V2ExecutiveInput
@@ -107,6 +109,74 @@ export function calculateCapacityPlan(input: V2ExecutiveInput): CapacityPlanRow[
   }
 
   return rows.sort((a, b) => a.month.localeCompare(b.month) || a.skillId.localeCompare(b.skillId));
+}
+
+export function buildStaffingForecast(input: StaffingForecastInput): StaffingForecastResult {
+  const clientsById = new Map(input.clients.map((client) => [client.id, client]));
+  const missionsById = new Map(input.missions.map((mission) => [mission.id, mission]));
+  const skillsById = new Map(input.skills.map((skill) => [skill.id, skill]));
+  const resourceNames = new Map(input.resources.map((resource) => [resourceKey(resource.resourceType, resource.resourceId), resource.label]));
+  const resourceSkills = new Set(input.resourceSkills.map((skill) => resourceSkillKey(skill.resourceType as ResourceType, skill.resourceId, skill.skillId)));
+
+  const rows = input.months.flatMap((month) => {
+    const [year, monthNumber] = month.split("-").map(Number);
+    return input.missionSkillNeeds
+      .filter((need) => dateRangeIntersectsMonth(need, year, monthNumber))
+      .map((need) => {
+        const mission = missionsById.get(need.missionId);
+        const client = mission ? clientsById.get(mission.clientId) : undefined;
+        const skill = skillsById.get(need.skillId);
+        const assignedResources = input.assignments
+          .filter((assignment) => assignment.missionId === need.missionId)
+          .filter((assignment) => assignmentIntersectsMonth(assignment, year, monthNumber))
+          .filter((assignment) => resourceSkills.has(resourceSkillKey(assignment.resourceType, assignment.resourceId, need.skillId)))
+          .map((assignment) => ({
+            assignmentId: assignment.id,
+            resourceType: assignment.resourceType,
+            resourceId: assignment.resourceId,
+            resourceName: resourceNames.get(resourceKey(assignment.resourceType, assignment.resourceId)) ?? assignment.resourceId,
+            occupancyRate: assignment.occupancyRate,
+            startDate: assignment.startDate,
+            estimatedEndDate: assignment.estimatedEndDate
+          }));
+        const assignedFTE = roundRatio(assignedResources.reduce((total, resource) => total + resource.occupancyRate, 0));
+        const gapFTE = roundRatio(assignedFTE - need.requiredFTE);
+        const status: "staffed" | "partial" | "uncovered" | "surplus" = staffingStatus(assignedFTE, need.requiredFTE);
+
+        return {
+          id: `${month}:${need.id}`,
+          month,
+          missionId: need.missionId,
+          missionTitle: mission?.title ?? need.missionId,
+          clientId: mission?.clientId ?? "",
+          clientName: client?.name ?? mission?.clientId ?? "",
+          skillId: need.skillId,
+          skillLabel: skill ? `${skill.name}${skill.category ? ` (${skill.category})` : ""}` : need.skillId,
+          requiredLevel: need.requiredLevel,
+          priority: need.priority,
+          requiredFTE: need.requiredFTE,
+          assignedFTE,
+          gapFTE,
+          status,
+          assignedResources,
+          recommendedAction: staffingRecommendedAction(status, gapFTE)
+        };
+      });
+  }).sort((a, b) => a.month.localeCompare(b.month) || a.missionTitle.localeCompare(b.missionTitle) || a.skillLabel.localeCompare(b.skillLabel));
+
+  return {
+    rows,
+    summary: {
+      totalNeeds: rows.length,
+      staffedNeeds: rows.filter((row) => row.status === "staffed").length,
+      partialNeeds: rows.filter((row) => row.status === "partial").length,
+      uncoveredNeeds: rows.filter((row) => row.status === "uncovered").length,
+      surplusNeeds: rows.filter((row) => row.status === "surplus").length,
+      totalRequiredFTE: roundRatio(rows.reduce((total, row) => total + row.requiredFTE, 0)),
+      totalAssignedFTE: roundRatio(rows.reduce((total, row) => total + row.assignedFTE, 0)),
+      totalGapFTE: roundRatio(rows.reduce((total, row) => total + row.gapFTE, 0))
+    }
+  };
 }
 
 export function runMonteCarloSimulation(input: V2ExecutiveInput, iterations: number): MonteCarloResult {
@@ -289,6 +359,42 @@ function dateRangeIntersectsMonth(need: MissionSkillNeed, year: number, month: n
   const monthStart = new Date(Date.UTC(year, month - 1, 1));
   const monthEndDate = new Date(Date.UTC(year, month, 0));
   return start <= monthEndDate && end >= monthStart;
+}
+
+function assignmentIntersectsMonth(assignment: MissionAssignment, year: number, month: number) {
+  const start = new Date(`${assignment.startDate}T00:00:00.000Z`);
+  const end = assignment.estimatedEndDate ? new Date(`${assignment.estimatedEndDate}T00:00:00.000Z`) : new Date(Date.UTC(year, month, 0));
+  const monthStart = new Date(Date.UTC(year, month - 1, 1));
+  const monthEndDate = new Date(Date.UTC(year, month, 0));
+  return start <= monthEndDate && end >= monthStart;
+}
+
+function resourceKey(resourceType: ResourceType, resourceId: string) {
+  return `${resourceType}:${resourceId}`;
+}
+
+function resourceSkillKey(resourceType: ResourceType, resourceId: string, skillId: string) {
+  return `${resourceKey(resourceType, resourceId)}:${skillId}`;
+}
+
+function staffingStatus(assignedFTE: number, requiredFTE: number): "staffed" | "partial" | "uncovered" | "surplus" {
+  if (assignedFTE <= EPSILON) return "uncovered";
+  if (assignedFTE + EPSILON < requiredFTE) return "partial";
+  if (assignedFTE > requiredFTE + EPSILON) return "surplus";
+  return "staffed";
+}
+
+function staffingRecommendedAction(status: ReturnType<typeof staffingStatus>, gapFTE: number) {
+  switch (status) {
+    case "uncovered":
+      return "Affecter une ressource, recruter ou sous-traiter le besoin.";
+    case "partial":
+      return `Compléter la couverture de ${roundRatio(Math.abs(gapFTE))} ETP.`;
+    case "surplus":
+      return "Vérifier le sur-staffing ou réallouer la capacité excédentaire.";
+    default:
+      return "Couverture suffisante.";
+  }
 }
 
 function monthEnd(year: number, month: number) {

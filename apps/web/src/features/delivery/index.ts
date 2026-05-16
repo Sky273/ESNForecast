@@ -9,6 +9,7 @@ export {
   RealInvoicesPage,
   ReconciliationPage,
   SkillsPage,
+  StaffingForecastPage,
   StrategicRisksPage,
   TimesheetsPage,
   V2CrudPage
