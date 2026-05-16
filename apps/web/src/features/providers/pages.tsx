@@ -105,7 +105,18 @@ function ProviderConnectionPageLegacy() {
 }
 
 export function ProviderHealthPage() {
-  const { data } = useObject("/connector-health");
+  const { data, reload } = useObject("/connector-health");
+  const [message, setMessage] = useState("");
+  const runConnectorAction = async (connectorId: string, action: "incremental-sync" | "full-sync" | "revoke" | "reconnect") => {
+    setMessage("");
+    const response = await api<any>(`/connectors/${connectorId}/${action}`, { method: "POST", body: JSON.stringify({ returnUrl: `${window.location.origin}/#/provider-connection` }) });
+    await reload();
+    if (response?.authorizationUrl) {
+      window.location.assign(response.authorizationUrl);
+      return;
+    }
+    setMessage(action === "revoke" ? "Connecteur révoqué." : action === "reconnect" ? "Reconnexion initialisée." : "Synchronisation lancée.");
+  };
   return (
     <section className="space-y-5">
       <PageTitle title="Santé connecteurs V4" subtitle="Vue opérationnelle provider, syncs, webhooks, erreurs et rate limits." />
@@ -115,20 +126,43 @@ export function ProviderHealthPage() {
         <KpiCard label="Expirés" value={String(data?.summary?.expired ?? 0)} tone={(data?.summary?.expired ?? 0) > 0 ? "risk" : "good"} />
         <KpiCard label="Deconnectés" value={String(data?.summary?.disconnected ?? 0)} />
       </div>
-      <SimpleTable rows={data?.connectors ?? []} columns={[["provider", "Provider"], ["type", "Type"], ["name", "Nom"], ["status", "Statut", statusBadge], ["lastSyncAt", "Dernier sync"], ["errorMessage", "Erreur"]]} />
+      {message ? <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">{message}</div> : null}
+      <SimpleTable rows={data?.connectors ?? []} columns={[
+        ["provider", "Provider"], ["type", "Type"], ["name", "Nom"], ["status", "Statut", statusBadge], ["lastSyncAt", "Dernier sync"], ["errorMessage", "Erreur"],
+        ["id", "Actions", (_value: string, row: any) => (
+          <div className="flex flex-wrap gap-2">
+            <button className="rounded border border-line px-2 py-1 text-xs" onClick={() => void runConnectorAction(row.id, "incremental-sync")}>Sync</button>
+            <button className="rounded border border-line px-2 py-1 text-xs" onClick={() => void runConnectorAction(row.id, "full-sync")}>Full sync</button>
+            <button className="rounded border border-line px-2 py-1 text-xs" onClick={() => void runConnectorAction(row.id, "reconnect")}>Reconnecter</button>
+            <button className="rounded border border-line px-2 py-1 text-xs text-red-700" onClick={() => void runConnectorAction(row.id, "revoke")}>Révoquer</button>
+          </div>
+        )]
+      ]} />
+      <SimpleTable rows={data?.runs ?? []} columns={[
+        ["connectorId", "Connecteur"], ["status", "Statut", statusBadge], ["startedAt", "Début"], ["finishedAt", "Fin"], ["importedCount", "Importés"], ["updatedCount", "Mis à jour"], ["errorCount", "Erreurs"]
+      ]} />
     </section>
   );
 }
 
 export function ProviderErrorsPage() {
-  const { rows } = useRows("/provider-errors");
+  const { rows, reload } = useRows("/provider-errors");
+  const resolve = async (id: string) => { await api(`/provider-errors/${id}/resolve`, { method: "POST", body: JSON.stringify({}) }); await reload(); };
+  const retry = async (id: string) => { await api(`/provider-errors/${id}/retry`, { method: "POST", body: JSON.stringify({}) }); await reload(); };
   return <TablePage title="Erreurs provider" subtitle="Erreurs normalisées avec action utilisateur, retry et diagnostic technique." rows={rows} columns={[
     ["provider", "Provider"],
     ["errorCategory", "Catégorie"],
     ["userMessage", "Message"],
     ["retryable", "Retry"],
     ["requiresUserAction", "Action utilisateur"],
-    ["createdAt", "Date"]
+    ["createdAt", "Date"],
+    ["resolvedAt", "Résolue"],
+    ["id", "Actions", (_value: string, row: any) => row.resolvedAt ? "" : (
+      <div className="flex gap-2">
+        {row.retryable ? <button className="rounded border border-line px-2 py-1 text-xs" onClick={() => void retry(row.id)}>Relancer</button> : null}
+        <button className="rounded border border-line px-2 py-1 text-xs" onClick={() => void resolve(row.id)}>Marquer résolue</button>
+      </div>
+    )]
   ]} />;
 }
 
@@ -147,9 +181,25 @@ export function ProviderRateLimitsPage() {
 }
 
 export function DuplicatesPage() {
-  const { rows } = useRows("/duplicates");
+  const { rows, reload } = useRows("/duplicates");
+  const updateDuplicate = async (id: string, action: "merge" | "ignore" | "not-duplicate") => {
+    await api(`/duplicates/${id}/${action}`, { method: "POST", body: JSON.stringify({}) });
+    await reload();
+  };
   return <TablePage title="Doublons multi-source" subtitle="Doublons potentiels entre CSV, banque, compta et saisie manuelle." rows={rows} columns={[
-    ["entityType", "Entité"], ["sourceAType", "Source A"], ["sourceBType", "Source B"], ["confidenceScore", "Score"], ["reason", "Raison"], ["status", "Statut"]
+    ["entityType", "Entit\u00e9"],
+    ["sourceAType", "Source A"],
+    ["sourceBType", "Source B"],
+    ["confidenceScore", "Score"],
+    ["reason", "Raison"],
+    ["status", "Statut"],
+    ["id", "Actions", (_value: string, row: any) => ["merged", "ignored", "not_duplicate"].includes(row.status) ? "" : (
+      <div className="flex flex-wrap gap-2">
+        <button className="rounded border border-line px-2 py-1 text-xs" onClick={() => void updateDuplicate(row.id, "merge")}>Fusionner</button>
+        <button className="rounded border border-line px-2 py-1 text-xs" onClick={() => void updateDuplicate(row.id, "ignore")}>Ignorer</button>
+        <button className="rounded border border-line px-2 py-1 text-xs" onClick={() => void updateDuplicate(row.id, "not-duplicate")}>Pas un doublon</button>
+      </div>
+    )]
   ]} />;
 }
 
@@ -199,14 +249,16 @@ function PageTitle({ title, subtitle }: { title: string; subtitle: string }) {
 
 function useRows(path: string) {
   const [rows, setRows] = useState<any[]>([]);
-  useEffect(() => { void api<any[]>(path).then(setRows).catch(() => setRows([])); }, [path]);
-  return { rows };
+  const reload = async () => setRows(await api<any[]>(path));
+  useEffect(() => { void reload().catch(() => setRows([])); }, [path]);
+  return { rows, reload };
 }
 
 function useObject(path: string) {
   const [data, setData] = useState<any>(null);
-  useEffect(() => { void api<any>(path).then(setData).catch(() => setData(null)); }, [path]);
-  return { data };
+  const reload = async () => setData(await api<any>(path));
+  useEffect(() => { void reload().catch(() => setData(null)); }, [path]);
+  return { data, reload };
 }
 
 function readProviderCallbackResult() {

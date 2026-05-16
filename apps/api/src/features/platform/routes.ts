@@ -18,6 +18,64 @@ async function organizationId() {
   return organization.id;
 }
 
+async function buildPortableExport(orgId: string, companyId?: string | null) {
+  const companyFilter = companyId ? { companyId } : {};
+  const organizationFilter = { organizationId: orgId };
+  const [
+    organization,
+    companies,
+    clients,
+    missions,
+    employees,
+    invoices,
+    payments,
+    bankAccounts,
+    bankTransactions,
+    connectors,
+    budgets,
+    objectives,
+    actionPlans,
+    documents
+  ] = await Promise.all([
+    db.organization.findUnique({ where: { id: orgId } }),
+    db.company.findMany({ where: organizationFilter }),
+    db.client.findMany({ take: 500 }),
+    db.mission.findMany({ include: { client: true }, take: 500 }),
+    db.employee.findMany({ take: 500 }),
+    db.invoice.findMany({ where: companyFilter, take: 1000 }),
+    db.payment.findMany({ where: companyFilter, take: 1000 }),
+    db.bankAccount.findMany({ where: organizationFilter, take: 500 }),
+    db.bankTransaction.findMany({ where: organizationFilter, orderBy: { transactionDate: "desc" }, take: 5000 }),
+    db.connector.findMany({ where: organizationFilter, take: 100 }),
+    db.budget.findMany({ where: { organizationId: orgId }, include: { lines: true }, take: 100 }),
+    db.objective.findMany({ where: { organizationId: orgId }, take: 500 }),
+    db.actionPlan.findMany({ where: { organizationId: orgId }, include: { items: true }, take: 500 }),
+    db.document.findMany({ where: companyFilter, take: 500 })
+  ]);
+  return {
+    generatedAt: new Date().toISOString(),
+    organization,
+    companies,
+    clients,
+    missions,
+    employees,
+    invoices,
+    payments,
+    bankAccounts,
+    bankTransactions,
+    connectors: connectors.map((connector: any) => ({ ...connector, configuration: maskConnectorConfiguration(connector.configuration) })),
+    budgets,
+    objectives,
+    actionPlans,
+    documents
+  };
+}
+
+function maskConnectorConfiguration(configuration: unknown) {
+  if (!configuration || typeof configuration !== "object") return configuration;
+  return Object.fromEntries(Object.entries(configuration as Record<string, unknown>).map(([key, value]) => [key, /secret|token|password|key/i.test(key) ? "masked" : value]));
+}
+
 platformRouter.get("/ready", async (_req, res, next) => {
   try {
     await prisma.$queryRaw`SELECT 1`;
@@ -274,6 +332,18 @@ platformRouter.post("/backups", async (req, res, next) => {
   try {
     const orgId = req.body?.organizationId ?? await organizationId();
     const company = await firstCompany();
+    const payload = await buildPortableExport(orgId, company?.id);
+    const sizeBytes = Buffer.byteLength(JSON.stringify(payload), "utf8");
+    res.status(201).json(await db.backupRun.create({ data: { organizationId: orgId, companyId: company?.id, type: req.body?.type ?? "full_organization", status: "success", filePath: `backups/${orgId}-${Date.now()}.json`, sizeBytes, createdBy: "admin", completedAt: new Date() } }));
+  } catch (error) {
+    next(error);
+  }
+});
+
+platformRouter.post("/backups.demo", async (req, res, next) => {
+  try {
+    const orgId = req.body?.organizationId ?? await organizationId();
+    const company = await firstCompany();
     res.status(201).json(await db.backupRun.create({ data: { organizationId: orgId, companyId: company?.id, type: req.body?.type ?? "full_organization", status: "success", filePath: `backups/${orgId}-${Date.now()}.json`, sizeBytes: 42800, createdBy: "admin", complètedAt: new Date() } }));
   } catch (error) {
     next(error);
@@ -289,6 +359,17 @@ platformRouter.get("/backups", async (req, res, next) => {
 });
 
 platformRouter.get("/backups/:id/download", async (req, res, next) => {
+  try {
+    const backup = await db.backupRun.findUnique({ where: { id: req.params.id } });
+    if (!backup) throw new ApiError(404, "NOT_FOUND", "Sauvegarde introuvable.");
+    res.setHeader("Content-Disposition", `attachment; filename="${backup.id}.json"`);
+    res.json({ metadata: backup, data: await buildPortableExport(backup.organizationId, backup.companyId) });
+  } catch (error) {
+    next(error);
+  }
+});
+
+platformRouter.get("/backups.demo/:id/download", async (req, res, next) => {
   try {
     const backup = await db.backupRun.findUnique({ where: { id: req.params.id } });
     if (!backup) throw new ApiError(404, "NOT_FOUND", "Sauvegarde introuvable.");
@@ -320,13 +401,44 @@ platformRouter.post("/exports/full", async (req, res, next) => {
   try {
     const orgId = req.body?.organizationId ?? await organizationId();
     const company = await firstCompany();
+    const payload = await buildPortableExport(orgId, company?.id);
+    const format = req.body?.format ?? "json";
+    res.status(201).json(await db.exportRun.create({ data: { organizationId: orgId, companyId: company?.id, type: "full", format, status: "success", filePath: `exports/${orgId}-${Date.now()}.${format}`, sizeBytes: Buffer.byteLength(JSON.stringify(payload), "utf8"), createdBy: "admin", completedAt: new Date() } }));
+  } catch (error) {
+    next(error);
+  }
+});
+
+platformRouter.post("/exports.demo/full", async (req, res, next) => {
+  try {
+    const orgId = req.body?.organizationId ?? await organizationId();
+    const company = await firstCompany();
     res.status(201).json(await db.exportRun.create({ data: { organizationId: orgId, companyId: company?.id, type: "full", format: req.body?.format ?? "json", status: "success", filePath: `exports/${orgId}-${Date.now()}.zip`, sizeBytes: 64000, createdBy: "admin", complètedAt: new Date() } }));
   } catch (error) {
     next(error);
   }
 });
 
+platformRouter.get("/exports", async (req, res, next) => {
+  try {
+    res.json(await db.exportRun.findMany({ orderBy: { createdAt: "desc" }, take: take(req.query.take, 50) }));
+  } catch (error) {
+    next(error);
+  }
+});
+
 platformRouter.get("/exports/:id/download", async (req, res, next) => {
+  try {
+    const exportRun = await db.exportRun.findUnique({ where: { id: req.params.id } });
+    if (!exportRun) throw new ApiError(404, "NOT_FOUND", "Export introuvable.");
+    res.setHeader("Content-Disposition", `attachment; filename="${exportRun.id}.json"`);
+    res.json({ metadata: exportRun, data: await buildPortableExport(exportRun.organizationId, exportRun.companyId) });
+  } catch (error) {
+    next(error);
+  }
+});
+
+platformRouter.get("/exports.demo/:id/download", async (req, res, next) => {
   try {
     const exportRun = await db.exportRun.findUnique({ where: { id: req.params.id } });
     if (!exportRun) throw new ApiError(404, "NOT_FOUND", "Export introuvable.");

@@ -1,7 +1,7 @@
 import type React from "react";
 import { useEffect, useMemo, useState } from "react";
 import { Bar, BarChart, CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { api } from "../../api";
+import { API_URL, api } from "../../api";
 import { CrudPage } from "../../components/CrudPage";
 import { Badge, money, percent } from "../../components/Format";
 import { KpiCard } from "../../components/KpiCard";
@@ -266,6 +266,113 @@ export function V2CrudPage({ kind }: { kind: "plannedHires" | "rules" | "notific
   if (kind === "documents") return <CrudPage title="Documents" path="/documents" initial={{ companyId: "", entityType: "mission", entityId: "", fileName: "", mimeType: "application/pdf", size: 0, storagePath: "", category: "contract" }} fields={[{ name: "companyId", label: "Société", type: "select", optionsPath: "/companies", optionLabelKey: "name", optionValueKey: "id", placeholder: "Sélectionner une société" }, { name: "entityType", label: "Entité", type: "select", options: [{ label: "Mission", value: "mission" }, { label: "Facture", value: "invoice" }, { label: "Client", value: "client" }, { label: "Paiement", value: "payment" }, { label: "Autre", value: "other" }] }, { name: "entityId", label: "Entité liée", type: "select", optionDependsOn: "entityType", optionSourcesByValue: { mission: { path: "/missions", optionLabelKey: "title" }, invoice: { path: "/invoices", optionLabelKey: "invoiceNumber" }, client: { path: "/clients", optionLabelKey: "name" }, payment: { path: "/payments", optionLabelFields: ["paymentDate", "amount"] } }, placeholder: "Sélectionner une entite" }, { name: "fileName", label: "Fichier" }, { name: "mimeType", label: "MIME" }, { name: "size", label: "Taille", type: "number" }, { name: "storagePath", label: "Chemin" }, { name: "category", label: "Catégorie", type: "select", options: ["contract", "invoice", "report", "support", "other"].map((value) => ({ label: value, value })) }]} columns={[{ key: "fileName", label: "Fichier" }, { key: "entityType", label: "Entité" }, { key: "entityId", label: "Entité liée" }, { key: "category", label: "Catégorie" }, { key: "uploadedAt", label: "Ajoute le" }]} />;
   if (kind === "offers") return <CrudPage title="Offres et devis" path="/offers" initial={{ clientId: "", title: "", status: "draft", pricingMode: "daily_rate", totalAmount: 100000, expectedMargin: 30000, probability: 0.5 }} fields={[{ name: "clientId", label: "Client", type: "select", optionsPath: "/clients", optionLabelKey: "name", optionValueKey: "id", placeholder: "Sélectionner un client" }, { name: "title", label: "Titre" }, { name: "status", label: "Statut", type: "select", options: ["draft", "sent", "won", "lost", "cancelled"].map((value) => ({ label: value, value })) }, { name: "pricingMode", label: "Prix", type: "select", options: ["daily_rate", "fixed_price", "mixed"].map((value) => ({ label: value, value })) }, { name: "totalAmount", label: "Montant", type: "number" }, { name: "expectedMargin", label: "Marge", type: "number" }, { name: "probability", label: "Probabilité", type: "number" }]} columns={[{ key: "title", label: "Offre" }, { key: "status", label: "Statut" }, { key: "totalAmount", label: "Montant", render: (row: any) => money(row.totalAmount) }, { key: "expectedMargin", label: "Marge", render: (row: any) => money(row.expectedMargin) }]} />;
   return <ConnectorsPage />;
+}
+
+export function DocumentsPage() {
+  const [rows, setRows] = useState<any[]>([]);
+  const [companies, setCompanies] = useState<any[]>([]);
+  const [missions, setMissions] = useState<any[]>([]);
+  const [clients, setClients] = useState<any[]>([]);
+  const [invoices, setInvoices] = useState<any[]>([]);
+  const [payments, setPayments] = useState<any[]>([]);
+  const [file, setFile] = useState<File | null>(null);
+  const [draft, setDraft] = useState({ companyId: "", entityType: "mission", entityId: "", category: "contract", notes: "" });
+  const [error, setError] = useState("");
+  const [uploading, setUploading] = useState(false);
+
+  const load = async () => setRows(await api<any[]>("/documents"));
+  useEffect(() => {
+    void load();
+    void api<any[]>("/companies").then((data) => { setCompanies(data); setDraft((current) => ({ ...current, companyId: current.companyId || data[0]?.id || "" })); });
+    void api<any[]>("/missions").then(setMissions);
+    void api<any[]>("/clients").then(setClients);
+    void api<any[]>("/invoices").then(setInvoices).catch(() => setInvoices([]));
+    void api<any[]>("/payments").then(setPayments).catch(() => setPayments([]));
+  }, []);
+
+  const entityOptions = useMemo(() => {
+    if (draft.entityType === "mission") return missions.map((item) => ({ value: item.id, label: item.title }));
+    if (draft.entityType === "client") return clients.map((item) => ({ value: item.id, label: item.name }));
+    if (draft.entityType === "invoice") return invoices.map((item) => ({ value: item.id, label: item.invoiceNumber ?? item.id }));
+    if (draft.entityType === "payment") return payments.map((item) => ({ value: item.id, label: `${item.paymentDate ?? ""} - ${money(item.amount)}` }));
+    return [];
+  }, [clients, draft.entityType, invoices, missions, payments]);
+
+  useEffect(() => {
+    setDraft((current) => ({ ...current, entityId: entityOptions[0]?.value ?? "" }));
+  }, [draft.entityType, entityOptions]);
+
+  const upload = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setError("");
+    if (!file) {
+      setError("Sélectionnez un fichier à téléverser.");
+      return;
+    }
+    if (!draft.companyId || !draft.entityId) {
+      setError("Sélectionnez une société et une entité liée.");
+      return;
+    }
+    setUploading(true);
+    try {
+      await api("/documents/upload", {
+        method: "POST",
+        body: JSON.stringify({
+          ...draft,
+          fileName: file.name,
+          mimeType: file.type || "application/octet-stream",
+          contentBase64: await fileToBase64(file)
+        })
+      });
+      setFile(null);
+      setDraft((current) => ({ ...current, notes: "" }));
+      await load();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Le document n'a pas pu être téléversé.");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const remove = async (id: string) => {
+    await api(`/documents/${id}`, { method: "DELETE" });
+    await load();
+  };
+
+  return (
+    <section className="space-y-5">
+      <PageTitle title="Documents" subtitle="Téléversement, classement et téléchargement des pièces liées aux missions, clients, factures et paiements." />
+      <form className="rounded-lg border border-line bg-white p-4" onSubmit={upload}>
+        <div className="grid gap-3 md:grid-cols-3">
+          <label className="text-sm">Société<select className="mt-1 w-full rounded-md border border-line px-3 py-2" value={draft.companyId} onChange={(event) => setDraft({ ...draft, companyId: event.target.value })}>{companies.map((company) => <option key={company.id} value={company.id}>{company.name}</option>)}</select></label>
+          <label className="text-sm">Entité<select className="mt-1 w-full rounded-md border border-line px-3 py-2" value={draft.entityType} onChange={(event) => setDraft({ ...draft, entityType: event.target.value })}>{["mission", "client", "invoice", "payment"].map((value) => <option key={value} value={value}>{value}</option>)}</select></label>
+          <label className="text-sm">Élément lié<select className="mt-1 w-full rounded-md border border-line px-3 py-2" value={draft.entityId} onChange={(event) => setDraft({ ...draft, entityId: event.target.value })}>{entityOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
+          <label className="text-sm">Catégorie<select className="mt-1 w-full rounded-md border border-line px-3 py-2" value={draft.category} onChange={(event) => setDraft({ ...draft, category: event.target.value })}>{["contract", "invoice", "report", "support", "other"].map((value) => <option key={value} value={value}>{value}</option>)}</select></label>
+          <label className="text-sm md:col-span-2">Fichier<input className="mt-1 w-full rounded-md border border-line px-3 py-2" type="file" onChange={(event) => setFile(event.target.files?.[0] ?? null)} /></label>
+          <label className="text-sm md:col-span-3">Notes<textarea className="mt-1 w-full rounded-md border border-line px-3 py-2" value={draft.notes} onChange={(event) => setDraft({ ...draft, notes: event.target.value })} /></label>
+        </div>
+        {error ? <div className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div> : null}
+        <button className="mt-4 rounded-md bg-brand px-4 py-2 text-sm font-medium text-white disabled:opacity-60" disabled={uploading}>{uploading ? "Téléversement..." : "Téléverser"}</button>
+      </form>
+      <SimpleTable rows={rows} columns={[
+        ["fileName", "Fichier"],
+        ["entityType", "Entité"],
+        ["category", "Catégorie"],
+        ["size", "Taille", (value: number) => `${Math.round((value ?? 0) / 1024)} Ko`],
+        ["uploadedAt", "Ajouté le"],
+        ["id", "Actions", (_value: string, row: any) => <div className="flex gap-2"><a className="rounded border border-line px-2 py-1 text-xs" href={`${API_URL}/documents/${row.id}/download`}>Télécharger</a><button className="rounded border border-line px-2 py-1 text-xs text-red-700" onClick={() => void remove(row.id)}>Supprimer</button></div>]
+      ]} />
+    </section>
+  );
+}
+
+function fileToBase64(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result ?? "").split(",")[1] ?? "");
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
 }
 
 function ConnectorsPage() {

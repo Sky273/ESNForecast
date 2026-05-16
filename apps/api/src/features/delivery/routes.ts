@@ -1,5 +1,7 @@
 import { Router } from "express";
 import { createHash } from "node:crypto";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import path from "node:path";
 import { prisma } from "../../db";
 import {
   buildAiAnalysis,
@@ -86,6 +88,52 @@ deliveryRouter.use("/invoices", crud("invoice" as any));
 deliveryRouter.use("/payments", crud("payment" as any));
 deliveryRouter.use("/planned-hires", crud("plannedHire" as any));
 deliveryRouter.use("/business-rules", crud("businessRule" as any));
+
+deliveryRouter.post("/documents/upload", async (req, res, next) => {
+  try {
+    const { contentBase64, fileName, mimeType, companyId, entityType, entityId, category, notes } = req.body ?? {};
+    if (!contentBase64 || !fileName || !mimeType || !companyId || !entityType || !entityId) {
+      return res.status(400).json({ error: "Document upload requires companyId, entityType, entityId, fileName, mimeType and contentBase64." });
+    }
+    const content = Buffer.from(String(contentBase64), "base64");
+    const document = await prisma.document.create({
+      data: {
+        companyId,
+        entityType,
+        entityId,
+        fileName: sanitizeFileName(fileName),
+        mimeType,
+        size: content.length,
+        storagePath: "",
+        category: category ?? "other",
+        notes
+      }
+    });
+    const storagePath = path.join("documents", `${document.id}-${document.fileName}`);
+    const absolutePath = path.join(process.cwd(), ".data", storagePath);
+    await mkdir(path.dirname(absolutePath), { recursive: true });
+    await writeFile(absolutePath, content);
+    const updated = await prisma.document.update({ where: { id: document.id }, data: { storagePath } });
+    res.status(201).json(serializeDates(updated));
+  } catch (error) {
+    next(error);
+  }
+});
+
+deliveryRouter.get("/documents/:id/download", async (req, res, next) => {
+  try {
+    const document = await prisma.document.findUnique({ where: { id: req.params.id } });
+    if (!document?.storagePath) return res.status(404).json({ error: "Document file not found." });
+    const absolutePath = path.join(process.cwd(), ".data", document.storagePath);
+    const content = await readFile(absolutePath);
+    res.setHeader("Content-Type", document.mimeType);
+    res.setHeader("Content-Disposition", `attachment; filename="${encodeURIComponent(document.fileName)}"`);
+    res.send(content);
+  } catch (error) {
+    next(error);
+  }
+});
+
 deliveryRouter.use("/documents", crud("document" as any, { orderBy: { uploadedAt: "desc" } }));
 deliveryRouter.use("/offers", crud("offer" as any, { include: { lines: true } }));
 deliveryRouter.use("/workflows", crud("approvalWorkflow" as any));
@@ -580,6 +628,10 @@ function sanitize(data: Record<string, unknown>) {
   delete copy.createdAt;
   delete copy.updatedAt;
   return copy;
+}
+
+function sanitizeFileName(value: string) {
+  return value.replace(/[<>:"/\\|?*\u0000-\u001F]/g, "_").slice(0, 180);
 }
 
 function buildWhere(query: Record<string, unknown>) {

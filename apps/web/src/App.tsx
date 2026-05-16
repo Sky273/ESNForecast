@@ -28,7 +28,7 @@ import {
   ForecastReliabilityPage, ImportedAccountingPage, RealTreasuryPage, ReforecastPage, RunwayPage
 } from "./features/connected-finance";
 import {
-  ActualsVariancesPage, AiAnalysisPage, CapacityPage, ExecutiveCockpitPage, MonthlyClosePage, MonteCarloPage, PaymentsPage, RealInvoicesPage,
+  ActualsVariancesPage, AiAnalysisPage, CapacityPage, DocumentsPage, ExecutiveCockpitPage, MonthlyClosePage, MonteCarloPage, PaymentsPage, RealInvoicesPage,
   ReconciliationPage, SkillsPage, StaffingForecastPage, StrategicRisksPage, TimesheetsPage, V2CrudPage
 } from "./features/delivery";
 import {
@@ -560,7 +560,7 @@ function renderPage(page: string, scenarioId: string, horizon: number, setHorizo
   if (page === "aiAnalysis") return <AiAnalysisPage scenarioId={scenarioId} horizon={horizon} />;
   if (page === "rules") return <V2CrudPage kind="rules" />;
   if (page === "notifications") return <V2CrudPage kind="notifications" />;
-  if (page === "documents") return <V2CrudPage kind="documents" />;
+  if (page === "documents") return <DocumentsPage />;
   if (page === "connectors") return <V2CrudPage kind="connectors" />;
   if (page === "alerts") return <AlertsPage scenarioId={scenarioId} horizon={horizon} />;
   if (page === "reports") return <ReportsPage scenarioId={scenarioId} horizon={horizon} />;

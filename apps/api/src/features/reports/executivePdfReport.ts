@@ -210,6 +210,164 @@ export function buildCodirPdf(report: { payload: any; report?: any }) {
   return pdf.finish();
 }
 
+export function buildBudgetForecastActualPdf(report: any) {
+  const landing = report.landing ?? {};
+  const variances = asArray(report.variances);
+  const actions = asArray(report.actions);
+  const staffing = asArray(report.staffing);
+  const conditions = asArray(report.conditions);
+  const pdf = new Pdf();
+
+  pdf.addPage();
+  pdf.fillRect(0, 0, W, 96, "0.04 0.12 0.18");
+  pdf.text("ESN Forecast", margin, 34, 18, "F2", "1 1 1");
+  pdf.text("Budget / Forecast / Actual", margin, 61, 24, "F2", "1 1 1");
+  pdf.text(`Exercice ${report.fiscalYear ?? "-"} - genere le ${new Date(report.generatedAt ?? Date.now()).toLocaleDateString("fr-FR")}`, margin, 84, 9, "F1", "0.79 0.88 1");
+
+  const revenueGap = landing.revenueGap ?? 0;
+  const status = revenueGap < 0 ? "Sous trajectoire" : "Sur trajectoire";
+  pdf.rect(390, 30, 150, 34, revenueGap < 0 ? "1 0.95 0.86" : "0.89 0.98 0.94", revenueGap < 0 ? "0.92 0.45 0.1" : "0.13 0.55 0.35");
+  pdf.text(status, 410, 52, 12, "F2", revenueGap < 0 ? "0.65 0.25 0.05" : "0.04 0.37 0.22");
+
+  pdf.text("Synthese annuelle", margin, 132, 16, "F2");
+  const cards = [
+    ["Budget CA", money(landing.budgetRevenue), "Objectif annuel"],
+    ["Realise a date", money(landing.actualRevenueToDate), "Donnees observees"],
+    ["Forecast restant", money(landing.forecastRevenueRemaining), "Reste a produire"],
+    ["Atterrissage CA", money(landing.projectedAnnualRevenue), "Projection annuelle"],
+    ["Ecart CA", money(landing.revenueGap), "Vs budget"],
+    ["Probabilite", percent(landing.achievementProbability), "Atteinte budget"]
+  ];
+  cards.forEach((card, index) => {
+    const col = index % 3;
+    const rowIndex = Math.floor(index / 3);
+    const x = margin + col * 171;
+    const y = 170 + rowIndex * 88;
+    const risk = card[0] === "Ecart CA" && revenueGap < 0;
+    pdf.rect(x, y, 155, 66, risk ? "1 0.95 0.95" : "1 1 1", risk ? "0.95 0.45 0.45" : "0.82 0.86 0.9");
+    pdf.text(card[0], x + 12, y + 18, 9, "F1", "0.29 0.34 0.43");
+    pdf.text(card[1], x + 12, y + 41, 15, "F2", risk ? "0.7 0.1 0.1" : "0.04 0.12 0.18");
+    pdf.text(card[2], x + 12, y + 57, 8, "F1", "0.39 0.45 0.55");
+  });
+
+  pdf.text("Ecarts prioritaires", margin, 380, 14, "F2");
+  let y = 408;
+  tableHeader(pdf, margin, y, ["Periode", "Categorie", "Ecart", "Severite", "Statut"], [70, 150, 95, 85, 90]);
+  y += 24;
+  variances.slice(0, 9).forEach((variance: any, index: number) => {
+    if (index % 2 === 0) pdf.fillRect(margin, y - 13, 490, 24, "0.98 0.99 1");
+    row(pdf, y, [
+      `${variance.month ?? "-"} ${variance.fiscalYear ?? ""}`.trim(),
+      variance.category ?? "-",
+      money(variance.varianceAmount),
+      variance.severity ?? "-",
+      variance.status ?? "-"
+    ], [70, 150, 95, 85, 90]);
+    y += 24;
+  });
+
+  pdf.text("Actions de pilotage", margin, 670, 14, "F2");
+  y = 698;
+  (actions.length ? actions : [{ title: "Aucune action ouverte", status: "n/a", ownerUserId: "" }]).slice(0, 4).forEach((action: any) => {
+    pdf.rect(margin, y - 16, 512, 32, "1 1 1", "0.86 0.89 0.93");
+    pdf.text(`${action.title ?? "Action"} - ${action.status ?? ""}`, margin + 10, y + 1, 9, "F2");
+    pdf.text(action.ownerUserId ? `Responsable: ${action.ownerUserId}` : "Responsable non renseigne", margin + 320, y + 1, 8, "F1", "0.39 0.45 0.55");
+    y += 38;
+  });
+  footer(pdf, 1);
+
+  pdf.addPage();
+  pageHeader(pdf, "Conditions et staffing", "Conditions de reussite et besoins capacitaires pour tenir la trajectoire.");
+  pdf.text("Conditions de reussite", margin, 118, 14, "F2");
+  y = 146;
+  conditions.slice(0, 8).forEach((condition: any, index: number) => {
+    pdf.line(margin, y - 12, margin + 512, y - 12);
+    pdf.text(`${index + 1}. ${condition.status ?? "unknown"} - ${condition.riskLevel ?? "medium"}`, margin, y, 9, "F2");
+    pdf.wrapped(condition.description ?? "Condition non renseignee", margin + 160, y, 340, 8, 11);
+    y += 36;
+  });
+
+  pdf.text("Staffing budgetaire", margin, 492, 14, "F2");
+  y = 520;
+  tableHeader(pdf, margin, y, ["Mois", "Jours requis", "Capacite", "Gap jours", "Gap ETP"], [70, 105, 105, 105, 85]);
+  y += 24;
+  staffing.slice(0, 10).forEach((rowData: any, index: number) => {
+    if (index % 2 === 0) pdf.fillRect(margin, y - 13, 470, 24, "0.98 0.99 1");
+    row(pdf, y, [
+      String(rowData.month ?? "-"),
+      formatNumber(rowData.requiredBillableDays),
+      formatNumber((rowData.internalCapacityDays ?? 0) + (rowData.externalCapacityDays ?? 0)),
+      formatNumber(rowData.gapDays),
+      formatNumber(rowData.staffingGapFTE)
+    ], [70, 105, 105, 105, 85]);
+    y += 24;
+  });
+  footer(pdf, 2);
+
+  return pdf.finish();
+}
+
+export function buildPricingMarginPdf(report: any) {
+  const dashboard = report.dashboard ?? {};
+  const candidates = asArray(report.candidates);
+  const exceptions = asArray(report.exceptions);
+  const pdf = new Pdf();
+
+  pdf.addPage();
+  pdf.fillRect(0, 0, W, 96, "0.04 0.12 0.18");
+  pdf.text("ESN Forecast", margin, 34, 18, "F2", "1 1 1");
+  pdf.text("Rapport pricing et marge mission", margin, 61, 23, "F2", "1 1 1");
+  pdf.text(`Genere le ${new Date(report.generatedAt ?? Date.now()).toLocaleDateString("fr-FR")}`, margin, 84, 9, "F1", "0.79 0.88 1");
+
+  const summary = dashboard.summary ?? {};
+  const cards = [
+    ["Missions analysees", String(summary.analyzedMissions ?? 0), "Perimetre pricing"],
+    ["Missions saines", String(summary.healthyMissions ?? 0), "Marge conforme"],
+    ["Sous-margees", String(summary.underpricedMissions ?? 0), "A traiter"],
+    ["A renegocier", String(summary.renegotiationCandidates ?? candidates.length), "Priorites"],
+    ["Impact mensuel", money(summary.monthlyPotentialImpact), "Gain potentiel"],
+    ["Impact annuel", money(summary.annualPotentialImpact), "Gain annualise"]
+  ];
+  cards.forEach((card, index) => {
+    const col = index % 3;
+    const rowIndex = Math.floor(index / 3);
+    const x = margin + col * 171;
+    const y = 142 + rowIndex * 88;
+    const risk = ["Sous-margees", "A renegocier"].includes(card[0]) && Number(card[1]) > 0;
+    pdf.rect(x, y, 155, 66, risk ? "1 0.95 0.95" : "1 1 1", risk ? "0.95 0.45 0.45" : "0.82 0.86 0.9");
+    pdf.text(card[0], x + 12, y + 18, 9, "F1", "0.29 0.34 0.43");
+    pdf.text(card[1], x + 12, y + 41, 15, "F2", risk ? "0.7 0.1 0.1" : "0.04 0.12 0.18");
+    pdf.text(card[2], x + 12, y + 57, 8, "F1", "0.39 0.45 0.55");
+  });
+
+  pdf.text("Top priorites de renegociation", margin, 354, 14, "F2");
+  let y = 382;
+  tableHeader(pdf, margin, y, ["Mission", "TJM actuel", "TJM cible", "Score", "Impact annuel"], [190, 80, 80, 60, 100]);
+  y += 24;
+  candidates.slice(0, 10).forEach((candidate: any, index: number) => {
+    if (index % 2 === 0) pdf.fillRect(margin, y - 13, 510, 24, "0.98 0.99 1");
+    row(pdf, y, [
+      candidate.missionTitle ?? candidate.missionId ?? "Mission",
+      money(candidate.currentDailyRate),
+      money(candidate.targetDailyRate ?? candidate.recommendedDailyRate),
+      String(candidate.priorityScore ?? "-"),
+      money(candidate.annualizedImpactAmount)
+    ], [190, 80, 80, 60, 100]);
+    y += 24;
+  });
+
+  pdf.text("Exceptions de marge", margin, 692, 14, "F2");
+  y = 720;
+  (exceptions.length ? exceptions : [{ reason: "Aucune exception active", status: "n/a" }]).slice(0, 4).forEach((exception: any) => {
+    pdf.rect(margin, y - 16, 512, 30, "1 1 1", "0.86 0.89 0.93");
+    pdf.text(`${exception.missionTitle ?? "Mission"} - ${exception.status ?? ""}`, margin + 10, y + 1, 9, "F2");
+    pdf.wrapped(exception.reason ?? "Exception sans commentaire", margin + 210, y, 290, 8, 11);
+    y += 36;
+  });
+  footer(pdf, 1);
+  return pdf.finish();
+}
+
 function cover(pdf: Pdf, _projection: Projection, data: any) {
   pdf.addPage();
   pdf.fillRect(0, 0, W, 96, "0.04 0.12 0.18");

@@ -2,6 +2,7 @@ import { Router } from "express";
 import { calculateFloorRate, calculateRecommendedRate } from "@esn-forecast/shared";
 import { prisma } from "../../db";
 import { ApiError } from "../../middleware/requestContext";
+import { buildPricingMarginPdf } from "../reports/executivePdfReport";
 import {
   calculateMissionProfile,
   createPricingSimulation,
@@ -198,7 +199,20 @@ pricingRouter.post("/pricing/margin-exceptions/:id/revoke", async (req, res, nex
 
 pricingRouter.get("/reports/pricing-margin.json", async (_req, res, next) => { try { res.json({ generatedAt: new Date().toISOString(), dashboard: await pricingDashboard(), candidates: await enrichMissionLabels(await db.renegotiationCandidate.findMany({ orderBy: { priorityScore: "desc" } })), exceptions: await enrichMissionLabels(await db.marginException.findMany()) }); } catch (error) { next(error); } });
 pricingRouter.get("/reports/pricing-margin.csv", async (_req, res, next) => { try { const rows = await listUnderpricedMissions(); res.type("text/csv").send(["mission,client,status,currentRate,floorRate,recommendedRate,monthlyImpact,annualImpact", ...rows.map((row) => `${row.missionTitle},${row.clientName},${row.pricingStatus},${row.currentDailyRate},${row.calculatedFloorDailyRate},${row.recommendedDailyRate},${row.monthlyImpactAmount},${row.annualizedImpactAmount}`)].join("\n")); } catch (error) { next(error); } });
-pricingRouter.get("/reports/pricing-margin.pdf", (_req, res) => res.type("application/pdf").send(Buffer.from("PDF démo V7 Pricing Margin")));
+pricingRouter.get("/reports/pricing-margin.pdf", async (_req, res, next) => {
+  try {
+    const payload = {
+      generatedAt: new Date().toISOString(),
+      dashboard: await pricingDashboard(),
+      candidates: await enrichMissionLabels(await db.renegotiationCandidate.findMany({ orderBy: { priorityScore: "desc" } })),
+      exceptions: await enrichMissionLabels(await db.marginException.findMany())
+    };
+    res.type("application/pdf").send(buildPricingMarginPdf(payload));
+  } catch (error) {
+    next(error);
+  }
+});
+pricingRouter.get("/reports/pricing-margin.demo.pdf", (_req, res) => res.type("application/pdf").send(Buffer.from("PDF démo V7 Pricing Margin")));
 
 pricingRouter.post("/ai/pricing/analyze-mission", async (req, res, next) => { try { const row = toMissionPricingRow(await calculateMissionProfile(req.body?.missionId)); res.json({ facts: row, summary: `Mission ${row.missionTitle}: TJM actuel ${row.currentDailyRate}, recommandé ${row.recommendedDailyRate}.`, guardrail: "Analyse limitée aux données pricing calculées." }); } catch (error) { next(error); } });
 pricingRouter.post("/ai/pricing/generate-renegotiation-argument", async (req, res, next) => { try { const row = toMissionPricingRow(await calculateMissionProfile(req.body?.missionId)); res.json({ argument: `Le cout complet et la marge cible justifient un TJM cible de ${row.recommendedDailyRate} EUR. L'Ecart actuel represente ${row.monthlyImpactAmount} EUR par mois.`, sources: [row.missionId, row.profileId] }); } catch (error) { next(error); } });

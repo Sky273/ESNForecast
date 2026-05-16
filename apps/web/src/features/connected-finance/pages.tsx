@@ -31,7 +31,7 @@ export function ConnectedFinanceDashboard({ scenarioId, horizon }: V3Context) {
             <Legend />
             <Line dataKey="forecastClosingCash" name="Prévu" stroke="#64748b" strokeWidth={2} />
             <Line dataKey="actualClosingCash" name="Réel bancaire" stroke="#0f766e" strokeWidth={2} />
-            <Line dataKey="recalibratedClosingCash" name="Recalibr?" stroke="#2563eb" strokeWidth={2} />
+            <Line dataKey="recalibratedClosingCash" name={"Recalibr\u00e9"} stroke="#2563eb" strokeWidth={2} />
           </LineChart>
         </ChartCard>
         <ChartCard title="Fiabilité prévisionnelle">
@@ -67,14 +67,17 @@ export function BankTransactionsPage() {
 }
 
 export function BankReconciliationPage() {
-  const { rows } = useRows("/reconciliation/suggestions");
+  const { rows, reload } = useRows("/reconciliation/suggestions");
+  const accept = async (id: string) => { await api(`/reconciliation/suggestions/${id}/accept`, { method: "POST", body: JSON.stringify({}) }); await reload(); };
+  const reject = async (id: string) => { await api(`/reconciliation/suggestions/${id}/reject`, { method: "POST", body: JSON.stringify({}) }); await reload(); };
   return <TablePage title="Rapprochement bancaire" subtitle="Suggestions entre transactions, factures, paiements, coûts et taxes." rows={rows} columns={[
     ["confidenceScore", "Score", percent],
     ["transactionId", "Transaction"],
     ["targetType", "Cible"],
     ["targetId", "Cible ID"],
     ["reason", "Raison"],
-    ["status", "Statut"]
+    ["status", "Statut"],
+    ["id", "Actions", (_value: string, row: any) => row.status === "pending" ? <div className="flex gap-2"><button className="rounded border border-line px-2 py-1 text-xs" onClick={() => void accept(row.id)}>Accepter</button><button className="rounded border border-line px-2 py-1 text-xs text-red-700" onClick={() => void reject(row.id)}>Rejeter</button></div> : ""]
   ]} />;
 }
 
@@ -97,7 +100,7 @@ export function RealTreasuryPage({ scenarioId, horizon }: V3Context) {
     ["month", "Mois"],
     ["forecastClosingCash", "Prévu", money],
     ["actualClosingCash", "Réel bancaire", money],
-    ["recalibratedClosingCash", "Recalibr?", money],
+    ["recalibratedClosingCash", "Recalibr\u00e9", money],
     ["variance", "Écart", money],
     ["reliabilityScore", "Fiabilité", (value: number) => `${value}/100`]
   ]} />;
@@ -177,32 +180,89 @@ export function ClientPaymentProfilesPage() {
 }
 
 export function FinancialAnomaliesPage() {
-  const { rows } = useRows("/financial-anomalies");
-  return <TablePage title="Anomalies financières" subtitle="Transactions inhabituelles, doublons, retards et Écarts." rows={rows} columns={[
-    ["severity", "Sévérité", severityBadge],
+  const { rows, reload } = useRows("/financial-anomalies");
+  const detect = async () => { await api("/financial-anomalies/detect", { method: "POST", body: JSON.stringify({}) }); await reload(); };
+  const update = async (id: string, action: "review" | "resolve" | "ignore") => { await api("/financial-anomalies/" + id + "/" + action, { method: "POST", body: JSON.stringify({}) }); await reload(); };
+  return <TablePage title={"Anomalies financi\u00e8res"} subtitle={"Transactions inhabituelles, doublons, retards et \u00e9carts."} actions={<button className="rounded-md bg-brand px-3 py-2 text-sm font-medium text-white" onClick={() => void detect()}>{"D\u00e9tecter"}</button>} rows={rows} columns={[
+    ["severity", "S\u00e9v\u00e9rit\u00e9", severityBadge],
     ["type", "Type"],
     ["amount", "Montant", money],
     ["explanation", "Explication"],
     ["suggestedAction", "Action"],
-    ["status", "Statut"]
+    ["status", "Statut"],
+    ["id", "Traitement", (_value: string, row: any) => ["resolved", "ignored"].includes(row.status) ? "" : (
+      <div className="flex flex-wrap gap-2">
+        <button className="rounded border border-line px-2 py-1 text-xs" onClick={() => void update(row.id, "review")}>{"\u00c0 revoir"}</button>
+        <button className="rounded border border-line px-2 py-1 text-xs" onClick={() => void update(row.id, "resolve")}>{"R\u00e9soudre"}</button>
+        <button className="rounded border border-line px-2 py-1 text-xs" onClick={() => void update(row.id, "ignore")}>Ignorer</button>
+      </div>
+    )]
   ]} />;
 }
 
 export function DataQualityPage() {
-  const { data } = useObject("/data-quality");
+  const { data, reload } = useObject("/data-quality");
+  const recalculate = async () => { await api("/data-quality/recalculate", { method: "POST", body: JSON.stringify({}) }); await reload(); };
+  const update = async (id: string, action: "resolve" | "ignore") => { await api("/data-quality/issues/" + id + "/" + action, { method: "POST", body: JSON.stringify({}) }); await reload(); };
   return (
     <section className="space-y-5">
-      <PageTitle title="Santé des données" subtitle="Qualité des données banque, compta, factures et rapprochements." />
-      <KpiCard label="Score qualité" value={`${data?.score ?? 0}/100`} tone={(data?.score ?? 0) < 70 ? "risk" : "good"} />
-      <SimpleTable rows={data?.issues ?? []} columns={[["severity", "Sévérité", severityBadge], ["type", "Type"], ["message", "Message"], ["suggestedFix", "Correction"], ["status", "Statut"]]} />
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <PageTitle title={"Sant\u00e9 des donn\u00e9es"} subtitle={"Qualit\u00e9 des donn\u00e9es banque, compta, factures et rapprochements."} />
+        <button className="rounded-md bg-brand px-3 py-2 text-sm font-medium text-white" onClick={() => void recalculate()}>Recalculer</button>
+      </div>
+      <KpiCard label={"Score qualit\u00e9"} value={String(data?.score ?? 0) + "/100"} tone={(data?.score ?? 0) < 70 ? "risk" : "good"} />
+      <SimpleTable rows={data?.issues ?? []} columns={[
+        ["severity", "S\u00e9v\u00e9rit\u00e9", severityBadge], ["type", "Type"], ["message", "Message"], ["suggestedFix", "Correction"], ["status", "Statut"],
+        ["id", "Traitement", (_value: string, row: any) => ["fixed", "ignored"].includes(row.status) ? "" : (
+          <div className="flex gap-2">
+            <button className="rounded border border-line px-2 py-1 text-xs" onClick={() => void update(row.id, "resolve")}>{"R\u00e9soudre"}</button>
+            <button className="rounded border border-line px-2 py-1 text-xs" onClick={() => void update(row.id, "ignore")}>Ignorer</button>
+          </div>
+        )]
+      ]} />
     </section>
   );
 }
 
 export function ConnectorSupervisionPage() {
-  return <CrudPage title="Supervision connecteurs" path="/connectors" initial={{ organizationId: "", companyId: "", type: "banking", provider: "mock_bank_provider", name: "", status: "inactive", configuration: {} }} fields={[
-    { name: "organizationId", label: "Organisation", type: "select", optionsPath: "/organizations", optionLabelKey: "name", optionValueKey: "id", placeholder: "Sélectionner une organisation" }, { name: "companyId", label: "Société", type: "select", optionsPath: "/companies", optionLabelKey: "name", optionValueKey: "id", placeholder: "Sélectionner une société" }, { name: "type", label: "Type", type: "select", options: ["accounting", "banking", "invoicing", "crm", "hr", "generic_csv"].map((value) => ({ label: value, value })) }, { name: "provider", label: "Provider", type: "select", options: ["mock_bank_provider", "csv_bank_import", "mock_accounting_provider", "csv_accounting_import", "bridge", "powens", "tink", "plaid", "pennylane", "sage"].map((value) => ({ label: value, value })) }, { name: "name", label: "Nom" }, { name: "status", label: "Statut", type: "select", options: ["inactive", "connected", "error", "expired", "syncing", "disconnected"].map((value) => ({ label: value, value })) }, { name: "errorMessage", label: "Erreur" }
-  ]} columns={[{ key: "type", label: "Type" }, { key: "provider", label: "Provider" }, { key: "name", label: "Nom" }, { key: "status", label: "Statut" }, { key: "lastSyncAt", label: "Dernier sync" }, { key: "errorMessage", label: "Erreur" }]} />;
+  const { data, reload } = useObject("/connector-health");
+  const [message, setMessage] = useState("");
+  const run = async (id: string, action: "incremental-sync" | "full-sync" | "reconnect" | "revoke") => {
+    setMessage("");
+    const result = await api<any>("/connectors/" + id + "/" + action, { method: "POST", body: JSON.stringify({ returnUrl: window.location.origin + "/#/provider-connection" }) });
+    await reload();
+    if (result?.authorizationUrl) {
+      window.location.assign(result.authorizationUrl);
+      return;
+    }
+    setMessage(action === "revoke" ? "Connecteur r\u00e9voqu\u00e9." : "Action envoy\u00e9e au connecteur.");
+  };
+  return (
+    <section className="space-y-5">
+      <PageTitle title="Supervision connecteurs" subtitle={"Pilotage op\u00e9rationnel des connecteurs, synchronisations et erreurs."} />
+      {message ? <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">{message}</div> : null}
+      <div className="grid gap-3 md:grid-cols-4">
+        <KpiCard label={"Connect\u00e9s"} value={String(data?.summary?.connected ?? 0)} tone="good" />
+        <KpiCard label="En erreur" value={String(data?.summary?.errors ?? 0)} tone={(data?.summary?.errors ?? 0) > 0 ? "risk" : "good"} />
+        <KpiCard label={"Expir\u00e9s"} value={String(data?.summary?.expired ?? 0)} tone={(data?.summary?.expired ?? 0) > 0 ? "risk" : "good"} />
+        <KpiCard label={"D\u00e9connect\u00e9s"} value={String(data?.summary?.disconnected ?? 0)} />
+      </div>
+      <SimpleTable rows={data?.connectors ?? []} columns={[
+        ["provider", "Provider"], ["type", "Type"], ["name", "Nom"], ["status", "Statut"], ["lastSyncAt", "Dernier sync"], ["errorMessage", "Erreur"],
+        ["id", "Actions", (_value: string, row: any) => (
+          <div className="flex flex-wrap gap-2">
+            <button className="rounded border border-line px-2 py-1 text-xs" onClick={() => void run(row.id, "incremental-sync")}>Sync</button>
+            <button className="rounded border border-line px-2 py-1 text-xs" onClick={() => void run(row.id, "full-sync")}>Full sync</button>
+            <button className="rounded border border-line px-2 py-1 text-xs" onClick={() => void run(row.id, "reconnect")}>Reconnecter</button>
+            <button className="rounded border border-line px-2 py-1 text-xs text-red-700" onClick={() => void run(row.id, "revoke")}>{"R\u00e9voquer"}</button>
+          </div>
+        )]
+      ]} />
+      <SimpleTable rows={data?.runs ?? []} columns={[
+        ["connectorId", "Connecteur"], ["status", "Statut"], ["startedAt", "D\u00e9but"], ["finishedAt", "Fin"], ["importedCount", "Import\u00e9s"], ["updatedCount", "Mis \u00e0 jour"], ["errorCount", "Erreurs"]
+      ]} />
+    </section>
+  );
 }
 
 export function BankConsentsPage() {
@@ -240,20 +300,22 @@ export function FinancialRulesPage() {
   ]} columns={[{ key: "priority", label: "Priorité" }, { key: "name", label: "Regle" }, { key: "targetCategoryId", label: "Catégorie" }, { key: "autoApply", label: "Mode" }, { key: "isActive", label: "Active", render: (row: any) => row.isActive ? "Oui" : "Non" }]} />;
 }
 
-function TablePage({ title, subtitle, rows, columns }: { title: string; subtitle: string; rows: any[]; columns: any[] }) {
-  return <section className="space-y-5"><PageTitle title={title} subtitle={subtitle} /><SimpleTable rows={rows} columns={columns} /></section>;
+function TablePage({ title, subtitle, actions, rows, columns }: { title: string; subtitle: string; actions?: React.ReactNode; rows: any[]; columns: any[] }) {
+  return <section className="space-y-5"><div className="flex flex-wrap items-start justify-between gap-3"><PageTitle title={title} subtitle={subtitle} />{actions}</div><SimpleTable rows={rows} columns={columns} /></section>;
 }
 
 function useRows(path: string) {
   const [rows, setRows] = useState<any[]>([]);
-  useEffect(() => { void api<any[]>(path).then(setRows).catch(() => setRows([])); }, [path]);
-  return { rows };
+  const reload = async () => setRows(await api<any[]>(path));
+  useEffect(() => { void reload().catch(() => setRows([])); }, [path]);
+  return { rows, reload };
 }
 
 function useObject(path: string) {
   const [data, setData] = useState<any>(null);
-  useEffect(() => { void api<any>(path).then(setData).catch(() => setData(null)); }, [path]);
-  return { data };
+  const reload = async () => setData(await api<any>(path));
+  useEffect(() => { void reload().catch(() => setData(null)); }, [path]);
+  return { data, reload };
 }
 
 function PageTitle({ title, subtitle }: { title: string; subtitle: string }) {

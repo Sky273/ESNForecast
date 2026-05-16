@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { prisma } from "../../db";
 import { ApiError } from "../../middleware/requestContext";
+import { buildBudgetForecastActualPdf } from "../reports/executivePdfReport";
 import { buildBudgetVariance, buildWhatMustBeTrue, calculateAnnualLanding, calculateBudgetStaffing, calculateRequiredPipeline } from "./budgetService";
 
 const db = prisma as any;
@@ -546,12 +547,59 @@ budgetRouter.get("/reports/budget-forecast-actual.json", async (req, res, next) 
   }
 });
 
-budgetRouter.get("/reports/budget-forecast-actual.csv", (_req, res) => {
+budgetRouter.get("/reports/budget-forecast-actual.demo.csv", (_req, res) => {
   res.type("text/csv").send("section,metric,value\nlanding,status,generated\n");
 });
-budgetRouter.get("/reports/budget-forecast-actual.pdf", (_req, res) => {
+budgetRouter.get("/reports/budget-forecast-actual.demo.pdf", (_req, res) => {
   res.type("application/pdf").send(Buffer.from("PDF démo V6 Budget Forecast Actual"));
 });
+
+budgetRouter.get("/reports/budget-forecast-actual.csv", async (req, res, next) => {
+  try {
+    const year = fiscalYear(req.query.fiscalYear);
+    const payload = await budgetForecastActualReport(year, typeof req.query.budgetId === "string" ? req.query.budgetId : undefined);
+    const rows = [
+      ["section", "metric", "value"],
+      ["landing", "budgetRevenue", payload.landing.budgetRevenue],
+      ["landing", "actualRevenueToDate", payload.landing.actualRevenueToDate],
+      ["landing", "forecastRevenueRemaining", payload.landing.forecastRevenueRemaining],
+      ["landing", "projectedAnnualRevenue", payload.landing.projectedAnnualRevenue],
+      ["landing", "revenueGap", payload.landing.revenueGap],
+      ["landing", "achievementProbability", payload.landing.achievementProbability],
+      ...payload.variances.map((row: any) => ["variance", `${row.month ?? ""}-${row.category}`, row.varianceAmount]),
+      ...payload.actions.map((row: any) => ["action", row.title, row.status])
+    ];
+    res.type("text/csv").send(rows.map((row) => row.map(csvCell).join(",")).join("\n"));
+  } catch (error) {
+    next(error);
+  }
+});
+
+budgetRouter.get("/reports/budget-forecast-actual.pdf", async (req, res, next) => {
+  try {
+    const year = fiscalYear(req.query.fiscalYear);
+    const payload = await budgetForecastActualReport(year, typeof req.query.budgetId === "string" ? req.query.budgetId : undefined);
+    res.type("application/pdf").send(buildBudgetForecastActualPdf(payload));
+  } catch (error) {
+    next(error);
+  }
+});
+
+async function budgetForecastActualReport(year: number, budgetId?: string) {
+  const [landing, variances, actions, staffing, conditions] = await Promise.all([
+    annualLandingPayload(year, budgetId),
+    db.varianceAnalysis.findMany({ where: { fiscalYear: year }, orderBy: { updatedAt: "desc" }, take: 20 }),
+    db.actionPlan.findMany({ where: { fiscalYear: year }, orderBy: { updatedAt: "desc" }, take: 20 }),
+    db.budgetStaffingSnapshot.findMany({ where: { fiscalYear: year }, orderBy: [{ year: "asc" }, { month: "asc" }], take: 12 }),
+    db.whatMustBeTrueCondition.findMany({ where: { fiscalYear: year }, orderBy: { updatedAt: "desc" }, take: 20 })
+  ]);
+  return { fiscalYear: year, landing, variances, actions, pipeline: null, staffing, conditions, generatedAt: new Date().toISOString() };
+}
+
+function csvCell(value: unknown) {
+  const text = String(value ?? "");
+  return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+}
 
 budgetRouter.post("/ai/analyze/budget", async (req, res, next) => {
   try {

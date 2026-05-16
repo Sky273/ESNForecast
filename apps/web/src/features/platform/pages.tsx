@@ -189,8 +189,10 @@ export function BackofficeSupportPage() {
 
 export function BackupsPage() {
   const { data: backups, refetch } = useApi<any[]>("/backups");
+  const { data: exports, refetch: refetchExports } = useApi<any[]>("/exports");
   const { data: policies } = useApi<any[]>("/retention-policies");
   const createBackup = async () => { await api("/backups", { method: "POST", body: JSON.stringify({ type: "full_organization" }) }); refetch(); };
+  const createExport = async () => { await api("/exports/full", { method: "POST", body: JSON.stringify({ format: "json" }) }); refetchExports(); };
   const dryRun = async () => { await api("/restores/dry-run", { method: "POST", body: JSON.stringify({}) }); refetch(); };
 
   return (
@@ -198,11 +200,15 @@ export function BackupsPage() {
       <PageHeader title="Sauvegardes et exports" description="Sauvegarde JSON, restauration dry-run, exports complets et retention." actions={
         <>
           <button className="rounded-md bg-brand px-3 py-2 text-sm font-medium text-white" onClick={createBackup}>Générer sauvegarde</button>
+          <button className="rounded-md border border-line px-3 py-2 text-sm" onClick={createExport}>Créer export complet</button>
           <button className="rounded-md border border-line px-3 py-2 text-sm" onClick={dryRun}>Dry-run restauration</button>
         </>
       } />
       <Panel title="Sauvegardes">
-        <Table rows={backups ?? []} columns={[{ key: "type", label: "Type" }, { key: "status", label: "Statut", render: (row) => <StatusBadge label={row.status} tone={tone(row.status)} /> }, { key: "sizeBytes", label: "Taille" }, { key: "filePath", label: "Chemin" }]} />
+        <Table rows={backups ?? []} columns={[{ key: "type", label: "Type" }, { key: "status", label: "Statut", render: (row) => <StatusBadge label={row.status} tone={tone(row.status)} /> }, { key: "sizeBytes", label: "Taille" }, { key: "filePath", label: "Chemin" }, { key: "id", label: "Actions", render: (row) => <a className="rounded border border-line px-2 py-1 text-xs" href={`/api/backups/${row.id}/download`}>Télécharger</a> }]} />
+      </Panel>
+      <Panel title="Exports complets">
+        <Table rows={exports ?? []} columns={[{ key: "type", label: "Type" }, { key: "format", label: "Format" }, { key: "status", label: "Statut", render: (row) => <StatusBadge label={row.status} tone={tone(row.status)} /> }, { key: "sizeBytes", label: "Taille" }, { key: "filePath", label: "Chemin" }, { key: "id", label: "Actions", render: (row) => <a className="rounded border border-line px-2 py-1 text-xs" href={`/api/exports/${row.id}/download`}>Télécharger</a> }]} />
       </Panel>
       <Panel title="Politiques de retention">
         <Table rows={policies ?? []} columns={[{ key: "domain", label: "Domaine" }, { key: "retentionDays", label: "Jours" }, { key: "action", label: "Action" }, { key: "isActive", label: "Actif", render: (row) => row.isActive ? "Oui" : "Non" }]} />
