@@ -134,16 +134,16 @@ export function buildCodirPdf(report: { payload: any; report?: any }) {
   pdf.rect(415, 30, 126, 34, status === "Exploitable" ? "0.89 0.98 0.94" : "1 0.95 0.86", status === "Exploitable" ? "0.13 0.55 0.35" : "0.92 0.45 0.1");
   pdf.text(`Statut: ${status}`, 432, 52, 12, "F2", status === "Exploitable" ? "0.04 0.37 0.22" : "0.65 0.25 0.05");
 
-  pdf.text("Synthese direction", margin, 132, 16, "F2");
+  pdf.text("Synthèse direction", margin, 132, 16, "F2");
   pdf.wrapped("Ce rapport rapproche les données bancaires, la trajectoire prévisionnelle, les anomalies et les points de qualité de données pour préparér les arbitrages CODIR.", margin, 154, 500, 10, 15);
 
   const cards = [
     ["Cash bancaire", money(bank.currentCash), "Solde consolide"],
     ["Écart cash", money(treasury.varianceAmount), treasury.varianceRate !== undefined ? percent(treasury.varianceRate) : "Prév. vs réel"],
-    ["Runway", `${Math.round(runway.runwayWeightedMonths ?? 0)} mois`, "Pondere"],
+    ["Runway", `${Math.round(runway.runwayWeightedMonths ?? 0)} mois`, "Pondéré"],
     ["Anomalies", String(anomalies.length), `${anomalies.filter((item: any) => item.severity === "critical").length} critiques`],
     ["Qualité données", String(quality.length), "Points ouverts"],
-    ["Connecteurs", String(connectors.length), "Sources supervisees"]
+    ["Connecteurs", String(connectors.length), "Sources supervisées"]
   ];
   cards.forEach((card, index) => {
     const col = index % 3;
@@ -157,9 +157,9 @@ export function buildCodirPdf(report: { payload: any; report?: any }) {
     pdf.text(card[2], x + 12, y + 58, 8, "F1", "0.39 0.45 0.55");
   });
 
-  pdf.text("Decisions et actions recommandees", margin, 430, 15, "F2");
+  pdf.text("Décisions et actions recommandées", margin, 430, 15, "F2");
   let y = 456;
-  const actionRows = recommendations.length ? recommendations.slice(0, 9) : ["Finaliser les rapprochements bancaires ouverts.", "Traiter les anomalies critiques.", "Recalculer le reforecast apres validation des Ecarts."];
+  const actionRows = recommendations.length ? recommendations.slice(0, 9) : ["Finaliser les rapprochements bancaires ouverts.", "Traiter les anomalies critiques.", "Recalculer le reforecast après validation des écarts."];
   actionRows.forEach((action: string, index: number) => {
     pdf.rect(margin, y - 15, 512, 34, "1 1 1", "0.86 0.89 0.93");
     pdf.text(String(index + 1), margin + 12, y + 5, 10, "F2", "0.04 0.37 0.22");
@@ -167,13 +167,13 @@ export function buildCodirPdf(report: { payload: any; report?: any }) {
     y += 40;
   });
 
-  pdf.text("Fiabilite previsionnelle", margin, 704, 13, "F2");
+  pdf.text("Fiabilité prévisionnelle", margin, 704, 13, "F2");
   const latestReliability = reliability[0];
   pdf.wrapped(latestReliability ? `Score ${latestReliability.score}/100 - ${latestReliability.explanation ?? latestReliability.confidenceLevel ?? "facteurs calculés"}.` : "Aucun score détaillé disponible pour ce mois.", margin, 728, 500, 10, 15);
   footer(pdf, 1);
 
   pdf.addPage();
-  pageHeader(pdf, "Détails de supervision", "Anomalies, qualité des données et connectéurs ? suivre.");
+  pageHeader(pdf, "Détails de supervision", "Anomalies, qualité des données et connecteurs à suivre.");
   pdf.text("Anomalies financières", margin, 118, 14, "F2");
   y = 144;
   if (!anomalies.length) {
@@ -233,7 +233,7 @@ function cover(pdf: Pdf, _projection: Projection, data: any) {
     ["Cash-out", money(data.cashOut), "Décaissements attendus"],
     ["Marge brute", money(data.grossMargin), percent(data.marginRate)],
     ["Trésorerie finale", money(data.finalCash), data.finalCash < 0 ? "Critique" : "Solde projeté"],
-    ["Mois ? risque", String(data.riskMonths.length), data.riskMonths.slice(0, 4).join(", ") || "Aucun"]
+    ["Mois à risque", String(data.riskMonths.length), data.riskMonths.slice(0, 4).join(", ") || "Aucun"]
   ];
   cards.forEach((card, index) => {
     const col = index % 3;
@@ -298,7 +298,7 @@ function monthlyPage(pdf: Pdf, months: any[]) {
 
 function alertsPage(pdf: Pdf, projection: Projection) {
   pdf.addPage();
-  pageHeader(pdf, "Risques et alertes", "Priorites opérationnelles ? traiter par la direction.");
+  pageHeader(pdf, "Risques et alertes", "Priorités opérationnelles à traiter par la direction.");
   pdf.text("Alertes prioritaires", margin, 118, 14, "F2");
   const alerts = projection.alerts.slice(0, 12);
   let y = 142;
@@ -316,7 +316,7 @@ function alertsPage(pdf: Pdf, projection: Projection) {
   }
 
   pdf.text("Lecture direction", margin, Math.max(y + 18, 670), 14, "F2");
-  pdf.wrapped("Les alertes doivent etre traitées comme une file d'arbitrage: impact cash, impact marge, responsable, décision attendue et date cible. Les points non expliqués doivent etre rattachés à une mission, un client, une facture ou une action corrective.", margin, Math.max(y + 42, 694), 500, 10, 15);
+  pdf.wrapped("Les alertes doivent être traitées comme une file d'arbitrage: impact cash, impact marge, responsable, décision attendue et date cible. Les points non expliqués doivent être rattachés à une mission, un client, une facture ou une action corrective.", margin, Math.max(y + 42, 694), 500, 10, 15);
   footer(pdf, 3);
 }
 
@@ -335,11 +335,11 @@ function missionsPage(pdf: Pdf, topMissions: any[], bottomMissions: any[]) {
 
   pdf.text("Missions ? surveiller", margin, y + 30, 14, "F2");
   y += 54;
-  tableHeader(pdf, margin, y, ["Mission", "Marge", "Taux", "Action recommandee"], [210, 80, 60, 160]);
+  tableHeader(pdf, margin, y, ["Mission", "Marge", "Taux", "Action recommandée"], [210, 80, 60, 160]);
   y += 24;
   bottomMissions.forEach((mission, index) => {
     if (index % 2 === 0) pdf.fillRect(margin, y - 13, 512, 24, "0.99 0.98 0.97");
-    row(pdf, y, [mission.missionTitle ?? mission.title ?? "Mission", money(mission.grossMargin), percent(mission.marginRate), "Verifier TJM, cout externe et staffing"], [210, 80, 60, 160]);
+    row(pdf, y, [mission.missionTitle ?? mission.title ?? "Mission", money(mission.grossMargin), percent(mission.marginRate), "Vérifier TJM, cout externe et staffing"], [210, 80, 60, 160]);
     y += 24;
   });
   footer(pdf, 4);

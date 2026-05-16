@@ -15,7 +15,7 @@ const tone = (status: string) => {
   return "neutral" as const;
 };
 
-const budgetCategories = ["revenue", "employee_costs", "partner_costs", "freelancer_costs", "fixed_costs", "variable_costs", "cash_in", "cash_out", "gross_margin", "net_margin", "closing_cash", "utilization_rate", "bench_cost", "commercial_pipeline"];
+const budgetCatégories = ["revenue", "employee_costs", "partner_costs", "freelancer_costs", "fixed_costs", "variable_costs", "cash_in", "cash_out", "gross_margin", "net_margin", "closing_cash", "utilization_rate", "bench_cost", "commercial_pipeline"];
 const objectiveTypes = ["revenue", "gross_margin", "net_margin", "cash", "cash_in", "cash_out", "profitability", "utilization", "bench", "pipeline", "staffing", "client_concentration", "custom"];
 const objectiveUnits = ["amount", "percentage", "days", "count", "ratio"];
 const objectivePeriods = ["annual", "quarterly", "monthly"];
@@ -70,7 +70,7 @@ function FormPanel({ title, children, onSubmit, submitLabel = "Enregistrer" }: {
 }
 
 function TextInput({ label, value, onChange, type = "text" }: { label: string; value: any; onChange: (value: any) => void; type?: string }) {
-  return <label><span className="mb-1 block text-xs font-medium text-muted">{label}</span><input className="w-full rounded-md border border-line px-3 py-2" type={type} value={value ?? ""} onChange={(event) => onChange(type === "number" ? Number(event.target.value) : event.target.value)} /></label>;
+  return <label><span className="mb-1 block text-xs font-medium text-muted">{label}</span><input className="w-full rounded-md border border-line px-3 py-2" type={type} step={type === "number" ? "any" : undefined} value={value ?? ""} onChange={(event) => onChange(type === "number" ? Number(event.target.value) : event.target.value)} /></label>;
 }
 
 function SelectInput({ label, value, onChange, options }: { label: string; value: any; onChange: (value: string) => void; options: Array<string | { label: string; value: string | number }> }) {
@@ -102,7 +102,7 @@ export function TrajectoryDashboardPage() {
       <PageHeader title="Trajectoire" description="Budget, réel, forecast, atterrissage probable, Écarts et actions correctives." />
       <div className="mb-5 grid gap-3 md:grid-cols-6">
         <KpiCard label="Budget CA" value={money(landing?.budgetRevenue)} />
-        <KpiCard label="Realise ? date" value={money(landing?.actualRevenueToDate)} />
+        <KpiCard label="Réalisé à date" value={money(landing?.actualRevenueToDate)} />
         <KpiCard label="Forecast restant" value={money(landing?.forecastRevenueRemaining)} />
         <KpiCard label="Atterrissage CA" value={money(landing?.projectedAnnualRevenue)} tone={(landing?.revenueGap ?? 0) < 0 ? "risk" : "good"} />
         <KpiCard label="Écart probable" value={money(landing?.revenueGap)} tone={(landing?.revenueGap ?? 0) < 0 ? "risk" : "good"} />
@@ -214,7 +214,7 @@ export function BudgetDetailPage() {
       <FormPanel title={editingLineId ? "Modifier une ligne" : "Ajouter une ligne"} onSubmit={saveLine}>
         <TextInput label="Mois" type="number" value={line.month} onChange={(value) => setLine({ ...line, month: value })} />
         <TextInput label="Année" type="number" value={line.year} onChange={(value) => setLine({ ...line, year: value })} />
-        <SelectInput label="Catégorie" value={line.category} onChange={(value) => setLine({ ...line, category: value })} options={budgetCategories} />
+        <SelectInput label="Catégorie" value={line.category} onChange={(value) => setLine({ ...line, category: value })} options={budgetCatégories} />
         <TextInput label="Montant" type="number" value={line.amount} onChange={(value) => setLine({ ...line, amount: value })} />
         <TextArea label="Commentaire" value={line.comment} onChange={(value) => setLine({ ...line, comment: value })} />
       </FormPanel>
@@ -332,9 +332,9 @@ export function RollingForecastPage() {
         <SelectInput label="Budget source" value={draft.sourceBudgetId || budgets?.[0]?.id || ""} onChange={(value) => setDraft({ ...draft, sourceBudgetId: value })} options={(budgets ?? []).map((budget) => ({ label: budget.name, value: budget.id }))} />
       </FormPanel>
       <Panel title="Forecasts"><Table rows={forecasts ?? []} onSelect={(row) => { setSelectedId(row.id); setForecastEdit({ name: row.name, baseMonth: row.baseMonth, horizonMonths: row.horizonMonths, status: row.status, notes: row.notes ?? "" }); }} selectedId={activeId} columns={[{ key: "name", label: "Nom" }, { key: "baseMonth", label: "Base" }, { key: "horizonMonths", label: "Horizon" }, { key: "status", label: "Statut", render: (row) => <StatusBadge label={row.status} tone={tone(row.status)} /> }, { key: "actions", label: "Actions", render: (row) => <ActionButton tone="risk" onClick={() => removeForecast(row.id)}>Supprimer</ActionButton> }]} /></Panel>
-      {activeId ? <FormPanel title="Modifier le forecast selectionne" onSubmit={saveForecast}><TextInput label="Nom" value={forecastEdit.name || forecasts?.find((item) => item.id === activeId)?.name || ""} onChange={(value) => setForecastEdit({ ...forecastEdit, name: value })} /><TextInput label="Mois de base" value={forecastEdit.baseMonth || forecasts?.find((item) => item.id === activeId)?.baseMonth || ""} onChange={(value) => setForecastEdit({ ...forecastEdit, baseMonth: value })} /><TextInput label="Horizon mois" type="number" value={forecastEdit.horizonMonths || forecasts?.find((item) => item.id === activeId)?.horizonMonths || 12} onChange={(value) => setForecastEdit({ ...forecastEdit, horizonMonths: value })} /><SelectInput label="Statut" value={forecastEdit.status || forecasts?.find((item) => item.id === activeId)?.status || "active"} onChange={(value) => setForecastEdit({ ...forecastEdit, status: value })} options={["draft", "active", "archived"]} /><TextArea label="Notes" value={forecastEdit.notes} onChange={(value) => setForecastEdit({ ...forecastEdit, notes: value })} /></FormPanel> : null}
-      {line ? <FormPanel title={line.id ? "Ajuster une ligne" : "Ajouter une ligne"} onSubmit={saveLine}><TextInput label="Mois" type="number" value={line.month} onChange={(value) => setLine({ ...line, month: value })} /><TextInput label="Annee" type="number" value={line.year} onChange={(value) => setLine({ ...line, year: value })} /><SelectInput label="Categorie" value={line.category} onChange={(value) => setLine({ ...line, category: value })} options={budgetCategories} /><TextInput label="Montant" type="number" value={line.amount} onChange={(value) => setLine({ ...line, amount: value })} /><SelectInput label="Source" value={line.source} onChange={(value) => setLine({ ...line, source: value })} options={["actual", "forecast", "reforecast", "manual_override", "budget"]} /><TextInput label="Confiance" type="number" value={line.confidenceScore} onChange={(value) => setLine({ ...line, confidenceScore: value })} /><TextArea label="Commentaire" value={line.comment ?? ""} onChange={(value) => setLine({ ...line, comment: value })} /></FormPanel> : null}
-      <Table rows={(lines ?? []).slice(0, 120)} onSelect={setLine} selectedId={line?.id} columns={[{ key: "month", label: "Mois" }, { key: "category", label: "Categorie" }, { key: "amount", label: "Montant", render: (row) => row.category === "utilization_rate" ? percent(row.amount) : money(row.amount) }, { key: "source", label: "Source" }, { key: "confidenceScore", label: "Confiance", render: (row) => percent(row.confidenceScore) }, { key: "actions", label: "Actions", render: (row) => <ActionButton tone="risk" onClick={() => removeRollingLine(row.id)}>Supprimer</ActionButton> }]} />
+      {activeId ? <FormPanel title="Modifier le forecast sélectionné" onSubmit={saveForecast}><TextInput label="Nom" value={forecastEdit.name || forecasts?.find((item) => item.id === activeId)?.name || ""} onChange={(value) => setForecastEdit({ ...forecastEdit, name: value })} /><TextInput label="Mois de base" value={forecastEdit.baseMonth || forecasts?.find((item) => item.id === activeId)?.baseMonth || ""} onChange={(value) => setForecastEdit({ ...forecastEdit, baseMonth: value })} /><TextInput label="Horizon mois" type="number" value={forecastEdit.horizonMonths || forecasts?.find((item) => item.id === activeId)?.horizonMonths || 12} onChange={(value) => setForecastEdit({ ...forecastEdit, horizonMonths: value })} /><SelectInput label="Statut" value={forecastEdit.status || forecasts?.find((item) => item.id === activeId)?.status || "active"} onChange={(value) => setForecastEdit({ ...forecastEdit, status: value })} options={["draft", "active", "archived"]} /><TextArea label="Notes" value={forecastEdit.notes} onChange={(value) => setForecastEdit({ ...forecastEdit, notes: value })} /></FormPanel> : null}
+      {line ? <FormPanel title={line.id ? "Ajuster une ligne" : "Ajouter une ligne"} onSubmit={saveLine}><TextInput label="Mois" type="number" value={line.month} onChange={(value) => setLine({ ...line, month: value })} /><TextInput label="Annee" type="number" value={line.year} onChange={(value) => setLine({ ...line, year: value })} /><SelectInput label="Catégorie" value={line.category} onChange={(value) => setLine({ ...line, category: value })} options={budgetCatégories} /><TextInput label="Montant" type="number" value={line.amount} onChange={(value) => setLine({ ...line, amount: value })} /><SelectInput label="Source" value={line.source} onChange={(value) => setLine({ ...line, source: value })} options={["actual", "forecast", "reforecast", "manual_override", "budget"]} /><TextInput label="Confiance" type="number" value={line.confidenceScore} onChange={(value) => setLine({ ...line, confidenceScore: value })} /><TextArea label="Commentaire" value={line.comment ?? ""} onChange={(value) => setLine({ ...line, comment: value })} /></FormPanel> : null}
+      <Table rows={(lines ?? []).slice(0, 120)} onSelect={setLine} selectedId={line?.id} columns={[{ key: "month", label: "Mois" }, { key: "category", label: "Catégorie" }, { key: "amount", label: "Montant", render: (row) => row.category === "utilization_rate" ? percent(row.amount) : money(row.amount) }, { key: "source", label: "Source" }, { key: "confidenceScore", label: "Confiance", render: (row) => percent(row.confidenceScore) }, { key: "actions", label: "Actions", render: (row) => <ActionButton tone="risk" onClick={() => removeRollingLine(row.id)}>Supprimer</ActionButton> }]} />
     </>
   );
 }
@@ -343,7 +343,7 @@ export function AnnualLandingPage() {
   const { data } = useApi<any>(`/annual-landing?fiscalYear=${YEAR}`);
   return (
     <>
-      <PageHeader title="Atterrissage annuel" description="Estimation de fin d'année ? partir du réel ? date et du forecast restant." />
+      <PageHeader title="Atterrissage annuel" description="Estimation de fin d'année à partir du réel à date et du forecast restant." />
       <div className="mb-5 grid gap-3 md:grid-cols-4"><KpiCard label="CA budget" value={money(data?.budgetRevenue)} /><KpiCard label="CA probable" value={money(data?.projectedAnnualRevenue)} tone={(data?.revenueGap ?? 0) < 0 ? "risk" : "good"} /><KpiCard label="Marge probable" value={money(data?.projectedGrossMargin)} /><KpiCard label="Cash probable" value={money(data?.projectedClosingCash)} tone={(data?.cashGap ?? 0) < 0 ? "risk" : "good"} /></div>
       <div className="grid gap-4 md:grid-cols-3">{["lowCase", "medianCase", "highCase"].map((key) => <div key={key} className="rounded-lg border border-line bg-white p-4"><div className="text-sm text-muted">{key}</div><div className="mt-2 text-xl font-semibold">{money(data?.[key]?.revenue)}</div><div className="text-sm text-muted">Cash {money(data?.[key]?.cash)}</div></div>)}</div>
     </>
@@ -385,7 +385,7 @@ export function VarianceAnalysesPage() {
     <>
       <PageHeader title="Écarts commentés" description="Recalcul, qualification, commentaires et causes des Écarts budgétaires." actions={<button className="rounded-md bg-brand px-3 py-2 text-sm font-medium text-white" onClick={recalculate}>Recalculer</button>} />
       {selected ? <div className="grid gap-5 xl:grid-cols-2"><FormPanel title="Qualifier l?Écart" onSubmit={saveStatus}><SelectInput label="Statut" value={selected.status} onChange={(value) => setSelected({ ...selected, status: value })} options={["new", "under_review", "explained", "action_required", "resolved", "ignored"]} /><SelectInput label="Sévérité" value={selected.severity} onChange={(value) => setSelected({ ...selected, severity: value })} options={["info", "warning", "critical"]} /><TextInput label="Responsable" value={selected.ownerUserId ?? ""} onChange={(value) => setSelected({ ...selected, ownerUserId: value })} /></FormPanel><FormPanel title="Ajouter une cause" onSubmit={addCause}><TextInput label="Type" value={cause.causeType} onChange={(value) => setCause({ ...cause, causeType: value })} /><TextInput label="Impact" type="number" value={cause.amountImpact} onChange={(value) => setCause({ ...cause, amountImpact: value })} /><TextInput label="Confiance" type="number" value={cause.confidenceScore} onChange={(value) => setCause({ ...cause, confidenceScore: value })} /><TextArea label="Description" value={cause.description} onChange={(value) => setCause({ ...cause, description: value })} /></FormPanel><FormPanel title="Ajouter un commentaire" onSubmit={addComment}><TextArea label="Commentaire direction/finance" value={comment} onChange={setComment} /></FormPanel></div> : null}
-      <Table rows={data ?? []} onSelect={setSelected} selectedId={selected?.id} columns={[{ key: "month", label: "Mois" }, { key: "category", label: "Categorie" }, { key: "varianceAmount", label: "Ecart", render: (row) => money(row.varianceAmount) }, { key: "variancePercent", label: "Ecart %", render: (row) => percent(row.variancePercent) }, { key: "severity", label: "Severite", render: (row) => <StatusBadge label={row.severity} tone={tone(row.severity)} /> }, { key: "status", label: "Statut", render: (row) => <StatusBadge label={row.status} tone={tone(row.status)} /> }, { key: "actions", label: "Actions", render: (row) => <ActionButton tone="risk" onClick={() => removeVariance(row.id)}>Supprimer</ActionButton> }]} />
+      <Table rows={data ?? []} onSelect={setSelected} selectedId={selected?.id} columns={[{ key: "month", label: "Mois" }, { key: "category", label: "Catégorie" }, { key: "varianceAmount", label: "Ecart", render: (row) => money(row.varianceAmount) }, { key: "variancePercent", label: "Ecart %", render: (row) => percent(row.variancePercent) }, { key: "severity", label: "Severite", render: (row) => <StatusBadge label={row.severity} tone={tone(row.severity)} /> }, { key: "status", label: "Statut", render: (row) => <StatusBadge label={row.status} tone={tone(row.status)} /> }, { key: "actions", label: "Actions", render: (row) => <ActionButton tone="risk" onClick={() => removeVariance(row.id)}>Supprimer</ActionButton> }]} />
     </>
   );
 }
@@ -430,17 +430,33 @@ export function ActionPlansPage() {
 export function RequiredPipelinePage() {
   const [params, setParams] = useState({ signedRemainingRevenue: 840000, weightedPipelineRevenue: 210000, conversionRate: 0.35, averageOpportunityAmount: 85000 });
   const query = new URLSearchParams(Object.fromEntries(Object.entries(params).map(([key, value]) => [key, String(value)]))).toString();
-  const { data, refetch } = useApi<any>(`/required-pipeline?fiscalYear=${YEAR}&${query}`);
+  const { data, loading, error, setData } = useApi<any>(`/required-pipeline?fiscalYear=${YEAR}&${query}`);
+  const [recalculating, setRecalculating] = useState(false);
+  const [mutationError, setMutationError] = useState("");
+  const recalculate = async () => {
+    setRecalculating(true);
+    setMutationError("");
+    try {
+      setData(await api<any>("/required-pipeline/recalculate", { method: "POST", body: JSON.stringify({ fiscalYear: YEAR, ...params }) }));
+    } catch (caught) {
+      setMutationError(caught instanceof Error ? caught.message : "Le recalcul a échoué.");
+    } finally {
+      setRecalculating(false);
+    }
+  };
   return (
     <>
-      <PageHeader title="Pipeline nécessaire" description="Paramètres commerciaux et pipeline brut nécessaire pour atteindre le budget." actions={<button className="rounded-md bg-brand px-3 py-2 text-sm font-medium text-white" onClick={refetch}>Recalculer</button>} />
-      <FormPanel title="Hypothèses commerciales" onSubmit={(event) => { event.preventDefault(); refetch(); }} submitLabel="Recalculer">
-        <TextInput label="CA signe restant" type="number" value={params.signedRemainingRevenue} onChange={(value) => setParams({ ...params, signedRemainingRevenue: value })} />
+      <PageHeader title="Pipeline nécessaire" description="Paramètres commerciaux et pipeline brut nécessaire pour atteindre le budget." actions={<button type="button" className="rounded-md bg-brand px-3 py-2 text-sm font-medium text-white disabled:opacity-60" onClick={recalculate} disabled={recalculating}>{recalculating ? "Recalcul..." : "Recalculer"}</button>} />
+      <FormPanel title="Hypothèses commerciales" onSubmit={(event) => { event.preventDefault(); void recalculate(); }} submitLabel={recalculating ? "Recalcul..." : "Recalculer"}>
+        <TextInput label="CA signé restant" type="number" value={params.signedRemainingRevenue} onChange={(value) => setParams({ ...params, signedRemainingRevenue: value })} />
         <TextInput label="Pipeline pondéré" type="number" value={params.weightedPipelineRevenue} onChange={(value) => setParams({ ...params, weightedPipelineRevenue: value })} />
         <TextInput label="Taux conversion" type="number" value={params.conversionRate} onChange={(value) => setParams({ ...params, conversionRate: value })} />
         <TextInput label="Montant moyen opportunité" type="number" value={params.averageOpportunityAmount} onChange={(value) => setParams({ ...params, averageOpportunityAmount: value })} />
       </FormPanel>
-      <div className="mb-5 grid gap-3 md:grid-cols-5"><KpiCard label="Objectif CA" value={money(data?.targetRevenue)} /><KpiCard label="CA realise" value={money(data?.actualRevenue)} /><KpiCard label="Gap CA" value={money(data?.revenueGap)} tone={(data?.revenueGap ?? 0) > 0 ? "risk" : "good"} /><KpiCard label="Pipeline requis" value={money(data?.requiredGrossPipeline)} /><KpiCard label="Opportunités" value={String(data?.opportunitiesNeeded ?? "-")} /></div>
+      {error || mutationError ? <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{mutationError || error}</div> : null}
+      {loading || recalculating ? <div className="mb-4 text-sm text-muted">Calcul du pipeline nécessaire...</div> : null}
+      <div className="mb-5 grid gap-3 md:grid-cols-5"><KpiCard label="Objectif CA" value={money(data?.targetRevenue)} /><KpiCard label="CA réalisé" value={money(data?.actualRevenue)} /><KpiCard label="Gap CA" value={money(data?.revenueGap)} tone={(data?.revenueGap ?? 0) > 0 ? "risk" : "good"} /><KpiCard label="Pipeline requis" value={money(data?.requiredGrossPipeline)} /><KpiCard label="Opportunités" value={String(data?.opportunitiesNeeded ?? "-")} /></div>
+      {data?.calculatedAt ? <p className="mb-3 text-xs text-muted">Dernier recalcul : {new Date(data.calculatedAt).toLocaleString("fr-FR")}</p> : null}
       <Table rows={(data?.recommendations ?? []).map((label: string) => ({ label }))} columns={[{ key: "label", label: "Recommandation" }]} />
     </>
   );
@@ -452,15 +468,15 @@ export function BudgetStaffingPage() {
   const { data, refetch } = useApi<any[]>(`/budget-staffing?fiscalYear=${YEAR}&${query}`);
   return (
     <>
-      <PageHeader title="Staffing budgétaire" description="Hypothèses de capacit? et calcul des jours/ETP nécessaires pour atteindre la trajectoire budgétaire." actions={<button className="rounded-md bg-brand px-3 py-2 text-sm font-medium text-white" onClick={refetch}>Recalculer</button>} />
+      <PageHeader title="Staffing budgétaire" description="Hypothèses de capacité et calcul des jours/ETP nécessaires pour atteindre la trajectoire budgétaire." actions={<button className="rounded-md bg-brand px-3 py-2 text-sm font-medium text-white" onClick={refetch}>Recalculer</button>} />
       <FormPanel title="Hypothèses staffing" onSubmit={(event) => { event.preventDefault(); refetch(); }} submitLabel="Recalculer">
         <TextInput label="TJM moyen" type="number" value={params.averageDailyRate} onChange={(value) => setParams({ ...params, averageDailyRate: value })} />
-        <TextInput label="Capacit? interne avant sept." type="number" value={params.internalCapacityBeforeSeptember} onChange={(value) => setParams({ ...params, internalCapacityBeforeSeptember: value })} />
-        <TextInput label="Capacit? interne après sept." type="number" value={params.internalCapacityAfterSeptember} onChange={(value) => setParams({ ...params, internalCapacityAfterSeptember: value })} />
-        <TextInput label="Capacit? externe avant sept." type="number" value={params.externalCapacityBeforeSeptember} onChange={(value) => setParams({ ...params, externalCapacityBeforeSeptember: value })} />
-        <TextInput label="Capacit? externe après sept." type="number" value={params.externalCapacityAfterSeptember} onChange={(value) => setParams({ ...params, externalCapacityAfterSeptember: value })} />
+        <TextInput label="Capacité interne avant sept." type="number" value={params.internalCapacityBeforeSeptember} onChange={(value) => setParams({ ...params, internalCapacityBeforeSeptember: value })} />
+        <TextInput label="Capacité interne après sept." type="number" value={params.internalCapacityAfterSeptember} onChange={(value) => setParams({ ...params, internalCapacityAfterSeptember: value })} />
+        <TextInput label="Capacité externe avant sept." type="number" value={params.externalCapacityBeforeSeptember} onChange={(value) => setParams({ ...params, externalCapacityBeforeSeptember: value })} />
+        <TextInput label="Capacité externe après sept." type="number" value={params.externalCapacityAfterSeptember} onChange={(value) => setParams({ ...params, externalCapacityAfterSeptember: value })} />
       </FormPanel>
-      <Table rows={data ?? []} columns={[{ key: "month", label: "Mois" }, { key: "requiredBillableDays", label: "Jours requis" }, { key: "internalCapacityDays", label: "Capacit? interne" }, { key: "externalCapacityDays", label: "Capacit? externe" }, { key: "gapDays", label: "Gap jours" }, { key: "staffingGapFTE", label: "Gap ETP" }, { key: "missingSkills", label: "Compétences", render: (row) => (row.missingSkills ?? []).join(", ") }]} />
+      <Table rows={data ?? []} columns={[{ key: "month", label: "Mois" }, { key: "requiredBillableDays", label: "Jours requis" }, { key: "internalCapacityDays", label: "Capacité interne" }, { key: "externalCapacityDays", label: "Capacité externe" }, { key: "gapDays", label: "Gap jours" }, { key: "staffingGapFTE", label: "Gap ETP" }, { key: "missingSkills", label: "Compétences", render: (row) => (row.missingSkills ?? []).join(", ") }]} />
     </>
   );
 }

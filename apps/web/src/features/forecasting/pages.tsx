@@ -19,7 +19,7 @@ export function TreasuryPage({ scenarioId, horizon }: V1Context) {
         <KpiCard label="Cash-in" value={money(data.summary.totalCashIn)} />
         <KpiCard label="Cash-out" value={money(data.summary.totalCashOut)} />
         <KpiCard label="Trésorerie finale" value={money(data.summary.finalClosingCash)} tone={data.summary.finalClosingCash < 0 ? "risk" : "good"} />
-        <KpiCard label="Mois ? risque" value={String(data.summary.riskMonths.length)} />
+        <KpiCard label="Mois à risque" value={String(data.summary.riskMonths.length)} />
       </div>
       <ChartCard title="Courbe de trésorerie">
         <LineChart data={data.cashflow}>
@@ -128,7 +128,7 @@ export function ScenariosPage({ scenarioId, horizon }: V1Context) {
         ["grossMargin", "Marge", money],
         ["finalBalance", "Solde final", money],
         ["riskMonths", "Mois risque"],
-        ["actions", "Actions", (_: any, row: any) => <div className="flex flex-wrap gap-2"><button className="rounded-md border border-line px-2 py-1 text-xs" onClick={() => edit(row)}>Editer</button><button className="rounded-md border border-line px-2 py-1 text-xs" onClick={() => duplicate(row)}>Dupliquer</button><button className="rounded-md border border-line px-2 py-1 text-xs" onClick={() => setActive(row)}>Activer</button><button className="rounded-md border border-line px-2 py-1 text-xs text-risk" onClick={() => archive(row)}>Archiver</button></div>]
+        ["actions", "Actions", (_: any, row: any) => <div className="flex flex-wrap gap-2"><button className="rounded-md border border-line px-2 py-1 text-xs" onClick={() => edit(row)}>Éditer</button><button className="rounded-md border border-line px-2 py-1 text-xs" onClick={() => duplicate(row)}>Dupliquer</button><button className="rounded-md border border-line px-2 py-1 text-xs" onClick={() => setActive(row)}>Activer</button><button className="rounded-md border border-line px-2 py-1 text-xs text-risk" onClick={() => archive(row)}>Archiver</button></div>]
       ]} />
       {compare ? (
         <ChartCard title="Comparaison de scénarios">
@@ -222,7 +222,7 @@ export function BillingPage() {
 export function CashInPage() {
   return <CrudPage title="Encaissements prévisionnels" path="/cash-in-forecasts" initial={{ scenarioId: "", sourceType: "invoice", sourceId: "", expectedDate: "2026-07-30", amount: 10000, probability: 1, weightedAmount: 10000, status: "planned" }} fields={[
     { name: "scenarioId", label: "Scénario", type: "select", optionsPath: "/scenarios", optionLabelKey: "name", optionValueKey: "id", placeholder: "Sélectionner un scenario" }, { name: "sourceType", label: "Type de source", type: "select", options: [{ label: "Facture prévisionnelle", value: "invoice" }, { label: "Saisie manuelle", value: "manual" }, { label: "Autre", value: "other" }] }, { name: "sourceId", label: "Source", type: "select", optionsPath: "/invoice-forecasts", optionLabelFields: ["invoiceDate", "amountTTC"], optionValueKey: "id", placeholder: "Sélectionner une facture prévisionnelle" }, { name: "expectedDate", label: "Date prévue", type: "date" }, { name: "amount", label: "Montant", type: "number" }, { name: "probability", label: "Probabilité", type: "number" }, { name: "weightedAmount", label: "Montant pondéré", type: "number" }, { name: "status", label: "Statut", type: "select", options: ["planned", "confirmed", "received", "cancelled"].map((value) => ({ label: value, value })) }
-  ]} columns={[{ key: "expectedDate", label: "Date" }, { key: "sourceType", label: "Type de source" }, { key: "sourceId", label: "Source" }, { key: "amount", label: "Montant", render: (r: any) => money(r.amount) }, { key: "weightedAmount", label: "Pondere", render: (r: any) => money(r.weightedAmount) }, { key: "status", label: "Statut" }]} />;
+  ]} columns={[{ key: "expectedDate", label: "Date" }, { key: "sourceType", label: "Type de source" }, { key: "sourceId", label: "Source" }, { key: "amount", label: "Montant", render: (r: any) => money(r.amount) }, { key: "weightedAmount", label: "Pondéré", render: (r: any) => money(r.weightedAmount) }, { key: "status", label: "Statut" }]} />;
 }
 
 export function CashOutPage() {
@@ -231,7 +231,7 @@ export function CashOutPage() {
     { name: "sourceType", label: "Type de source", type: "select", options: [
       { label: "Salaire", value: "salary" },
       { label: "Charges employeur", value: "employer_tax" },
-      { label: "Facture freelance", value: "freelancer_invoice" },
+      { label: "Facture fréelance", value: "freelancer_invoice" },
       { label: "Facture partenaire", value: "partner_invoice" },
       { label: "Frais fixe", value: "fixed_cost" },
       { label: "Frais variable", value: "variable_cost" },
@@ -270,7 +270,7 @@ export function AdminPage() {
 }
 
 function ProfitabilityTable({ title, rows, columns }: { title: string; rows: any[]; columns: any[] }) {
-  return <section className="space-y-5"><PageTitle title={title} subtitle="Vue calculée ? partir du scénario actif." /><SimpleTable rows={rows} columns={columns} /></section>;
+  return <section className="space-y-5"><PageTitle title={title} subtitle="Vue calculée à partir du scénario actif." /><SimpleTable rows={rows} columns={columns} /></section>;
 }
 
 function useV1Projection(scenarioId: string, horizon: number) {

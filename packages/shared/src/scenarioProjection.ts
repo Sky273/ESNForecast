@@ -280,7 +280,7 @@ export function calculateScenarioProjection(input: ScenarioProjectionInput): Sce
       : 0;
 
     if (cash < effective.settings.criticalCashThreshold) {
-      monthAlerts.push(makeAlert("treasury_below_threshold", "critical", `Tresorerie sous le seuil critique en ${month}`, month, "Reduire les sorties ou securiser des encaissements."));
+      monthAlerts.push(makeAlert("treasury_below_threshold", "critical", `Trésorerie sous le seuil critique en ${month}`, month, "Reduire les sorties ou securiser des encaissements."));
     }
     if (monthlyBalanceAccrual < 0) {
       monthAlerts.push(makeAlert("negative_monthly_balance", "warning", `Solde mensuel negatif en ${month}`, month, "Revoir les couts et missions contributrices."));

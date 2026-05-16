@@ -64,7 +64,7 @@ export function generateReconciliationSuggestions(input: V3FinancialInput): Reco
       targetType: "invoice",
       targetId: invoice.id,
       confidenceScore: roundRatio(confidenceScore),
-      reason: `Montant ${exactAmount ? "exact" : "proche"} et date a ${Math.abs(dateVariance)} jour(s) de l'echeance`,
+      reason: `Montant ${exactAmount ? "exact" : "proche"} et date a ${Math.abs(dateVariance)} jour(s) de l'échéance`,
       status: "pending"
     });
   }
@@ -131,7 +131,7 @@ export function calculateForecastReliability(input: V3FinancialInput): ForecastR
         unreconciledTransactions: unreconciled,
         connectorPenalty
       },
-      explanation: `Score penalise par un ecart de tresorerie de ${roundRatio(cashVarianceRate * 100)}%, ${uncategorized} transaction(s) non categorisee(s) et ${unreconciled} non rapprochee(s).`
+      explanation: `Score penalise par un écart de trésorerie de ${roundRatio(cashVarianceRate * 100)}%, ${uncategorized} transaction(s) non categorisee(s) et ${unreconciled} non rapprochee(s).`
     };
   });
 }
@@ -168,7 +168,7 @@ export function generateReforecastSuggestions(input: V3FinancialInput, materiali
       },
       impactAmount: row.variance,
       impactMonth: row.month,
-      explanation: `Ecart de tresorerie de ${roundCurrency(row.variance)} EUR entre le solde bancaire reel et la prevision.`,
+      explanation: `Ecart de trésorerie de ${roundCurrency(row.variance)} EUR entre le solde bancaire réel et la prévision.`,
       confidenceScore: roundRatio(Math.max(0.2, Math.min(0.95, row.reliabilityScore / 100))),
       status: "pending"
     }));
@@ -192,7 +192,7 @@ export function calculateRunway(input: V3FinancialInput): RunwayAnalysis {
     criticalDate,
     assumptions: ["Burn calcule sur les transactions debit importees", "CA futur pris en compte via cash-in pondere"],
     recommendedActions: runwayWeightedMonths < 3
-      ? ["Relancer les clients en retard", "Reporter les depenses non essentielles", "Verifier les missions a forte dependance client"]
+      ? ["Relancer les clients en retard", "Reporter les dépenses non essentielles", "Vérifier les missions a forte dépendance client"]
       : ["Maintenir le rapprochement bancaire hebdomadaire", "Surveiller les connecteurs et transactions non categorisees"]
   };
 }
@@ -222,7 +222,7 @@ export function detectFinancialAnomalies(input: V3FinancialInput): FinancialAnom
         entityId: rows[0].id,
         amount: Math.abs(rows[0].amount),
         explanation: "Deux debits proches ont le meme montant, la meme date et la meme contrepartie.",
-        suggestedAction: "Verifier s'il s'agit d'un double paiement avant rapprochement.",
+        suggestedAction: "Vérifier s'il s'agit d'un double paiement avant rapprochement.",
         status: "new"
       });
   }
@@ -237,7 +237,7 @@ export function detectFinancialAnomalies(input: V3FinancialInput): FinancialAnom
       entityType: "bank_transaction",
       entityId: transaction.id,
       amount: Math.abs(transaction.amount),
-      explanation: "Transaction significativement superieure au niveau habituel.",
+      explanation: "Transaction significativement supérieure au niveau habituel.",
       suggestedAction: "Categoriser et rapprocher la transaction.",
       status: "new"
     });
@@ -261,7 +261,7 @@ export function calculateDataQualityIssues(input: V3FinancialInput): DataQuality
       entityType: "bank_transaction",
       entityId: "multiple",
       message: `${uncategorized.length} transaction(s) non categorisee(s).`,
-      suggestedFix: "Executer les regles de categorisation puis traiter les exceptions.",
+      suggestedFix: "Exécuter les regles de categorisation puis traiter les exceptions.",
       status: "open"
     });
   }

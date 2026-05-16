@@ -186,7 +186,7 @@ describe("V2 executive engine", () => {
 
   it("builds an AI analysis using only calculated facts", () => {
     const analysis = buildAiExecutiveAnalysis(calculateExecutiveSituation(input));
-    expect(analysis.sourceFacts.some((fact) => fact.includes("Tresorerie finale"))).toBe(true);
+    expect(analysis.sourceFacts.some((fact) => fact.includes("Trésorerie finale"))).toBe(true);
     expect(analysis.recommendations.length).toBeGreaterThan(0);
   });
 });

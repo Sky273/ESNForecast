@@ -13,7 +13,7 @@ async function context() {
     db.organization.findFirst({ orderBy: { createdAt: "asc" } }),
     db.company.findFirst({ orderBy: { name: "asc" } })
   ]);
-  if (!organization || !company) throw new ApiError(404, "NOT_FOUND", "Organisation ou societe introuvable.", { action: "Executer le seed démo." });
+  if (!organization || !company) throw new ApiError(404, "NOT_FOUND", "Organisation ou societe introuvable.", { action: "Exécuter le seed démo." });
   return { organization, company };
 }
 
@@ -23,6 +23,30 @@ async function getReferenceBudget(year: number, budgetId?: string) {
     : await db.budget.findFirst({ where: { fiscalYear: year, isReference: true }, orderBy: { versionNumber: "desc" } });
   if (!budget) throw new ApiError(404, "NOT_FOUND", "Budget de reference introuvable.");
   return budget;
+}
+
+const numberParam = (value: unknown, fallback: number) => {
+  const parsed = Number(value ?? fallback);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
+
+async function requiredPipelinePayload(source: Record<string, unknown>) {
+  const year = fiscalYear(source.fiscalYear);
+  const budget = await getReferenceBudget(year, typeof source.budgetId === "string" ? source.budgetId : undefined);
+  const [budgetLines, actuals] = await Promise.all([
+    db.budgetLine.findMany({ where: { budgetId: budget.id, category: "revenue" } }),
+    db.monthlyActual.findMany({ where: { year } })
+  ]);
+  const targetRevenue = budgetLines.reduce((total: number, line: any) => total + line.amount, 0);
+  const calculation = calculateRequiredPipeline({
+    targetRevenue,
+    actualRevenue: actuals.reduce((total: number, actual: any) => total + actual.actualRevenueGenerated, 0),
+    signedRemainingRevenue: numberParam(source.signedRemainingRevenue, 840000),
+    weightedPipelineRevenue: numberParam(source.weightedPipelineRevenue, 210000),
+    conversionRate: numberParam(source.conversionRate, 0.35),
+    averageOpportunityAmount: numberParam(source.averageOpportunityAmount, 85000)
+  });
+  return { budget, calculation, fiscalYear: year };
 }
 
 budgetRouter.get("/budgets", async (req, res, next) => {
@@ -70,7 +94,7 @@ budgetRouter.put("/budgets/:id", async (req, res, next) => {
   try {
     const current = await db.budget.findUnique({ where: { id: req.params.id } });
     if (!current) throw new ApiError(404, "NOT_FOUND", "Budget introuvable.");
-    if (current.status === "locked" || current.status === "approved") throw new ApiError(409, "CONFLICT", "Un budget valide ou verrouille ne peut pas etre modifie directement.", { action: "Dupliquer le budget pour creer une nouvelle version." });
+    if (current.status === "locked" || current.status === "approved") throw new ApiError(409, "CONFLICT", "Un budget validé ou verrouillé ne peut pas être modifié directement.", { action: "Dupliquer le budget pour créer une nouvelle version." });
     res.json(await db.budget.update({ where: { id: req.params.id }, data: req.body }));
   } catch (error) {
     next(error);
@@ -222,7 +246,7 @@ budgetRouter.post("/rolling-forecasts/generate", async (req, res, next) => {
     const budget = await getReferenceBudget(year, req.body?.sourceBudgetId);
     const forecast = await db.rollingForecast.create({ data: { organizationId: organization.id, companyId: company.id, name: req.body?.name ?? `Rolling forecast ${year}`, baseMonth: req.body?.baseMonth ?? `${year}-07`, horizonMonths: Number(req.body?.horizonMonths ?? 12), sourceBudgetId: budget.id, status: "active", generatedBy: "finance" } });
     const budgetLines = await db.budgetLine.findMany({ where: { budgetId: budget.id } });
-    await db.rollingForecastLine.createMany({ data: budgetLines.map((line: any) => ({ rollingForecastId: forecast.id, year: line.year, month: line.month, category: line.category, amount: line.month <= 6 ? line.amount * 0.92 : line.amount * 0.96, source: line.month <= 6 ? "actual" : "reforecast", confidenceScore: line.month <= 6 ? 0.95 : 0.72, comment: "Genere V6 depuis budget et reel partiel" })) });
+    await db.rollingForecastLine.createMany({ data: budgetLines.map((line: any) => ({ rollingForecastId: forecast.id, year: line.year, month: line.month, category: line.category, amount: line.month <= 6 ? line.amount * 0.92 : line.amount * 0.96, source: line.month <= 6 ? "actual" : "reforecast", confidenceScore: line.month <= 6 ? 0.95 : 0.72, comment: "Genere V6 depuis budget et réel partiel" })) });
     res.status(201).json(forecast);
   } catch (error) {
     next(error);
@@ -392,18 +416,34 @@ budgetRouter.post("/action-suggestions/:id/convert-to-action", async (req, res, 
 
 budgetRouter.get("/required-pipeline", async (req, res, next) => {
   try {
-    const year = fiscalYear(req.query.fiscalYear);
-    const budget = await getReferenceBudget(year, typeof req.query.budgetId === "string" ? req.query.budgetId : undefined);
-    const [budgetLines, actuals] = await Promise.all([db.budgetLine.findMany({ where: { budgetId: budget.id, category: "revenue" } }), db.monthlyActual.findMany({ where: { year } })]);
-    const targetRevenue = budgetLines.reduce((total: number, line: any) => total + line.amount, 0);
-    res.json(calculateRequiredPipeline({
-      targetRevenue,
-      actualRevenue: actuals.reduce((total: number, actual: any) => total + actual.actualRevenueGenerated, 0),
-      signedRemainingRevenue: Number(req.query.signedRemainingRevenue ?? 840000),
-      weightedPipelineRevenue: Number(req.query.weightedPipelineRevenue ?? 210000),
-      conversionRate: Number(req.query.conversionRate ?? 0.35),
-      averageOpportunityAmount: Number(req.query.averageOpportunityAmount ?? 85000)
-    }));
+    const { calculation } = await requiredPipelinePayload(req.query as Record<string, unknown>);
+    res.json(calculation);
+  } catch (error) {
+    next(error);
+  }
+});
+
+budgetRouter.post("/required-pipeline/recalculate", async (req, res, next) => {
+  try {
+    const { budget, calculation, fiscalYear: year } = await requiredPipelinePayload(req.body ?? {});
+    const snapshot = await db.requiredPipelineSnapshot.create({
+      data: {
+        organizationId: budget.organizationId,
+        companyId: budget.companyId,
+        fiscalYear: year,
+        targetRevenue: calculation.targetRevenue,
+        actualRevenue: calculation.actualRevenue,
+        signedRemainingRevenue: calculation.signedRemainingRevenue,
+        weightedPipelineRevenue: calculation.weightedPipelineRevenue,
+        revenueGap: calculation.revenueGap,
+        historicalConversionRate: calculation.historicalConversionRate,
+        requiredGrossPipeline: calculation.requiredGrossPipeline,
+        opportunitiesNeeded: calculation.opportunitiesNeeded,
+        latestSignatureMonth: calculation.latestSignatureMonth,
+        recommendations: calculation.recommendations
+      }
+    });
+    res.status(201).json({ ...calculation, snapshotId: snapshot.id, calculatedAt: snapshot.calculatedAt });
   } catch (error) {
     next(error);
   }
@@ -516,12 +556,12 @@ budgetRouter.get("/reports/budget-forecast-actual.pdf", (_req, res) => {
 budgetRouter.post("/ai/analyze/budget", async (req, res, next) => {
   try {
     const landing = await annualLandingPayload(fiscalYear(req.body?.fiscalYear), req.body?.budgetId);
-    res.json({ summary: `Atterrissage CA ${landing.projectedAnnualRevenue} EUR pour un budget ${landing.budgetRevenue} EUR.`, facts: landing.mainDrivers, recommendations: ["Prioriser pipeline manquant", "Suivre actions cash", "Commenter les Ecarts critiques"] });
+    res.json({ summary: `Atterrissage CA ${landing.projectedAnnualRevenue} EUR pour un budget ${landing.budgetRevenue} EUR.`, facts: landing.mainDrivers, recommendations: ["Prioriser pipeline manquant", "Suivre actions cash", "Commenter les écarts critiques"] });
   } catch (error) {
     next(error);
   }
 });
 budgetRouter.post("/ai/analyze/annual-landing", async (req, res, next) => { try { res.json(await annualLandingPayload(fiscalYear(req.body?.fiscalYear), req.body?.budgetId)); } catch (error) { next(error); } });
-budgetRouter.post("/ai/analyze/variance", async (_req, res) => res.json({ summary: "Les Ecarts prioritaires portent sur le CA, la marge et le cash.", guardrail: "Analyse basee sur les Ecarts calcules et commentaires existants." }));
+budgetRouter.post("/ai/analyze/variance", async (_req, res) => res.json({ summary: "Les écarts prioritaires portent sur le CA, la marge et le cash.", guardrail: "Analyse basée sur les écarts calculés et commentaires existants." }));
 budgetRouter.post("/ai/generate/action-suggestions", async (_req, res) => res.json({ suggestions: ["Relancer factures en retard", "Securiser prolongations", "Reduire sous-traitance faible marge"] }));
-budgetRouter.post("/ai/generate/budget-codir-summary", async (_req, res) => res.json({ title: "Synthese CODIR budget vs reel", sections: ["Atterrissage", "Ecarts", "Actions", "Conditions de réussite"] }));
+budgetRouter.post("/ai/generate/budget-codir-summary", async (_req, res) => res.json({ title: "Synthèse CODIR budget vs réel", sections: ["Atterrissage", "Écarts", "Actions", "Conditions de réussite"] }));

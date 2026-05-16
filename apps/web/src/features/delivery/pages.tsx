@@ -13,14 +13,14 @@ export function ExecutiveCockpitPage({ scenarioId, horizon }: V2Context) {
   const months = data?.forecast?.months ?? [];
   return (
     <section className="space-y-5">
-      <PageTitle title="Cockpit direction V2" subtitle="Synthese prévisionnel, réel, Écarts, risques et capacit?." />
+      <PageTitle title="Cockpit direction V2" subtitle="Synthèse prévisionnel, réel, Écarts, risques et capacité." />
       <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
         <KpiCard label="CA prévisionnel" value={money(data?.summary?.forecastRevenue ?? 0)} />
         <KpiCard label="CA réel" value={money(data?.summary?.actualRevenue ?? 0)} />
         <KpiCard label="Écart CA" value={money(data?.summary?.revenueVariance ?? 0)} tone={(data?.summary?.revenueVariance ?? 0) < 0 ? "risk" : "good"} />
         <KpiCard label="Trésorerie finale" value={money(data?.summary?.finalClosingCash ?? 0)} />
         <KpiCard label="Alertes critiques" value={String(data?.summary?.criticalAlerts ?? 0)} tone={(data?.summary?.criticalAlerts ?? 0) > 0 ? "risk" : "good"} />
-        <KpiCard label="Gaps capacit?" value={String(data?.summary?.capacityShortages ?? 0)} tone={(data?.summary?.capacityShortages ?? 0) > 0 ? "risk" : "good"} />
+        <KpiCard label="Gaps capacité" value={String(data?.summary?.capacityShortages ?? 0)} tone={(data?.summary?.capacityShortages ?? 0) > 0 ? "risk" : "good"} />
       </div>
       <div className="grid gap-4 xl:grid-cols-2">
         <ChartCard title="CA, coûts et cash">
@@ -118,7 +118,7 @@ export function ReconciliationPage() {
 
 export function CapacityPage({ scenarioId, horizon }: V2Context) {
   const { rows } = useRows(`/capacity?scenarioId=${scenarioId}&horizon=${horizon}`);
-  return <TablePage title="Capacity planning" subtitle="Capacit? disponible, besoins par compétence et gaps mensuels." rows={rows} columns={[
+  return <TablePage title="Capacity planning" subtitle="Capacité disponible, besoins par compétence et gaps mensuels." rows={rows} columns={[
     ["month", "Mois"], ["skillLabel", "Compétence"], ["availableFTE", "Dispo FTE"], ["requiredFTE", "Besoin FTE"], ["gapFTE", "Gap"], ["status", "Statut", (value: string) => <Badge tone={value === "shortage" ? "risk" : value === "surplus" ? "warn" : "good"}>{value}</Badge>]
   ]} />;
 }
@@ -202,7 +202,7 @@ export function MonteCarloPage({ scenarioId, horizon }: V2Context) {
 
 export function StrategicRisksPage({ scenarioId, horizon }: V2Context) {
   const { data } = useObject(`/risks/strategic?scenarioId=${scenarioId}&horizon=${horizon}`);
-  return <TablePage title="Risques stratégiques" subtitle="Concentration client et dependances majeures." rows={data?.clientConcentration ?? []} columns={[
+  return <TablePage title="Risques stratégiques" subtitle="Concentration client et dépendances majeures." rows={data?.clientConcentration ?? []} columns={[
     ["clientName", "Client"], ["revenue", "CA", money], ["revenueShare", "Part CA", percent], ["severity", "Sévérité", (value: string) => <Badge tone={value === "critical" ? "risk" : value === "warning" ? "warn" : "neutral"}>{value}</Badge>]
   ]} />;
 }
@@ -212,7 +212,7 @@ export function AiAnalysisPage({ scenarioId, horizon }: V2Context) {
   useEffect(() => { if (scenarioId) void api("/ai/analyze/scenario", { method: "POST", body: JSON.stringify({ scenarioId, horizon }) }).then(setData); }, [scenarioId, horizon]);
   return (
     <section className="space-y-5">
-      <PageTitle title="Analyse IA encadrée" subtitle="Synthese basée uniquement sur les données calculées par ESN Forecast." />
+      <PageTitle title="Analyse IA encadrée" subtitle="Synthèse basée uniquement sur les données calculées par ESN Forecast." />
       <div className="rounded-lg border border-line bg-white p-4">
         <h2 className="text-base font-semibold">Resume executif</h2>
         <p className="mt-2 text-sm text-slate-700">{data?.executiveSummary ?? "Analyse non disponible."}</p>
@@ -231,7 +231,7 @@ export function V2CrudPage({ kind }: { kind: "plannedHires" | "rules" | "notific
     { name: "name", label: "Nom" }, { name: "triggerType", label: "Declencheur", type: "select", options: ["monthly_projection", "cash_threshold", "margin_threshold", "connector_error", "manual"].map((value) => ({ label: value, value })) }, { name: "severity", label: "Sévérité", type: "select", options: ["info", "warning", "critical"].map((value) => ({ label: value, value })) }, { name: "isActive", label: "Active", type: "checkbox" }
   ]} columns={[{ key: "name", label: "Regle" }, { key: "triggerType", label: "Declencheur" }, { key: "severity", label: "Sévérité" }, { key: "isActive", label: "Active", render: (row: any) => row.isActive ? "Oui" : "Non" }]} />;
   if (kind === "notifications") return <CrudPage title="Notifications" path="/notifications" initial={{ type: "manual", severity: "info", title: "", message: "", status: "unread" }} fields={[{ name: "type", label: "Type", type: "select", options: ["manual", "alert", "workflow", "system"].map((value) => ({ label: value, value })) }, { name: "severity", label: "Sévérité", type: "select", options: ["info", "warning", "critical"].map((value) => ({ label: value, value })) }, { name: "title", label: "Titre" }, { name: "message", label: "Message", type: "textarea" }, { name: "status", label: "Statut", type: "select", options: ["unread", "read", "archived"].map((value) => ({ label: value, value })) }]} columns={[{ key: "createdAt", label: "Date" }, { key: "severity", label: "Sévérité" }, { key: "title", label: "Titre" }, { key: "status", label: "Statut" }]} />;
-  if (kind === "documents") return <CrudPage title="Documents" path="/documents" initial={{ companyId: "", entityType: "mission", entityId: "", fileName: "", mimeType: "application/pdf", size: 0, storagePath: "", category: "contract" }} fields={[{ name: "companyId", label: "Société", type: "select", optionsPath: "/companies", optionLabelKey: "name", optionValueKey: "id", placeholder: "Sélectionner une société" }, { name: "entityType", label: "Entite", type: "select", options: [{ label: "Mission", value: "mission" }, { label: "Facture", value: "invoice" }, { label: "Client", value: "client" }, { label: "Paiement", value: "payment" }, { label: "Autre", value: "other" }] }, { name: "entityId", label: "Entite liée", type: "select", optionDependsOn: "entityType", optionSourcesByValue: { mission: { path: "/missions", optionLabelKey: "title" }, invoice: { path: "/invoices", optionLabelKey: "invoiceNumber" }, client: { path: "/clients", optionLabelKey: "name" }, payment: { path: "/payments", optionLabelFields: ["paymentDate", "amount"] } }, placeholder: "Sélectionner une entite" }, { name: "fileName", label: "Fichier" }, { name: "mimeType", label: "MIME" }, { name: "size", label: "Taille", type: "number" }, { name: "storagePath", label: "Chemin" }, { name: "category", label: "Catégorie", type: "select", options: ["contract", "invoice", "report", "support", "other"].map((value) => ({ label: value, value })) }]} columns={[{ key: "fileName", label: "Fichier" }, { key: "entityType", label: "Entite" }, { key: "entityId", label: "Entite liée" }, { key: "category", label: "Catégorie" }, { key: "uploadedAt", label: "Ajoute le" }]} />;
+  if (kind === "documents") return <CrudPage title="Documents" path="/documents" initial={{ companyId: "", entityType: "mission", entityId: "", fileName: "", mimeType: "application/pdf", size: 0, storagePath: "", category: "contract" }} fields={[{ name: "companyId", label: "Société", type: "select", optionsPath: "/companies", optionLabelKey: "name", optionValueKey: "id", placeholder: "Sélectionner une société" }, { name: "entityType", label: "Entité", type: "select", options: [{ label: "Mission", value: "mission" }, { label: "Facture", value: "invoice" }, { label: "Client", value: "client" }, { label: "Paiement", value: "payment" }, { label: "Autre", value: "other" }] }, { name: "entityId", label: "Entité liée", type: "select", optionDependsOn: "entityType", optionSourcesByValue: { mission: { path: "/missions", optionLabelKey: "title" }, invoice: { path: "/invoices", optionLabelKey: "invoiceNumber" }, client: { path: "/clients", optionLabelKey: "name" }, payment: { path: "/payments", optionLabelFields: ["paymentDate", "amount"] } }, placeholder: "Sélectionner une entite" }, { name: "fileName", label: "Fichier" }, { name: "mimeType", label: "MIME" }, { name: "size", label: "Taille", type: "number" }, { name: "storagePath", label: "Chemin" }, { name: "category", label: "Catégorie", type: "select", options: ["contract", "invoice", "report", "support", "other"].map((value) => ({ label: value, value })) }]} columns={[{ key: "fileName", label: "Fichier" }, { key: "entityType", label: "Entité" }, { key: "entityId", label: "Entité liée" }, { key: "category", label: "Catégorie" }, { key: "uploadedAt", label: "Ajoute le" }]} />;
   if (kind === "offers") return <CrudPage title="Offres et devis" path="/offers" initial={{ clientId: "", title: "", status: "draft", pricingMode: "daily_rate", totalAmount: 100000, expectedMargin: 30000, probability: 0.5 }} fields={[{ name: "clientId", label: "Client", type: "select", optionsPath: "/clients", optionLabelKey: "name", optionValueKey: "id", placeholder: "Sélectionner un client" }, { name: "title", label: "Titre" }, { name: "status", label: "Statut", type: "select", options: ["draft", "sent", "won", "lost", "cancelled"].map((value) => ({ label: value, value })) }, { name: "pricingMode", label: "Prix", type: "select", options: ["daily_rate", "fixed_price", "mixed"].map((value) => ({ label: value, value })) }, { name: "totalAmount", label: "Montant", type: "number" }, { name: "expectedMargin", label: "Marge", type: "number" }, { name: "probability", label: "Probabilité", type: "number" }]} columns={[{ key: "title", label: "Offre" }, { key: "status", label: "Statut" }, { key: "totalAmount", label: "Montant", render: (row: any) => money(row.totalAmount) }, { key: "expectedMargin", label: "Marge", render: (row: any) => money(row.expectedMargin) }]} />;
   return <ConnectorsPage />;
 }

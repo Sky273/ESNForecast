@@ -8,7 +8,7 @@ export function RealConnectorsPage() {
   const { rows } = useRows("/providers");
   return <TablePage title="Connecteurs réels V4" subtitle="Bridge, Powens, Tink, Plaid, Pennylane, Sage et extensions." rows={rows} columns={[
     ["provider", "Provider"],
-    ["configStatus", "Configuration", (_value: any, row: any) => <Badge tone={row.configStatus?.ok ? "good" : "warn"}>{row.configStatus?.ok ? "configure" : "mock/sandbox"}</Badge>],
+    ["configStatus", "Configuration", (_value: any, row: any) => <Badge tone={row.configStatus?.ok ? "good" : "warn"}>{row.configStatus?.ok ? "configuré" : "mock/sandbox"}</Badge>],
     ["capabilities", "Données", (_value: any, row: any) => capabilityText(row.capabilities)],
     ["configStatus", "Environnement", (value: any) => value?.environment]
   ]} />;
@@ -34,7 +34,7 @@ export function ProviderConnectionPage() {
       setResult(response);
       window.location.assign(response.authorizationUrl);
     } catch (error) {
-      setResult({ error: error instanceof Error ? error.message : "Erreur de demarrage de connexion" });
+      setResult({ error: error instanceof Error ? error.message : "Erreur de démarrage de connexion" });
       setLoading(false);
     }
   };
@@ -46,14 +46,14 @@ export function ProviderConnectionPage() {
 
   return (
     <section className="space-y-5">
-      <PageTitle title="Assistant de connexion provider" subtitle="Demarre le flux OAuth provider, puis affiche le resultat au retour." />
+      <PageTitle title="Assistant de connexion provider" subtitle="Démarre le flux OAuth provider, puis affiché le résultat au retour." />
       {callbackResult ? (
         <div className={`rounded-lg border p-4 text-sm ${callbackResult.connectionStatus === "success" ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-red-200 bg-red-50 text-red-900"}`}>
-          <div className="font-semibold">{callbackResult.connectionStatus === "success" ? "Connexion provider terminee" : "Connexion provider en erreur"}</div>
+          <div className="font-semibold">{callbackResult.connectionStatus === "success" ? "Connexion provider terminée" : "Connexion provider en erreur"}</div>
           <div className="mt-1">
             {callbackResult.connectionStatus === "success"
-              ? `Provider ${callbackResult.provider ?? ""} connecte. Connecteur cree : ${callbackResult.connectorId ?? "non renseigne"}.`
-              : callbackResult.message ?? "Le provider a retourne une erreur."}
+              ? `Provider ${callbackResult.provider ?? ""} connecté. Connecteur créé : ${callbackResult.connectorId ?? "non renseigné"}.`
+              : callbackResult.message ?? "Le provider a retourné une erreur."}
           </div>
           <pre className="mt-3 overflow-auto rounded bg-white/70 p-3 text-xs">{JSON.stringify(callbackResult, null, 2)}</pre>
           <button className="mt-3 rounded-md border border-line bg-white px-3 py-2 text-xs font-medium text-slate-700" onClick={clearCallback}>Effacer le retour</button>
@@ -64,7 +64,7 @@ export function ProviderConnectionPage() {
           <select className="rounded-md border border-line px-3 py-2" value={provider} onChange={(event) => setProvider(event.target.value)}>
             {["bridge", "powens", "tink", "plaid", "pennylane", "sage"].map((item) => <option key={item} value={item}>{item}</option>)}
           </select>
-          <button className="rounded-md bg-brand px-4 py-2 text-sm font-medium text-white disabled:opacity-60" disabled={loading} onClick={start}>{loading ? "Redirection..." : "Demarrer connexion"}</button>
+          <button className="rounded-md bg-brand px-4 py-2 text-sm font-medium text-white disabled:opacity-60" disabled={loading} onClick={start}>{loading ? "Redirection..." : "Démarrer connexion"}</button>
         </div>
       </div>
       {result ? (
@@ -90,13 +90,13 @@ function ProviderConnectionPageLegacy() {
   }));
   return (
     <section className="space-y-5">
-      <PageTitle title="Assistant de connexion provider" subtitle="Demarre un flux OAuth sécurisé ou un flux sandbox/mock si les credentials sont absents." />
+      <PageTitle title="Assistant de connexion provider" subtitle="Démarre un flux OAuth sécurisé ou un flux sandbox/mock si les credentials sont absents." />
       <div className="rounded-lg border border-line bg-white p-4">
         <div className="grid gap-3 md:grid-cols-[240px_auto]">
           <select className="rounded-md border border-line px-3 py-2" value={provider} onChange={(event) => setProvider(event.target.value)}>
             {["bridge", "powens", "tink", "plaid", "pennylane", "sage"].map((item) => <option key={item} value={item}>{item}</option>)}
           </select>
-          <button className="rounded-md bg-brand px-4 py-2 text-sm font-medium text-white" onClick={start}>Demarrer connexion</button>
+          <button className="rounded-md bg-brand px-4 py-2 text-sm font-medium text-white" onClick={start}>Démarrer connexion</button>
         </div>
       </div>
       {result ? <div className="rounded-lg border border-line bg-white p-4 text-sm"><div className="font-medium">Authorization URL</div><a className="break-all text-brand" href={result.authorizationUrl}>{result.authorizationUrl}</a><pre className="mt-3 overflow-auto rounded bg-surface p-3">{JSON.stringify(result, null, 2)}</pre></div> : null}
@@ -108,7 +108,7 @@ export function ProviderHealthPage() {
   const { data } = useObject("/connector-health");
   return (
     <section className="space-y-5">
-      <PageTitle title="Santé connectéurs V4" subtitle="Vue opérationnelle provider, syncs, webhooks, erreurs et rate limits." />
+      <PageTitle title="Santé connecteurs V4" subtitle="Vue opérationnelle provider, syncs, webhooks, erreurs et rate limits." />
       <div className="grid gap-3 md:grid-cols-4">
         <KpiCard label="Connectes" value={String(data?.summary?.connected ?? 0)} tone="good" />
         <KpiCard label="En erreur" value={String(data?.summary?.errors ?? 0)} tone={(data?.summary?.errors ?? 0) > 0 ? "risk" : "good"} />
@@ -122,7 +122,7 @@ export function ProviderHealthPage() {
 
 export function ProviderErrorsPage() {
   const { rows } = useRows("/provider-errors");
-  return <TablePage title="Erreurs provider" subtitle="Erreurs normalisees avec action utilisateur, retry et diagnostic technique." rows={rows} columns={[
+  return <TablePage title="Erreurs provider" subtitle="Erreurs normalisées avec action utilisateur, retry et diagnostic technique." rows={rows} columns={[
     ["provider", "Provider"],
     ["errorCategory", "Catégorie"],
     ["userMessage", "Message"],
@@ -149,7 +149,7 @@ export function ProviderRateLimitsPage() {
 export function DuplicatesPage() {
   const { rows } = useRows("/duplicates");
   return <TablePage title="Doublons multi-source" subtitle="Doublons potentiels entre CSV, banque, compta et saisie manuelle." rows={rows} columns={[
-    ["entityType", "Entite"], ["sourceAType", "Source A"], ["sourceBType", "Source B"], ["confidenceScore", "Score"], ["reason", "Raison"], ["status", "Statut"]
+    ["entityType", "Entité"], ["sourceAType", "Source A"], ["sourceBType", "Source B"], ["confidenceScore", "Score"], ["reason", "Raison"], ["status", "Statut"]
   ]} />;
 }
 
@@ -166,17 +166,17 @@ export function ConnectorCompliancePage() {
   const { data } = useObject("/compliance/connectors");
   return (
     <section className="space-y-5">
-      <PageTitle title="Conformit? connectéurs" subtitle="Tokens masqués, scopes, environnements, consentements et responsabilites." />
+      <PageTitle title="Conformité connecteurs" subtitle="Tokens masqués, scopes, environnements, consentements et responsabilités." />
       <SimpleTable rows={data?.connectors ?? []} columns={[["provider", "Provider"], ["type", "Type"], ["status", "Statut", statusBadge], ["configuration", "Configuration", (value: any) => value?.environment ?? "n/a"], ["lastSyncAt", "Dernier sync"]]} />
-      <SimpleTable rows={data?.tokens ?? []} columns={[["provider", "Provider"], ["connectorId", "Connecteur"], ["tokenType", "Type"], ["expiresAt", "Expiration"], ["accèssTokenEncrypted", "Accèss token"], ["refreshTokenEncrypted", "Refresh token"]]} />
+      <SimpleTable rows={data?.tokens ?? []} columns={[["provider", "Provider"], ["connectorId", "Connecteur"], ["tokenType", "Type"], ["expiresAt", "Expiration"], ["accessTokenEncrypted", "Token d'accès"], ["refreshTokenEncrypted", "Refresh token"]]} />
     </section>
   );
 }
 
 export function ConsentCompliancePage() {
   const { rows } = useRows("/compliance/consents");
-  return <TablePage title="Consentements réels" subtitle="Suivi des consentements bancaires et revocation." rows={rows} columns={[
-    ["provider", "Provider"], ["status", "Statut", statusBadge], ["grantedBy", "Accorde par"], ["grantedAt", "Accorde le"], ["expiresAt", "Expir? le"], ["revokedAt", "Revoque le"]
+  return <TablePage title="Consentements réels" subtitle="Suivi des consentements bancaires et révocation." rows={rows} columns={[
+    ["provider", "Provider"], ["status", "Statut", statusBadge], ["grantedBy", "Accordé par"], ["grantedAt", "Accordé le"], ["expiresAt", "Expiré le"], ["revokedAt", "Révoqué le"]
   ]} />;
 }
 
@@ -224,7 +224,7 @@ function SimpleTable({ rows, columns }: { rows: any[]; columns: any[] }) {
         <thead className="bg-surface text-left text-xs uppercase text-muted"><tr>{columns.map((column: any) => <th key={column[0]} className="px-3 py-3">{column[1]}</th>)}</tr></thead>
         <tbody>
           {normalized.map((row, index) => <tr key={row.id ?? row.provider ?? index} className="border-t border-line">{columns.map((column: any) => <td key={column[0]} className="px-3 py-3">{column[2] ? column[2](row[column[0]], row) : String(row[column[0]] ?? "")}</td>)}</tr>)}
-          {!normalized.length ? <tr><td className="px-3 py-8 text-center text-muted" colSpan={columns.length}>Aucune donnee</td></tr> : null}
+          {!normalized.length ? <tr><td className="px-3 py-8 text-center text-muted" colSpan={columns.length}>Aucune donnée</td></tr> : null}
         </tbody>
       </table>
     </div>

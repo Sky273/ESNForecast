@@ -157,7 +157,7 @@ pricingRouter.post("/pricing/renegotiation-candidates/:id/create-action", async 
     const action = await db.actionItem.create({
       data: {
         actionPlanId: plan.id,
-        title: req.body?.title ?? "Renegocier TJM mission",
+        title: req.body?.title ?? "Renégociér TJM mission",
         description: `TJM cible ${candidate.targetDailyRate} EUR, gain mensuel attendu ${candidate.monthlyImpactAmount} EUR.`,
         actionType: "client_renegotiation",
         status: "todo",
@@ -174,11 +174,11 @@ pricingRouter.post("/pricing/renegotiation-candidates/:id/create-action", async 
   }
 });
 
-pricingRouter.get("/pricing/decisions", async (_req, res, next) => { try { res.json(await enrichMissionLabels(await db.pricingDecision.findMany({ orderBy: { decidedAt: "desc" } }))); } catch (error) { next(error); } });
-pricingRouter.post("/pricing/decisions", async (req, res, next) => { try { const { organization, company } = await getPricingContext(); res.status(201).json(await db.pricingDecision.create({ data: { organizationId: organization.id, companyId: company.id, ...req.body } })); } catch (error) { next(error); } });
-pricingRouter.put("/pricing/decisions/:id", async (req, res, next) => { try { const { id, organizationId, companyId, createdAt, updatedAt, ...data } = req.body; res.json(await db.pricingDecision.update({ where: { id: req.params.id }, data })); } catch (error) { next(error); } });
-pricingRouter.delete("/pricing/decisions/:id", async (req, res, next) => { try { await db.pricingDecision.delete({ where: { id: req.params.id } }); res.status(204).send(); } catch (error) { next(error); } });
-pricingRouter.get("/pricing/missions/:missionId/decisions", async (req, res, next) => { try { res.json(await enrichMissionLabels(await db.pricingDecision.findMany({ where: { missionId: req.params.missionId }, orderBy: { decidedAt: "desc" } }))); } catch (error) { next(error); } });
+pricingRouter.get("/pricing/decisions", async (_req, res, next) => { try { res.json(await enrichMissionLabels(await db.pricingDécision.findMany({ orderBy: { decidedAt: "desc" } }))); } catch (error) { next(error); } });
+pricingRouter.post("/pricing/decisions", async (req, res, next) => { try { const { organization, company } = await getPricingContext(); res.status(201).json(await db.pricingDécision.create({ data: { organizationId: organization.id, companyId: company.id, ...req.body } })); } catch (error) { next(error); } });
+pricingRouter.put("/pricing/decisions/:id", async (req, res, next) => { try { const { id, organizationId, companyId, createdAt, updatedAt, ...data } = req.body; res.json(await db.pricingDécision.update({ where: { id: req.params.id }, data })); } catch (error) { next(error); } });
+pricingRouter.delete("/pricing/decisions/:id", async (req, res, next) => { try { await db.pricingDécision.delete({ where: { id: req.params.id } }); res.status(204).send(); } catch (error) { next(error); } });
+pricingRouter.get("/pricing/missions/:missionId/decisions", async (req, res, next) => { try { res.json(await enrichMissionLabels(await db.pricingDécision.findMany({ where: { missionId: req.params.missionId }, orderBy: { decidedAt: "desc" } }))); } catch (error) { next(error); } });
 
 pricingRouter.get("/pricing/margin-exceptions", async (_req, res, next) => { try { res.json(await enrichMissionLabels(await db.marginException.findMany({ orderBy: { targetReviewDate: "asc" } }))); } catch (error) { next(error); } });
 pricingRouter.post("/pricing/margin-exceptions", async (req, res, next) => { try { const { organization, company } = await getPricingContext(); res.status(201).json(await db.marginException.create({ data: { organizationId: organization.id, companyId: company.id, ...req.body } })); } catch (error) { next(error); } });
@@ -190,6 +190,6 @@ pricingRouter.get("/reports/pricing-margin.json", async (_req, res, next) => { t
 pricingRouter.get("/reports/pricing-margin.csv", async (_req, res, next) => { try { const rows = await listUnderpricedMissions(); res.type("text/csv").send(["mission,client,status,currentRate,floorRate,recommendedRate,monthlyImpact,annualImpact", ...rows.map((row) => `${row.missionTitle},${row.clientName},${row.pricingStatus},${row.currentDailyRate},${row.calculatedFloorDailyRate},${row.recommendedDailyRate},${row.monthlyImpactAmount},${row.annualizedImpactAmount}`)].join("\n")); } catch (error) { next(error); } });
 pricingRouter.get("/reports/pricing-margin.pdf", (_req, res) => res.type("application/pdf").send(Buffer.from("PDF démo V7 Pricing Margin")));
 
-pricingRouter.post("/ai/pricing/analyze-mission", async (req, res, next) => { try { const row = toMissionPricingRow(await calculateMissionProfile(req.body?.missionId)); res.json({ facts: row, summary: `Mission ${row.missionTitle}: TJM actuel ${row.currentDailyRate}, recommande ${row.recommendedDailyRate}.`, guardrail: "Analyse limitee aux donnees pricing calculees." }); } catch (error) { next(error); } });
+pricingRouter.post("/ai/pricing/analyze-mission", async (req, res, next) => { try { const row = toMissionPricingRow(await calculateMissionProfile(req.body?.missionId)); res.json({ facts: row, summary: `Mission ${row.missionTitle}: TJM actuel ${row.currentDailyRate}, recommandé ${row.recommendedDailyRate}.`, guardrail: "Analyse limitée aux données pricing calculées." }); } catch (error) { next(error); } });
 pricingRouter.post("/ai/pricing/generate-renegotiation-argument", async (req, res, next) => { try { const row = toMissionPricingRow(await calculateMissionProfile(req.body?.missionId)); res.json({ argument: `Le cout complet et la marge cible justifient un TJM cible de ${row.recommendedDailyRate} EUR. L'Ecart actuel represente ${row.monthlyImpactAmount} EUR par mois.`, sources: [row.missionId, row.profileId] }); } catch (error) { next(error); } });
 pricingRouter.post("/ai/pricing/create-action-draft", (_req, res) => res.json({ title: "Brouillon action renegociation", actionType: "client_renegotiation", status: "draft" }));

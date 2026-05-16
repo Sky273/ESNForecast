@@ -111,7 +111,7 @@ describe("V3 real finance engine", () => {
   it("penalizes reliability when forecast cash differs from real bank cash", () => {
     const scores = calculateForecastReliability(input);
     expect(scores[0].score).toBeLessThan(100);
-    expect(scores[0].explanation).toContain("ecart de tresorerie");
+    expect(scores[0].explanation).toContain("écart de trésorerie");
   });
 
   it("calculates runway from real cash and burn", () => {

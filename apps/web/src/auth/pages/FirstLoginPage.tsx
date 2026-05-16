@@ -28,7 +28,7 @@ export function FirstLoginPage({ token, onDone }: { token?: string; onDone: () =
     setError("");
     try {
       await authService.activateAccount(token, password);
-      setMessage("Votre compte est active. Vous pouvez vous connectér.");
+      setMessage("Votre compte est activé. Vous pouvez vous connecter.");
     } catch {
       setError("Invitation invalide, expirée ou déjà utilisée.");
     } finally {
@@ -49,7 +49,7 @@ export function FirstLoginPage({ token, onDone }: { token?: string; onDone: () =
         {error ? <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div> : null}
         {message ? <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">{message}</div> : null}
         <button disabled={loading || !token} className="w-full rounded-md bg-brand px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60">{loading ? "Activation..." : "Activer mon compte"}</button>
-        <button type="button" className="w-full rounded-md border border-line px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-surface" onClick={onDone}>Retour ? la connexion</button>
+        <button type="button" className="w-full rounded-md border border-line px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-surface" onClick={onDone}>Retour à la connexion</button>
       </form>
     </AuthLayout>
   );

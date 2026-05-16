@@ -9,7 +9,7 @@ export function ResetPasswordPage({ token, onBack }: { token?: string; onBack: (
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [message, setMessage] = useState("");
-  const [error, setError] = useState(token ? "" : "Le lien de reinitialisation est invalide ou incomplet.");
+  const [error, setError] = useState(token ? "" : "Le lien de réinitialisation est invalide ou incomplet.");
   const [loading, setLoading] = useState(false);
 
   const submit = async (event: FormEvent) => {
@@ -27,7 +27,7 @@ export function ResetPasswordPage({ token, onBack }: { token?: string; onBack: (
     setError("");
     try {
       await authService.resetPassword(token, password);
-      setMessage("Votre mot de passe ? ete mis ? jour. Vous pouvez vous connectér.");
+      setMessage("Votre mot de passe a été mis à jour. Vous pouvez vous connecter.");
     } catch {
       setError("Le lien est invalide ou expire.");
     } finally {
@@ -43,8 +43,8 @@ export function ResetPasswordPage({ token, onBack }: { token?: string; onBack: (
         <PasswordField id="reset-confirm" label="Confirmation" value={confirm} autoComplete="new-password" onChange={setConfirm} />
         {error ? <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div> : null}
         {message ? <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">{message}</div> : null}
-        <button disabled={loading || !token} className="w-full rounded-md bg-brand px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60">{loading ? "Mise ? jour..." : "Definir le mot de passe"}</button>
-        <button type="button" className="w-full rounded-md border border-line px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-surface" onClick={onBack}>Retour ? la connexion</button>
+        <button disabled={loading || !token} className="w-full rounded-md bg-brand px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60">{loading ? "Mise à jour..." : "Définir le mot de passe"}</button>
+        <button type="button" className="w-full rounded-md border border-line px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-surface" onClick={onBack}>Retour à la connexion</button>
       </form>
     </AuthLayout>
   );

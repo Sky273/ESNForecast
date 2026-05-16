@@ -170,7 +170,7 @@ export function calculateRenegotiationPriority(input: {
     factors: [
       { label: "Ecart marge", value: round(marginScore) },
       { label: "Impact mensuel", value: round(impactScore) },
-      { label: "Ecart TJM recommande", value: round(rateScore) },
+      { label: "Ecart TJM recommandé", value: round(rateScore) },
       { label: "Duree restante", value: round(durationScore) }
     ]
   };

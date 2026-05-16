@@ -471,7 +471,7 @@ deliveryRouter.post("/crm/opportunities/:id/convert-to-mission", async (req, res
   try {
     const opportunity = await prisma.crmOpportunity.findUnique({ where: { id: req.params.id } });
     if (!opportunity) return res.status(404).json({ error: "Opportunity not found" });
-    const client = await prisma.client.findFirst({ where: { name: opportunity.clientName } }) ?? await prisma.client.create({ data: { name: opportunity.clientName, sector: "A qualifier", paymentDelayDays: 30 } });
+    const client = await prisma.client.findFirst({ where: { name: opportunity.clientName } }) ?? await prisma.client.create({ data: { name: opportunity.clientName, sector: "A qualifiér", paymentDelayDays: 30 } });
     const mission = await prisma.mission.create({
       data: {
         title: opportunity.opportunityName,

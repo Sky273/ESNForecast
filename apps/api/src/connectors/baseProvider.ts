@@ -74,7 +74,7 @@ export abstract class BaseProvider implements FinancialConnectorProvider {
   async testConnection() {
     const validation = this.validateConfig();
     return validation.ok
-      ? { ok: true, message: `${this.getProviderName()} configured for ${validation.environment}` }
+      ? { ok: true, message: `${this.getProviderName()} configuréd for ${validation.environment}` }
       : { ok: true, message: `${this.getProviderName()} running in mock mode; missing ${validation.missing.join(", ")}` };
   }
 
@@ -123,9 +123,9 @@ export abstract class BaseProvider implements FinancialConnectorProvider {
   mapError(error: any) {
     const message = error?.message ?? String(error);
     const code = error?.code ?? error?.status;
-    if (code === 401 || message.includes("token")) return { category: "TOKEN_EXPIRED", userMessage: "La connexion doit etre renouvelee.", retryable: false, requiresUserAction: true, providerErrorCode: String(code ?? ""), providerErrorMessage: message };
-    if (code === 429 || message.includes("rate")) return { category: "RATE_LIMITED", userMessage: "Quota provider atteint, la sync sera reessayee.", retryable: true, requiresUserAction: false, providerErrorCode: String(code ?? ""), providerErrorMessage: message };
-    return { category: "UNKNOWN_PROVIDER_ERROR", userMessage: "Erreur provider non classee.", retryable: true, requiresUserAction: false, providerErrorCode: String(code ?? ""), providerErrorMessage: message, technicalDetails: { provider: this.getProviderName() } };
+    if (code === 401 || message.includes("token")) return { category: "TOKEN_EXPIRED", userMessage: "La connexion doit être renouvelée.", retryable: false, requiresUserAction: true, providerErrorCode: String(code ?? ""), providerErrorMessage: message };
+    if (code === 429 || message.includes("rate")) return { category: "RATE_LIMITED", userMessage: "Quota provider atteint, la sync sera réessayée.", retryable: true, requiresUserAction: false, providerErrorCode: String(code ?? ""), providerErrorMessage: message };
+    return { category: "UNKNOWN_PROVIDER_ERROR", userMessage: "Erreur provider non classée.", retryable: true, requiresUserAction: false, providerErrorCode: String(code ?? ""), providerErrorMessage: message, technicalDetails: { provider: this.getProviderName() } };
   }
 
   getRateLimitInfo(headers?: Headers) {
@@ -166,7 +166,7 @@ export abstract class BaseProvider implements FinancialConnectorProvider {
         transactionDate: String(row.date ?? row.transaction_date ?? row.authorized_date ?? new Date().toISOString().slice(0, 10)).slice(0, 10),
         bookingDate: String(row.booking_date ?? row.date ?? new Date().toISOString().slice(0, 10)).slice(0, 10),
         valueDate: row.value_date ? String(row.value_date).slice(0, 10) : undefined,
-        label: String(row.label ?? row.name ?? row.description ?? "Transaction"),
+        label: String(row.clean_description ?? row.provider_description ?? row.label ?? row.name ?? row.description ?? "Transaction"),
         counterpartyName: row.counterparty_name ?? row.merchant_name,
         counterpartyIbanMasked: maskIban(row.counterparty_iban ?? ""),
         amount,

@@ -48,14 +48,14 @@ export function ObservabilityPage() {
 
   return (
     <>
-      <PageHeader title="Observabilite" description="Vue opérationnelle des logs, erreurs, latences, jobs et connectéurs." />
+      <PageHeader title="Observabilite" description="Vue opérationnelle des logs, erreurs, latences, jobs et connecteurs." />
       <div className="mb-5 grid gap-3 md:grid-cols-4">
         <KpiCard label="Logs collectes" value={String(summary?.logs ?? "-")} />
         <KpiCard label="Erreurs ouvertes" value={String(summary?.openErrors ?? "-")} tone={(summary?.openErrors ?? 0) ? "risk" : "good"} />
-        <KpiCard label="Erreurs connectéurs" value={String(summary?.connectorErrors ?? "-")} />
+        <KpiCard label="Erreurs connecteurs" value={String(summary?.connectorErrors ?? "-")} />
         <KpiCard label="Snapshots lenteur" value={String(summary?.slowRequests?.length ?? "-")} />
       </div>
-      <Panel title="Erreurs recentes">
+      <Panel title="Erreurs récentes">
         <Table rows={errors ?? []} columns={[
           { key: "code", label: "Code" },
           { key: "severity", label: "Sévérité", render: (row) => <StatusBadge label={row.severity} tone={tone(row.severity)} /> },
@@ -93,7 +93,7 @@ export function JobsPage() {
       await api("/reforecast/recalculate", { method: "POST", body: JSON.stringify({}) });
       await refetch();
     } catch (caught) {
-      setActionError(caught instanceof Error ? caught.message : "Le reforecast n'a pas pu etre lance.");
+      setActionError(caught instanceof Error ? caught.message : "Le reforecast n'a pas pu être lancé.");
     }
   };
   const launchReportPdf = async () => {
@@ -102,7 +102,7 @@ export function JobsPage() {
       await api("/jobs/report-pdf", { method: "POST", body: JSON.stringify({ report: "codir" }) });
       await refetch();
     } catch (caught) {
-      setActionError(caught instanceof Error ? caught.message : "Le rapport PDF n'a pas pu etre lance.");
+      setActionError(caught instanceof Error ? caught.message : "Le rapport PDF n'a pas pu être lancé.");
     }
   };
   const launchConnectorSync = async () => {
@@ -111,7 +111,7 @@ export function JobsPage() {
       await api("/jobs/connector-sync", { method: "POST", body: JSON.stringify({ mode: "incremental" }) });
       await refetch();
     } catch (caught) {
-      setActionError(caught instanceof Error ? caught.message : "La synchronisation connecteurs n'a pas pu etre lancee.");
+      setActionError(caught instanceof Error ? caught.message : "La synchronisation connecteurs n'a pas pu être lancée.");
     }
   };
   const retry = async (row: any) => {
@@ -120,7 +120,7 @@ export function JobsPage() {
       await api(`/jobs/${row.id}/${["connector_sync", "reforecast", "report_pdf"].includes(row.type) ? "run" : "retry"}`, { method: "POST" });
       await refetch();
     } catch (caught) {
-      setActionError(caught instanceof Error ? caught.message : "Le job n'a pas pu etre relance.");
+      setActionError(caught instanceof Error ? caught.message : "Le job n'a pas pu être relancé.");
     }
   };
   const cancel = async (id: string) => { await api(`/jobs/${id}/cancel`, { method: "POST" }); await refetch(); };
@@ -137,7 +137,7 @@ export function JobsPage() {
         { key: "errorMessage", label: "Erreur" },
         { key: "actions", label: "Actions", render: (row) => (
           <div className="flex gap-2">
-            <button className="rounded-md border border-line px-2 py-1 text-xs" onClick={() => retry(row)}>{["connector_sync", "reforecast", "report_pdf"].includes(row.type) ? "Executer" : "Mettre en retry"}</button>
+            <button className="rounded-md border border-line px-2 py-1 text-xs" onClick={() => retry(row)}>{["connector_sync", "reforecast", "report_pdf"].includes(row.type) ? "Exécuter" : "Mettre en retry"}</button>
             <button className="rounded-md border border-line px-2 py-1 text-xs" onClick={() => cancel(row.id)}>Annuler</button>
           </div>
         ) }
@@ -150,7 +150,7 @@ export function SystemStatusPage() {
   const { data } = useApi<any>("/system/status");
   return (
     <>
-      <PageHeader title="Statut systeme" description="état applicatif, base, workers, connectéurs et erreurs recentes." />
+      <PageHeader title="Statut systeme" description="état applicatif, base, workers, connecteurs et erreurs récentes." />
       <div className="mb-5 grid gap-3 md:grid-cols-4">
         <KpiCard label="état global" value={data?.status ?? "-"} tone={data?.status === "opérational" ? "good" : "risk"} />
         <KpiCard label="API" value={data?.api ?? "-"} />
@@ -170,11 +170,11 @@ export function BackofficeSupportPage() {
 
   return (
     <>
-      <PageHeader title="Backoffice support" description="Diagnostic organisation, connectéurs, jobs et erreurs sans exposer les secrets." />
+      <PageHeader title="Backoffice support" description="Diagnostic organisation, connecteurs, jobs et erreurs sans exposer les secrets." />
       <div className="mb-5 grid gap-3 md:grid-cols-4">
         <KpiCard label="Organisations" value={String(organizations?.length ?? "-")} />
         <KpiCard label="Utilisateurs" value={String(detail?.users ?? "-")} />
-        <KpiCard label="Jobs ? traiter" value={String(diagnostics?.failedOrRetryingJobs ?? "-")} tone={(diagnostics?.failedOrRetryingJobs ?? 0) ? "risk" : "good"} />
+        <KpiCard label="Jobs à traiter" value={String(diagnostics?.failedOrRetryingJobs ?? "-")} tone={(diagnostics?.failedOrRetryingJobs ?? 0) ? "risk" : "good"} />
         <KpiCard label="Erreurs ouvertes" value={String(diagnostics?.openErrors ?? "-")} tone={(diagnostics?.openErrors ?? 0) ? "risk" : "good"} />
       </div>
       <Panel title="Organisations">
@@ -214,7 +214,7 @@ export function BackupsPage() {
 export function SecurityPage() {
   const { data: events } = useApi<any[]>("/security/events");
   const { data: attempts } = useApi<any[]>("/security/login-attempts");
-  const { data: access } = useApi<any[]>("/security/sensitive-accèss");
+  const { data: access } = useApi<any[]>("/security/sensitive-access");
   return (
     <>
       <PageHeader title="Sécurité" description="Connexions, tentatives échouées, accès sensibles et événements critiques." />
@@ -222,10 +222,10 @@ export function SecurityPage() {
         <Table rows={events ?? []} columns={[{ key: "type", label: "Type" }, { key: "severity", label: "Sévérité", render: (row) => <StatusBadge label={row.severity} tone={tone(row.severity)} /> }, { key: "message", label: "Message" }, { key: "correlationId", label: "Correlation" }]} />
       </Panel>
       <Panel title="Tentatives de connexion">
-        <Table rows={attempts ?? []} columns={[{ key: "email", label: "Email" }, { key: "success", label: "Succes", render: (row) => row.success ? "Oui" : "Non" }, { key: "failureReason", label: "Motif" }, { key: "createdAt", label: "Date" }]} />
+        <Table rows={attempts ?? []} columns={[{ key: "email", label: "Email" }, { key: "success", label: "Succès", render: (row) => row.success ? "Oui" : "Non" }, { key: "failureReason", label: "Motif" }, { key: "createdAt", label: "Date" }]} />
       </Panel>
       <Panel title="Accès données sensibles">
-        <Table rows={access ?? []} columns={[{ key: "entityType", label: "Entite" }, { key: "action", label: "Action" }, { key: "sensitivityLevel", label: "Sensibilite" }, { key: "userId", label: "Utilisateur" }]} />
+        <Table rows={access ?? []} columns={[{ key: "entityType", label: "Entité" }, { key: "action", label: "Action" }, { key: "sensitivityLevel", label: "Sensibilité" }, { key: "userId", label: "Utilisateur" }]} />
       </Panel>
     </>
   );
@@ -253,7 +253,7 @@ export function FeatureFlagsPage() {
   };
   return (
     <>
-      <PageHeader title="Feature flags" description="Activation progressive des modules stables, beta et experimentaux." actions={<button className="rounded-md bg-brand px-3 py-2 text-sm font-medium text-white" onClick={save}>{editingId ? "Enregistrer" : "Créer"}</button>} />
+      <PageHeader title="Feature flags" description="Activation progressive des modules stables, beta et expérimentaux." actions={<button className="rounded-md bg-brand px-3 py-2 text-sm font-medium text-white" onClick={save}>{editingId ? "Enregistrer" : "Créer"}</button>} />
       <div className="mb-5 grid gap-3 rounded-lg border border-line bg-white p-4 md:grid-cols-3">
         <label className="text-sm">Cle<input className="mt-1 w-full rounded-md border border-line px-3 py-2" value={draft.key} onChange={(event) => update("key", event.target.value)} /></label>
         <label className="text-sm">Nom<input className="mt-1 w-full rounded-md border border-line px-3 py-2" value={draft.name} onChange={(event) => update("name", event.target.value)} /></label>
@@ -268,7 +268,7 @@ export function FeatureFlagsPage() {
         { key: "status", label: "Statut", render: (row) => <StatusBadge label={row.status} tone={tone(row.status)} /> },
         { key: "enabledGlobally", label: "Global", render: (row) => row.enabledGlobally ? "Oui" : "Non" },
         { key: "rolloutPercent", label: "Rollout", render: (row) => `${row.rolloutPercent}%` },
-        { key: "actions", label: "Actions", render: (row) => <div className="flex gap-2"><button className="rounded border border-line px-2 py-1 text-xs" onClick={() => edit(row)}>Editer</button><button className="rounded border border-line px-2 py-1 text-xs text-red-700" onClick={() => remove(row.id)}>Supprimer</button></div> }
+        { key: "actions", label: "Actions", render: (row) => <div className="flex gap-2"><button className="rounded border border-line px-2 py-1 text-xs" onClick={() => edit(row)}>Éditer</button><button className="rounded border border-line px-2 py-1 text-xs text-red-700" onClick={() => remove(row.id)}>Supprimer</button></div> }
       ]} />
     </>
   );

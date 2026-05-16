@@ -84,7 +84,7 @@ export async function runConnectorSyncJob(options: ConnectorSyncJobOptions = {})
         durationMs: finishedAt.getTime() - startedAt.getTime(),
         progressPercent: 100,
         resultSummary,
-        errorMessage: failed ? `${failed} connecteur(s) en echec` : null
+        errorMessage: failed ? `${failed} connecteur(s) en échec` : null
       }
     });
     return { job: serializeDates(completedJob), syncRuns: serializeDates(runs) };

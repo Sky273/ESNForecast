@@ -55,7 +55,7 @@ export function assessSecurityContext(input: SecurityContextInput): SecurityCont
       level: "local_http",
       secure: false,
       blocking: false,
-      message: "Environnement local detecte : connexion HTTP autorisee pour le developpement."
+      message: "Environnement local détecté : connexion HTTP autorisee pour le developpement."
     };
   }
 

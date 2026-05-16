@@ -56,8 +56,8 @@ export function ConnectedFinanceDashboard({ scenarioId, horizon }: V3Context) {
 
 export function BankAccountsPage() {
   return <CrudPage title="Banque - comptes" path="/bank/accounts" initial={{ organizationId: "", companyId: "", bankConnectionId: "", externalAccountId: "", name: "", ibanMasked: "FR76********1234", currency: "EUR", type: "checking", currentBalance: 0, availableBalance: 0, balanceDate: "2026-06-30", isActive: true }} fields={[
-    { name: "organizationId", label: "Organisation", type: "select", optionsPath: "/organizations", optionLabelKey: "name", optionValueKey: "id", placeholder: "Sélectionner une organisation" }, { name: "companyId", label: "Société", type: "select", optionsPath: "/companies", optionLabelKey: "name", optionValueKey: "id", placeholder: "Sélectionner une société" }, { name: "bankConnectionId", label: "Connexion bancaire", type: "select", optionsPath: "/bank/connections", optionLabelKey: "provider", optionValueKey: "id", placeholder: "Sélectionner une connexion" }, { name: "externalAccountId", label: "Compte externe" }, { name: "name", label: "Nom" }, { name: "ibanMasked", label: "IBAN masqu?" }, { name: "currentBalance", label: "Solde", type: "number" }, { name: "availableBalance", label: "Disponible", type: "number" }, { name: "balanceDate", label: "Date solde", type: "date" }, { name: "type", label: "Type", type: "select", options: ["checking", "savings", "credit", "other"].map((value) => ({ label: value, value })) }, { name: "isActive", label: "Actif", type: "checkbox" }
-  ]} columns={[{ key: "name", label: "Compte" }, { key: "ibanMasked", label: "IBAN masqu?" }, { key: "currentBalance", label: "Solde", render: (row: any) => money(row.currentBalance) }, { key: "availableBalance", label: "Disponible", render: (row: any) => money(row.availableBalance) }, { key: "balanceDate", label: "Date" }]} />;
+    { name: "organizationId", label: "Organisation", type: "select", optionsPath: "/organizations", optionLabelKey: "name", optionValueKey: "id", placeholder: "Sélectionner une organisation" }, { name: "companyId", label: "Société", type: "select", optionsPath: "/companies", optionLabelKey: "name", optionValueKey: "id", placeholder: "Sélectionner une société" }, { name: "bankConnectionId", label: "Connexion bancaire", type: "select", optionsPath: "/bank/connections", optionLabelKey: "provider", optionValueKey: "id", placeholder: "Sélectionner une connexion" }, { name: "externalAccountId", label: "Compte externe" }, { name: "name", label: "Nom" }, { name: "ibanMasked", label: "IBAN masqué" }, { name: "currentBalance", label: "Solde", type: "number" }, { name: "availableBalance", label: "Disponible", type: "number" }, { name: "balanceDate", label: "Date solde", type: "date" }, { name: "type", label: "Type", type: "select", options: ["checking", "savings", "credit", "other"].map((value) => ({ label: value, value })) }, { name: "isActive", label: "Actif", type: "checkbox" }
+  ]} columns={[{ key: "name", label: "Compte" }, { key: "ibanMasked", label: "IBAN masqué" }, { key: "currentBalance", label: "Solde", render: (row: any) => money(row.currentBalance) }, { key: "availableBalance", label: "Disponible", render: (row: any) => money(row.availableBalance) }, { key: "balanceDate", label: "Date" }]} />;
 }
 
 export function BankTransactionsPage() {
@@ -114,7 +114,7 @@ export function ReforecastPage({ scenarioId, horizon }: V3Context) {
     try {
       setJobResult(await api("/reforecast/recalculate", { method: "POST", body: JSON.stringify({ scenarioId, horizon }) }));
     } catch {
-      setError("Le job reforecast n'a pas pu etre lance.");
+      setError("Le job reforecast n'a pas pu être lancé.");
     } finally {
       setIsRunning(false);
     }
@@ -122,7 +122,7 @@ export function ReforecastPage({ scenarioId, horizon }: V3Context) {
   return (
     <section className="space-y-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <PageTitle title="Reforecast" subtitle="Calcul controle des ecarts de tresorerie et generation de suggestions tracables." />
+        <PageTitle title="Reforecast" subtitle="Calcul controle des écarts de trésorerie et génération de suggestions traçables." />
         <button className="rounded-md bg-brand px-3 py-2 text-sm font-medium text-white disabled:opacity-60" onClick={runReforecast} disabled={isRunning}>
           {isRunning ? "Recalcul en cours..." : "Lancer le reforecast"}
         </button>
@@ -135,7 +135,7 @@ export function ReforecastPage({ scenarioId, horizon }: V3Context) {
         ["actualClosingCash", "Reel bancaire", money],
         ["recalibratedClosingCash", "Recalibre", money],
         ["variance", "Ecart", money],
-        ["reliabilityScore", "Fiabilite", (value: number) => `${value}/100`]
+        ["reliabilityScore", "Fiabilité", (value: number) => `${value}/100`]
       ]} />
     </section>
   );
@@ -200,7 +200,7 @@ export function DataQualityPage() {
 }
 
 export function ConnectorSupervisionPage() {
-  return <CrudPage title="Supervision connectéurs" path="/connectors" initial={{ organizationId: "", companyId: "", type: "banking", provider: "mock_bank_provider", name: "", status: "inactive", configuration: {} }} fields={[
+  return <CrudPage title="Supervision connecteurs" path="/connectors" initial={{ organizationId: "", companyId: "", type: "banking", provider: "mock_bank_provider", name: "", status: "inactive", configuration: {} }} fields={[
     { name: "organizationId", label: "Organisation", type: "select", optionsPath: "/organizations", optionLabelKey: "name", optionValueKey: "id", placeholder: "Sélectionner une organisation" }, { name: "companyId", label: "Société", type: "select", optionsPath: "/companies", optionLabelKey: "name", optionValueKey: "id", placeholder: "Sélectionner une société" }, { name: "type", label: "Type", type: "select", options: ["accounting", "banking", "invoicing", "crm", "hr", "generic_csv"].map((value) => ({ label: value, value })) }, { name: "provider", label: "Provider", type: "select", options: ["mock_bank_provider", "csv_bank_import", "mock_accounting_provider", "csv_accounting_import", "bridge", "powens", "tink", "plaid", "pennylane", "sage"].map((value) => ({ label: value, value })) }, { name: "name", label: "Nom" }, { name: "status", label: "Statut", type: "select", options: ["inactive", "connected", "error", "expired", "syncing", "disconnected"].map((value) => ({ label: value, value })) }, { name: "errorMessage", label: "Erreur" }
   ]} columns={[{ key: "type", label: "Type" }, { key: "provider", label: "Provider" }, { key: "name", label: "Nom" }, { key: "status", label: "Statut" }, { key: "lastSyncAt", label: "Dernier sync" }, { key: "errorMessage", label: "Erreur" }]} />;
 }
@@ -222,7 +222,7 @@ export function CodirReportPage({ scenarioId, horizon }: V3Context) {
         <KpiCard label="Anomalies" value={String(data?.payload?.anomalies?.length ?? 0)} />
         <KpiCard label="Runway" value={`${data?.payload?.runway?.runwayWeightedMonths ?? 0} mois`} />
       </div>
-      <SimpleTable rows={(data?.payload?.recommendations ?? []).map((recommendation: string, id: number) => ({ id, recommendation }))} columns={[["recommendation", "Decision / action"]]} />
+      <SimpleTable rows={(data?.payload?.recommendations ?? []).map((recommendation: string, id: number) => ({ id, recommendation }))} columns={[["recommendation", "Décision / action"]]} />
     </section>
   );
 }
@@ -230,7 +230,7 @@ export function CodirReportPage({ scenarioId, horizon }: V3Context) {
 export function FinancialAuditPage() {
   const { rows } = useRows("/audit/financial");
   return <TablePage title="Audit financier" subtitle="Actions sensibles liées banque, compta, rapprochement, imports et exports." rows={rows} columns={[
-    ["createdAt", "Date"], ["entityType", "Entite"], ["entityId", "ID"], ["action", "Action"]
+    ["createdAt", "Date"], ["entityType", "Entité"], ["entityId", "ID"], ["action", "Action"]
   ]} />;
 }
 
@@ -276,7 +276,7 @@ function SimpleTable({ rows, columns }: { rows: any[]; columns: any[] }) {
         <thead className="bg-surface text-left text-xs uppercase text-muted"><tr>{columns.map((column: any) => <th key={column[0]} className="px-3 py-3">{column[1]}</th>)}</tr></thead>
         <tbody>
           {normalized.map((row, index) => <tr key={row.id ?? row.month ?? index} className="border-t border-line">{columns.map((column: any) => <td key={column[0]} className="px-3 py-3">{column[2] ? column[2](row[column[0]], row) : String(row[column[0]] ?? "")}</td>)}</tr>)}
-          {!normalized.length ? <tr><td className="px-3 py-8 text-center text-muted" colSpan={columns.length}>Aucune donnee</td></tr> : null}
+          {!normalized.length ? <tr><td className="px-3 py-8 text-center text-muted" colSpan={columns.length}>Aucune donnée</td></tr> : null}
         </tbody>
       </table>
     </div>

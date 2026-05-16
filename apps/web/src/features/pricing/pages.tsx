@@ -32,7 +32,7 @@ function Table({ rows, columns }: { rows: any[]; columns: { key: string; label: 
               {columns.map((column) => <td key={column.key} className="px-3 py-2 align-top">{column.render ? column.render(row) : row[column.key]}</td>)}
             </tr>
           ))}
-          {!rows.length ? <tr><td className="px-3 py-8 text-center text-muted" colSpan={columns.length}>Aucune donnee.</td></tr> : null}
+          {!rows.length ? <tr><td className="px-3 py-8 text-center text-muted" colSpan={columns.length}>Aucune donnée.</td></tr> : null}
         </tbody>
       </table>
     </div>
@@ -88,7 +88,7 @@ export function PricingDashboardPage() {
           ]} />
         </div>
       </div>
-      <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted">Missions a surveiller</h2>
+      <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted">Missions à surveiller</h2>
       <Table rows={data?.underpriced ?? []} columns={pricingColumns()} />
     </>
   );
@@ -123,7 +123,7 @@ export function PricingSimulatorPage() {
   };
   return (
     <>
-      <PageHeader title="Simulateur pricing" description="Simuler un TJM, une remise et mesurer l'impact sur marge, TJM plancher et TJM recommande." actions={<div className="flex gap-2"><button className="rounded-md bg-brand px-3 py-2 text-sm font-medium text-white" onClick={run}>Simuler</button>{editingSimulationId ? <button className="rounded-md border border-line px-3 py-2 text-sm" onClick={updateSimulation}>Renommer</button> : null}</div>} />
+      <PageHeader title="Simulateur pricing" description="Simuler un TJM, une remise et mesurer l'impact sur marge, TJM plancher et TJM recommandé." actions={<div className="flex gap-2"><button className="rounded-md bg-brand px-3 py-2 text-sm font-medium text-white" onClick={run}>Simuler</button>{editingSimulationId ? <button className="rounded-md border border-line px-3 py-2 text-sm" onClick={updateSimulation}>Renommer</button> : null}</div>} />
       <div className="mb-5 grid gap-3 rounded-lg border border-line bg-white p-4 md:grid-cols-4">
         <label className="text-sm">Nom simulation<input className="mt-1 w-full rounded-md border border-line px-3 py-2" value={simulationName} onChange={(event) => setSimulationName(event.target.value)} /></label>
         <label className="text-sm">Mission<select className="mt-1 w-full rounded-md border border-line px-3 py-2" value={missionId || firstMission} onChange={(event) => setMissionId(event.target.value)}>{(missions ?? []).map((mission) => <option key={mission.id} value={mission.id}>{mission.title}</option>)}</select></label>
@@ -131,18 +131,18 @@ export function PricingSimulatorPage() {
         <label className="text-sm">Remise<input className="mt-1 w-full rounded-md border border-line px-3 py-2" type="number" step="0.01" value={discountRate} onChange={(event) => setDiscountRate(Number(event.target.value))} /></label>
       </div>
       {result ? <div className="grid gap-3 md:grid-cols-5">
-        <KpiCard label="TJM apres remise" value={money(result.output?.simulatedDailyRate)} />
+        <KpiCard label="TJM après remise" value={money(result.output?.simulatedDailyRate)} />
         <KpiCard label="CA simule" value={money(result.output?.revenue)} />
         <KpiCard label="Marge" value={percent(result.output?.currentMarginRate)} tone={kpiTone(result.output?.status)} />
         <KpiCard label="TJM plancher" value={money(result.output?.floorDailyRate)} />
-        <KpiCard label="TJM recommande" value={money(result.output?.recommendedDailyRate)} />
+        <KpiCard label="TJM recommandé" value={money(result.output?.recommendedDailyRate)} />
       </div> : null}
       <h2 className="mb-2 mt-5 text-sm font-semibold uppercase tracking-wide text-muted">Simulations enregistrees</h2>
       <Table rows={simulations ?? []} columns={[
         { key: "name", label: "Nom" },
         { key: "missionLabel", label: "Mission", render: missionLabel },
         { key: "createdAt", label: "Creee le", render: (row) => String(row.createdAt ?? "").slice(0, 10) },
-        { key: "actions", label: "Actions", render: (row) => <div className="flex gap-2"><ActionButton onClick={() => { setEditingSimulationId(row.id); setSimulationName(row.name); }}>Editer</ActionButton><ActionButton tone="risk" onClick={() => removeSimulation(row.id)}>Supprimer</ActionButton></div> }
+        { key: "actions", label: "Actions", render: (row) => <div className="flex gap-2"><ActionButton onClick={() => { setEditingSimulationId(row.id); setSimulationName(row.name); }}>Éditer</ActionButton><ActionButton tone="risk" onClick={() => removeSimulation(row.id)}>Supprimer</ActionButton></div> }
       ]} />
     </>
   );
@@ -207,7 +207,7 @@ export function RenegotiationCandidatesPage() {
   const removeCandidate = async (id: string) => { await api("/pricing/renegotiation-candidates/" + id, { method: "DELETE" }); refetch(); };
   return (
     <>
-      <PageHeader title="Missions a renegocier" description="Priorisation des missions a renegocier avec score explicable et gains attendus." actions={<button className="rounded-md bg-brand px-3 py-2 text-sm font-medium text-white" onClick={recalculate}>Recalculer</button>} />
+      <PageHeader title="Missions à renégocier" description="Priorisation des missions à renégocier avec score explicable et gains attendus." actions={<button className="rounded-md bg-brand px-3 py-2 text-sm font-medium text-white" onClick={recalculate}>Recalculer</button>} />
       <Table rows={data ?? []} columns={[
         { key: "missionLabel", label: "Mission", render: missionLabel },
         { key: "reason", label: "Raison" },
@@ -217,7 +217,7 @@ export function RenegotiationCandidatesPage() {
         { key: "targetDailyRate", label: "TJM cible", render: (row) => money(row.targetDailyRate) },
         { key: "annualizedImpactAmount", label: "Gain annuel", render: (row) => money(row.annualizedImpactAmount) },
         { key: "status", label: "Statut", render: (row) => <StatusBadge label={row.status} tone={tone(row.status)} /> },
-        { key: "actions", label: "Actions", render: (row) => <div className="flex flex-wrap gap-2"><ActionButton onClick={() => createAction(row.id)}>Creer action</ActionButton><ActionButton onClick={() => updateCandidate(row.id, { status: "ignored" })}>Ignorer</ActionButton><ActionButton onClick={() => updateCandidate(row.id, { status: "renegotiated" })}>Renegociee</ActionButton><ActionButton tone="risk" onClick={() => removeCandidate(row.id)}>Supprimer</ActionButton></div> }
+        { key: "actions", label: "Actions", render: (row) => <div className="flex flex-wrap gap-2"><ActionButton onClick={() => createAction(row.id)}>Créer action</ActionButton><ActionButton onClick={() => updateCandidate(row.id, { status: "ignored" })}>Ignorer</ActionButton><ActionButton onClick={() => updateCandidate(row.id, { status: "renegotiated" })}>Renégociée</ActionButton><ActionButton tone="risk" onClick={() => removeCandidate(row.id)}>Supprimer</ActionButton></div> }
       ]} />
     </>
   );
@@ -286,28 +286,28 @@ export function PricingHistoryPage() {
   const removeException = async (id: string) => { await api("/pricing/margin-exceptions/" + id, { method: "DELETE" }); refetchExceptions(); };
   return (
     <>
-      <PageHeader title="Historique pricing" description="Decisions de prix, remises, renegociations et exceptions de marge." />
+      <PageHeader title="Historique pricing" description="Décisions de prix, remises, renégociations et exceptions de marge." />
       <form className="mb-5 rounded-lg border border-line bg-white p-4" onSubmit={saveDecision}>
-        <h2 className="mb-3 font-semibold">{decisionId ? "Modifier une decision" : "Nouvelle decision"}</h2>
+        <h2 className="mb-3 font-semibold">{decisionId ? "Modifier une décision" : "Nouvelle décision"}</h2>
         <div className="grid gap-3 md:grid-cols-3">
           <label className="text-sm">Mission<select className="mt-1 w-full rounded-md border border-line px-3 py-2" value={decision.missionId || firstMissionId} onChange={(event) => setDecision({ ...decision, missionId: event.target.value })}>{(missions ?? []).map((mission) => <option key={mission.id} value={mission.id}>{mission.title}</option>)}</select></label>
           <label className="text-sm">Type<input className="mt-1 w-full rounded-md border border-line px-3 py-2" value={decision.decisionType} onChange={(event) => setDecision({ ...decision, decisionType: event.target.value })} /></label>
           <label className="text-sm">Ancien TJM<input className="mt-1 w-full rounded-md border border-line px-3 py-2" type="number" value={decision.previousDailyRate} onChange={(event) => setDecision({ ...decision, previousDailyRate: Number(event.target.value) })} /></label>
           <label className="text-sm">Nouveau TJM<input className="mt-1 w-full rounded-md border border-line px-3 py-2" type="number" value={decision.newDailyRate} onChange={(event) => setDecision({ ...decision, newDailyRate: Number(event.target.value) })} /></label>
-          <label className="text-sm">Marge apres<input className="mt-1 w-full rounded-md border border-line px-3 py-2" type="number" step="0.01" value={decision.marginAfter} onChange={(event) => setDecision({ ...decision, marginAfter: Number(event.target.value) })} /></label>
+          <label className="text-sm">Marge après<input className="mt-1 w-full rounded-md border border-line px-3 py-2" type="number" step="0.01" value={decision.marginAfter} onChange={(event) => setDecision({ ...decision, marginAfter: Number(event.target.value) })} /></label>
           <label className="text-sm">Raison<input className="mt-1 w-full rounded-md border border-line px-3 py-2" value={decision.reason} onChange={(event) => setDecision({ ...decision, reason: event.target.value })} /></label>
         </div>
-        <button className="mt-4 rounded-md bg-brand px-4 py-2 text-sm font-medium text-white">{decisionId ? "Enregistrer" : "Creer"}</button>
+        <button className="mt-4 rounded-md bg-brand px-4 py-2 text-sm font-medium text-white">{decisionId ? "Enregistrer" : "Créer"}</button>
       </form>
-      <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted">Decisions</h2>
+      <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted">Décisions</h2>
       <Table rows={decisions ?? []} columns={[
         { key: "missionLabel", label: "Mission", render: missionLabel },
-        { key: "decisionType", label: "Decision" },
+        { key: "decisionType", label: "Décision" },
         { key: "previousDailyRate", label: "Ancien TJM", render: (row) => money(row.previousDailyRate) },
         { key: "newDailyRate", label: "Nouveau TJM", render: (row) => money(row.newDailyRate) },
-        { key: "marginAfter", label: "Marge apres", render: (row) => percent(row.marginAfter) },
+        { key: "marginAfter", label: "Marge après", render: (row) => percent(row.marginAfter) },
         { key: "reason", label: "Raison" },
-        { key: "actions", label: "Actions", render: (row) => <div className="flex gap-2"><ActionButton onClick={() => { setDecisionId(row.id); setDecision({ missionId: row.missionId, decisionType: row.decisionType, previousDailyRate: row.previousDailyRate ?? 0, newDailyRate: row.newDailyRate ?? 0, marginAfter: row.marginAfter ?? 0, reason: row.reason ?? "" }); }}>Editer</ActionButton><ActionButton tone="risk" onClick={() => removeDecision(row.id)}>Supprimer</ActionButton></div> }
+        { key: "actions", label: "Actions", render: (row) => <div className="flex gap-2"><ActionButton onClick={() => { setDecisionId(row.id); setDecision({ missionId: row.missionId, decisionType: row.decisionType, previousDailyRate: row.previousDailyRate ?? 0, newDailyRate: row.newDailyRate ?? 0, marginAfter: row.marginAfter ?? 0, reason: row.reason ?? "" }); }}>Éditer</ActionButton><ActionButton tone="risk" onClick={() => removeDecision(row.id)}>Supprimer</ActionButton></div> }
       ]} />
       <form className="mb-5 mt-5 rounded-lg border border-line bg-white p-4" onSubmit={saveException}>
         <h2 className="mb-3 font-semibold">{exceptionId ? "Modifier une exception" : "Nouvelle exception"}</h2>
@@ -318,7 +318,7 @@ export function PricingHistoryPage() {
           <label className="text-sm">Statut<select className="mt-1 w-full rounded-md border border-line px-3 py-2" value={exception.status} onChange={(event) => setException({ ...exception, status: event.target.value })}>{["active", "expired", "revoked"].map((value) => <option key={value} value={value}>{value}</option>)}</select></label>
           <label className="text-sm md:col-span-2">Commentaire<input className="mt-1 w-full rounded-md border border-line px-3 py-2" value={exception.comment} onChange={(event) => setException({ ...exception, comment: event.target.value })} /></label>
         </div>
-        <button className="mt-4 rounded-md bg-brand px-4 py-2 text-sm font-medium text-white">{exceptionId ? "Enregistrer" : "Creer"}</button>
+        <button className="mt-4 rounded-md bg-brand px-4 py-2 text-sm font-medium text-white">{exceptionId ? "Enregistrer" : "Créer"}</button>
       </form>
       <h2 className="mb-2 mt-5 text-sm font-semibold uppercase tracking-wide text-muted">Exceptions de marge</h2>
       <Table rows={exceptions ?? []} columns={[
@@ -326,7 +326,7 @@ export function PricingHistoryPage() {
         { key: "reason", label: "Raison" },
         { key: "targetReviewDate", label: "Revue", render: (row) => String(row.targetReviewDate ?? "").slice(0, 10) },
         { key: "status", label: "Statut", render: (row) => <StatusBadge label={row.status} tone={tone(row.status)} /> },
-        { key: "actions", label: "Actions", render: (row) => <div className="flex gap-2"><ActionButton onClick={() => { setExceptionId(row.id); setException({ missionId: row.missionId, reason: row.reason ?? "", approvedBy: row.approvedBy ?? "direction", targetReviewDate: String(row.targetReviewDate ?? "").slice(0, 10), comment: row.comment ?? "", status: row.status }); }}>Editer</ActionButton><ActionButton tone="risk" onClick={() => removeException(row.id)}>Supprimer</ActionButton></div> }
+        { key: "actions", label: "Actions", render: (row) => <div className="flex gap-2"><ActionButton onClick={() => { setExceptionId(row.id); setException({ missionId: row.missionId, reason: row.reason ?? "", approvedBy: row.approvedBy ?? "direction", targetReviewDate: String(row.targetReviewDate ?? "").slice(0, 10), comment: row.comment ?? "", status: row.status }); }}>Éditer</ActionButton><ActionButton tone="risk" onClick={() => removeException(row.id)}>Supprimer</ActionButton></div> }
       ]} />
     </>
   );
@@ -336,7 +336,7 @@ export function PricingReportPage() {
   const { data } = useApi<any>("/reports/pricing-margin.json");
   return (
     <>
-      <PageHeader title="Rapport pricing" description="Synthese pricing, missions ? risque, exceptions, actions et gains attendus." />
+      <PageHeader title="Rapport pricing" description="Synthèse pricing, missions à risque, exceptions, actions et gains attendus." />
       <div className="mb-5 grid gap-3 md:grid-cols-4">
         <KpiCard label="Missions analysées" value={data?.dashboard?.missionsAnalyzed ?? 0} />
         <KpiCard label="à renégocier" value={data?.dashboard?.renegotiationCandidates ?? 0} />

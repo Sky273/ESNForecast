@@ -30,6 +30,7 @@ export async function sendAccountActivationEmail(user: { id: string; email: stri
     token,
     userName: user.name
   });
+  console.info(`[account-activation] ${user.email} -> ${email.activationUrl}`);
   const delivery = await sendMail({ to: user.email, subject: email.subject, text: email.text, html: email.html }).catch((error) => ({
     sent: false,
     reason: error instanceof Error ? error.message : "mail_send_failed"

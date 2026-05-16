@@ -49,7 +49,7 @@ export function requestContext(req: Request, res: Response, next: NextFunction) 
 }
 
 export function notFoundHandler(req: Request, _res: Response, next: NextFunction) {
-  next(new ApiError(404, "NOT_FOUND", `Route introuvable: ${req.method} ${req.path}`, { action: "Verifier l'URL ou la documentation API." }));
+  next(new ApiError(404, "NOT_FOUND", `Route introuvable: ${req.method} ${req.path}`, { action: "Vérifier l'URL ou la documentation API." }));
 }
 
 export function errorHandler(error: unknown, req: Request, res: Response, _next: NextFunction) {

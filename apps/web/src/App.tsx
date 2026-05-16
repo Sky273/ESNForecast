@@ -166,7 +166,7 @@ const navGroups: NavGroup[] = [
     items: [
       { id: "realConnectors", label: "Connecteurs", icon: Handshake, badge: "!" },
       { id: "providerConnection", label: "Connexion provider", icon: Sparkles },
-      { id: "connectorSupervision", label: "Supervision connectéurs", icon: Gauge },
+      { id: "connectorSupervision", label: "Supervision connecteurs", icon: Gauge },
       { id: "bankAccounts", label: "Comptes bancaires", icon: Landmark },
       { id: "bankConsents", label: "Consentements bancaires", icon: Shield },
       { id: "dataQuality", label: "Santé des données", icon: Shield, badge: "3" },

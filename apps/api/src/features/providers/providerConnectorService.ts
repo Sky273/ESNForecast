@@ -57,17 +57,13 @@ export async function handleOAuthCallback(providerName: ProviderName, query: Rec
     publicToken: query.public_token ? String(query.public_token) : undefined,
     state
   });
-  const connector = await prisma.connector.create({
-    data: {
-      organizationId: session.organizationId,
-      companyId: session.companyId,
-      type: session.connectorType,
-      provider: providerName,
-      name: `${providerName} ${provider.validateConfig().environment}`,
-      status: "connected",
-      configuration: { environment: provider.validateConfig().environment },
-      lastSyncAt: null
-    }
+  const connector = await findOrCreateConnectorForProviderAccount({
+    organizationId: session.organizationId,
+    companyId: session.companyId,
+    connectorType: session.connectorType,
+    providerName,
+    providerAccountId: token.providerAccountId,
+    environment: provider.validateConfig().environment
   });
   await secretManager.storeProviderToken({
     organizationId: session.organizationId,
@@ -92,6 +88,62 @@ export async function handleOAuthCallback(providerName: ProviderName, query: Rec
     updatedCount: initialSync.updatedCount,
     errorCount: initialSync.errorCount
   };
+}
+
+async function findOrCreateConnectorForProviderAccount(input: {
+  organizationId: string;
+  companyId: string;
+  connectorType: string;
+  providerName: ProviderName;
+  providerAccountId?: string;
+  environment: string;
+}) {
+  if (input.providerAccountId) {
+    const existingToken = await prisma.providerToken.findFirst({
+      where: {
+        organizationId: input.organizationId,
+        companyId: input.companyId,
+        provider: input.providerName,
+        providerAccountId: input.providerAccountId,
+        revokedAt: null
+      },
+      orderBy: { createdAt: "desc" }
+    });
+    if (existingToken) {
+      const existingConnector = await prisma.connector.findFirst({
+        where: {
+          id: existingToken.connectorId,
+          organizationId: input.organizationId,
+          companyId: input.companyId,
+          provider: input.providerName
+        }
+      });
+      if (existingConnector) {
+        return prisma.connector.update({
+          where: { id: existingConnector.id },
+          data: {
+            type: input.connectorType,
+            status: "connected",
+            configuration: { environment: input.environment, providerAccountId: input.providerAccountId },
+            errorMessage: null
+          }
+        });
+      }
+    }
+  }
+
+  return prisma.connector.create({
+    data: {
+      organizationId: input.organizationId,
+      companyId: input.companyId,
+      type: input.connectorType,
+      provider: input.providerName,
+      name: `${input.providerName} ${input.environment}`,
+      status: "connected",
+      configuration: { environment: input.environment, providerAccountId: input.providerAccountId },
+      lastSyncAt: null
+    }
+  });
 }
 
 export async function exchangePlaidPublicToken(body: { organizationId?: string; companyId?: string; publicToken: string }) {
@@ -121,15 +173,17 @@ export async function syncConnector(connectorId: string, mode: "full" | "increme
     const logs: unknown[] = [];
     if (connector.type === "banking") {
       const accounts = await provider.syncAccounts(connectorId);
+      const accountIdByExternalId = new Map<string, string>();
       for (const account of accounts) {
         const result = await upsertBankAccount(connector, account);
+        accountIdByExternalId.set(account.externalAccountId, result.accountId);
         importedCount += result.created ? 1 : 0;
         updatedCount += result.created ? 0 : 1;
       }
       const cursor = await getCursor(connectorId, "transactions");
       const transactions = await provider.syncTransactions(connectorId, mode === "full" ? undefined : cursor?.cursor ?? undefined);
       for (const transaction of transactions.transactions) {
-        const result = await upsertBankTransaction(connector, transaction);
+        const result = await upsertBankTransaction(connector, transaction, accountIdByExternalId.get(transaction.externalAccountId));
         importedCount += result.created ? 1 : 0;
         updatedCount += result.created ? 0 : 1;
       }
@@ -200,13 +254,13 @@ export async function detectDuplicates(organizationId?: string) {
       const a = transactions[i];
       const b = transactions[j];
       if (Math.abs(a.amount - b.amount) < 1 && a.transactionDate.toISOString().slice(0, 10) === b.transactionDate.toISOString().slice(0, 10)) {
-        candidates.push({ organizationId: a.organizationId, entityType: "bank_transaction", sourceAType: "bank", sourceAId: a.id, sourceBType: "bank", sourceBId: b.id, confidenceScore: 0.9, reason: "Meme date et meme montant", status: "pending" });
+        candidates.push({ organizationId: a.organizationId, entityType: "bank_transaction", sourceAType: "bank", sourceAId: a.id, sourceBType: "bank", sourceBId: b.id, confidenceScore: 0.9, reason: "Même date et même montant", status: "pending" });
       }
     }
     const invoice = invoices.find((candidate) => Math.abs(candidate.amountTTC - Math.abs(transactions[i].amount)) < 1);
-    if (invoice) candidates.push({ organizationId: transactions[i].organizationId, entityType: "invoice_payment", sourceAType: "bank_transaction", sourceAId: transactions[i].id, sourceBType: "invoice", sourceBId: invoice.id, confidenceScore: 0.85, reason: "Montant transaction egal facture", status: "pending" });
+    if (invoice) candidates.push({ organizationId: transactions[i].organizationId, entityType: "invoice_payment", sourceAType: "bank_transaction", sourceAId: transactions[i].id, sourceBType: "invoice", sourceBId: invoice.id, confidenceScore: 0.85, reason: "Montant transaction égal facture", status: "pending" });
     const payment = payments.find((candidate) => Math.abs(candidate.amount - Math.abs(transactions[i].amount)) < 1);
-    if (payment) candidates.push({ organizationId: transactions[i].organizationId, entityType: "payment", sourceAType: "bank_transaction", sourceAId: transactions[i].id, sourceBType: "payment", sourceBId: payment.id, confidenceScore: 0.85, reason: "Montant transaction egal paiement", status: "pending" });
+    if (payment) candidates.push({ organizationId: transactions[i].organizationId, entityType: "payment", sourceAType: "bank_transaction", sourceAId: transactions[i].id, sourceBType: "payment", sourceBId: payment.id, confidenceScore: 0.85, reason: "Montant transaction égal paiement", status: "pending" });
   }
   await prisma.duplicateCandidate.deleteMany({ where: { organizationId: organizationId ?? undefined, status: "pending" } });
   for (const candidate of candidates) await prisma.duplicateCandidate.create({ data: candidate });
@@ -222,7 +276,7 @@ export async function connectorHealth() {
     prisma.providerRateLimitState.findMany()
   ]);
   return {
-    providers: listProviderConfigs().map((config) => ({ provider: config.provider, environment: config.environment, configured: config.configured })),
+    providers: listProviderConfigs().map((config) => ({ provider: config.provider, environment: config.environment, configuréd: config.configuréd })),
     summary: {
       connected: connectors.filter((connector) => connector.status === "connected").length,
       errors: connectors.filter((connector) => connector.status === "error").length,
@@ -244,24 +298,137 @@ function resolveProviderName(provider: string): ProviderName {
 }
 
 async function upsertBankAccount(connector: any, account: NormalizedBankAccount) {
-  const existing = await prisma.bankAccount.findUnique({ where: { bankConnectionId_externalAccountId: { bankConnectionId: connector.id, externalAccountId: account.externalAccountId } } });
-  await prisma.bankAccount.upsert({
-    where: { bankConnectionId_externalAccountId: { bankConnectionId: connector.id, externalAccountId: account.externalAccountId } },
-    create: { organizationId: connector.organizationId, companyId: connector.companyId, bankConnectionId: connector.id, externalAccountId: account.externalAccountId, name: account.name, ibanMasked: account.ibanMasked, currency: account.currency, type: account.type, currentBalance: account.currentBalance, availableBalance: account.availableBalance, balanceDate: new Date(`${account.balanceDate}T00:00:00.000Z`), rawPayload: account.rawPayload as any },
-    update: { name: account.name, ibanMasked: account.ibanMasked, currentBalance: account.currentBalance, availableBalance: account.availableBalance, balanceDate: new Date(`${account.balanceDate}T00:00:00.000Z`), rawPayload: account.rawPayload as any }
+  const existing = await findBankAccountForProvider(connector, account.externalAccountId, account);
+  const data = {
+    name: account.name,
+    ibanMasked: account.ibanMasked,
+    currency: account.currency,
+    type: account.type,
+    currentBalance: account.currentBalance,
+    availableBalance: account.availableBalance,
+    balanceDate: new Date(`${account.balanceDate}T00:00:00.000Z`),
+    rawPayload: account.rawPayload as any
+  };
+  if (existing) {
+    const updated = await prisma.bankAccount.update({ where: { id: existing.id }, data });
+    return { created: false, accountId: updated.id };
+  }
+  const created = await prisma.bankAccount.create({
+    data: { organizationId: connector.organizationId, companyId: connector.companyId, bankConnectionId: connector.id, externalAccountId: account.externalAccountId, ...data }
   });
-  return { created: !existing };
+  return { created: true, accountId: created.id };
 }
 
-async function upsertBankTransaction(connector: any, transaction: NormalizedBankTransaction) {
-  const account = await prisma.bankAccount.findFirst({ where: { bankConnectionId: connector.id, externalAccountId: transaction.externalAccountId } }) ?? await prisma.bankAccount.create({ data: { organizationId: connector.organizationId, companyId: connector.companyId, bankConnectionId: connector.id, externalAccountId: transaction.externalAccountId, name: transaction.externalAccountId, ibanMasked: "", currency: transaction.currency, type: "checking", currentBalance: 0, availableBalance: 0, balanceDate: new Date() } });
-  const existing = await prisma.bankTransaction.findUnique({ where: { bankAccountId_externalTransactionId: { bankAccountId: account.id, externalTransactionId: transaction.externalTransactionId } } });
-  await prisma.bankTransaction.upsert({
-    where: { bankAccountId_externalTransactionId: { bankAccountId: account.id, externalTransactionId: transaction.externalTransactionId } },
-    create: { organizationId: connector.organizationId, companyId: connector.companyId, bankAccountId: account.id, externalTransactionId: transaction.externalTransactionId, transactionDate: new Date(`${transaction.transactionDate}T00:00:00.000Z`), bookingDate: new Date(`${transaction.bookingDate}T00:00:00.000Z`), valueDate: transaction.valueDate ? new Date(`${transaction.valueDate}T00:00:00.000Z`) : null, label: transaction.label, counterpartyName: transaction.counterpartyName, counterpartyIbanMasked: transaction.counterpartyIbanMasked, amount: transaction.amount, currency: transaction.currency, direction: transaction.direction, status: transaction.status, rawPayload: transaction.rawPayload as any },
-    update: { status: transaction.status, rawPayload: transaction.rawPayload as any }
+async function upsertBankTransaction(connector: any, transaction: NormalizedBankTransaction, resolvedBankAccountId?: string) {
+  const account = resolvedBankAccountId
+    ? await prisma.bankAccount.findUnique({ where: { id: resolvedBankAccountId } })
+    : await findBankAccountForProvider(connector, transaction.externalAccountId);
+  const targetAccount = account ?? await prisma.bankAccount.create({ data: { organizationId: connector.organizationId, companyId: connector.companyId, bankConnectionId: connector.id, externalAccountId: transaction.externalAccountId, name: transaction.externalAccountId, ibanMasked: "", currency: transaction.currency, type: "checking", currentBalance: 0, availableBalance: 0, balanceDate: new Date() } });
+  const existing = await findBankTransactionForProvider(targetAccount.id, transaction);
+  const transactionDate = new Date(`${transaction.transactionDate}T00:00:00.000Z`);
+  const bookingDate = new Date(`${transaction.bookingDate}T00:00:00.000Z`);
+  const valueDate = transaction.valueDate ? new Date(`${transaction.valueDate}T00:00:00.000Z`) : null;
+  const data = { transactionDate, bookingDate, valueDate, label: transaction.label, counterpartyName: transaction.counterpartyName, counterpartyIbanMasked: transaction.counterpartyIbanMasked, amount: transaction.amount, currency: transaction.currency, direction: transaction.direction, status: transaction.status, rawPayload: transaction.rawPayload as any };
+  if (existing) {
+    await prisma.bankTransaction.update({ where: { id: existing.id }, data });
+    return { created: false };
+  }
+  await prisma.bankTransaction.create({
+    data: { organizationId: connector.organizationId, companyId: connector.companyId, bankAccountId: targetAccount.id, externalTransactionId: transaction.externalTransactionId, ...data }
   });
-  return { created: !existing };
+  return { created: true };
+}
+
+async function findBankAccountForProvider(connector: any, externalAccountId: string, incomingAccount?: NormalizedBankAccount) {
+  const accountForConnector = await prisma.bankAccount.findUnique({
+    where: { bankConnectionId_externalAccountId: { bankConnectionId: connector.id, externalAccountId } }
+  });
+  if (accountForConnector) return accountForConnector;
+
+  const candidates = await prisma.bankAccount.findMany({
+    where: {
+      organizationId: connector.organizationId,
+      companyId: connector.companyId
+    }
+  });
+  if (candidates.length === 0) return undefined;
+
+  const connectorIds = candidates.map((candidate) => candidate.bankConnectionId);
+  const matchingConnector = await prisma.connector.findFirst({
+    where: {
+      id: { in: connectorIds },
+      organizationId: connector.organizationId,
+      companyId: connector.companyId,
+      provider: connector.provider
+    },
+    orderBy: { createdAt: "desc" }
+  });
+  const providerCandidates = matchingConnector
+    ? candidates.filter((candidate) => candidate.bankConnectionId === matchingConnector.id)
+    : candidates;
+  const sameExternalId = providerCandidates.find((candidate) => candidate.externalAccountId === externalAccountId);
+  if (sameExternalId) return sameExternalId;
+
+  const sourceName = normalizeText(incomingAccount?.name ?? "");
+  const sourceIban = incomingAccount?.ibanMasked && incomingAccount.ibanMasked !== "********" ? incomingAccount.ibanMasked : undefined;
+  if (sourceIban) {
+    const sameIban = providerCandidates.find((candidate) => candidate.ibanMasked === sourceIban && candidate.currency === incomingAccount?.currency);
+    if (sameIban) return sameIban;
+  }
+
+  const nameToMatch = sourceName || normalizeText(externalAccountId);
+  return providerCandidates.find((candidate) =>
+    normalizeText(candidate.name) === nameToMatch &&
+    (!incomingAccount?.currency || candidate.currency === incomingAccount.currency) &&
+    (!incomingAccount?.type || candidate.type === incomingAccount.type)
+  );
+}
+
+async function findBankTransactionForProvider(bankAccountId: string, transaction: NormalizedBankTransaction) {
+  const byExternalId = await prisma.bankTransaction.findUnique({
+    where: { bankAccountId_externalTransactionId: { bankAccountId, externalTransactionId: transaction.externalTransactionId } }
+  });
+  if (byExternalId) return byExternalId;
+
+  const transactionDate = new Date(`${transaction.transactionDate}T00:00:00.000Z`);
+  const candidates = await prisma.bankTransaction.findMany({
+    where: { bankAccountId, transactionDate, amount: transaction.amount, currency: transaction.currency }
+  });
+  if (candidates.length === 0) return undefined;
+
+  const incomingFingerprint = transactionFingerprint({
+    bookingDate: transaction.bookingDate,
+    valueDate: transaction.valueDate,
+    amount: transaction.amount,
+    currency: transaction.currency,
+    label: transaction.label,
+    rawPayload: transaction.rawPayload
+  });
+  return candidates.find((candidate) =>
+    transactionFingerprint({
+      bookingDate: candidate.bookingDate.toISOString().slice(0, 10),
+      valueDate: candidate.valueDate?.toISOString().slice(0, 10),
+      amount: candidate.amount,
+      currency: candidate.currency,
+      label: candidate.label,
+      rawPayload: candidate.rawPayload
+    }) === incomingFingerprint
+  );
+}
+
+function transactionFingerprint(input: { bookingDate?: string; valueDate?: string; amount: number; currency: string; label?: string; rawPayload?: any }) {
+  const description = normalizeText(input.rawPayload?.clean_description ?? input.rawPayload?.provider_description ?? input.label ?? "");
+  return [
+    input.bookingDate ?? "",
+    input.valueDate ?? "",
+    input.amount.toFixed(2),
+    input.currency,
+    description
+  ].join("|");
+}
+
+function normalizeText(value: string) {
+  return value.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ").trim().toLowerCase();
 }
 
 async function upsertAccountingInvoice(connectorId: string, invoice: NormalizedAccountingInvoice) {

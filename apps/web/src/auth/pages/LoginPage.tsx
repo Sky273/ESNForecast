@@ -17,14 +17,14 @@ export function LoginPage({ onAuthenticated, onForgotPassword }: { onAuthenticat
       await login(credentials);
       onAuthenticated();
     } catch {
-      setError("Connexion impossible. Verifiez vos identifiants et reessayez.");
+      setError("Connexion impossible. Vérifiez vos identifiants et réessayez.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <AuthLayout title="Connexion" description="Accédez ? votre cockpit financier et prévisionnel.">
+    <AuthLayout title="Connexion" description="Accédez à votre cockpit financier et prévisionnel.">
       <div className="mb-4">
         <SecurityProtocolAlert />
       </div>

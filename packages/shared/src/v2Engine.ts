@@ -241,27 +241,27 @@ export function buildAiExecutiveAnalysis(situation: ExecutiveSituation): AiExecu
   return {
     executiveSummary: `Situation calculee sur ${situation.forecast.months.length} mois avec ${situation.alerts.length} alerte(s).`,
     sourceFacts: [
-      `CA previsionnel: ${situation.summary.forecastRevenue}`,
-      `CA reel constate: ${situation.summary.actualRevenue}`,
-      `Tresorerie finale: ${situation.summary.finalClosingCash}`,
-      `Ecarts analyses: ${situation.variances.length}`
+      `CA prévisionnel: ${situation.summary.forecastRevenue}`,
+      `CA réel constate: ${situation.summary.actualRevenue}`,
+      `Trésorerie finale: ${situation.summary.finalClosingCash}`,
+      `Écarts analysés: ${situation.variances.length}`
     ],
     attentionPoints: [
       ...(worstVariance ? [`Ecart de marge le plus fort en ${worstVariance.month}: ${worstVariance.marginVariance}`] : []),
-      ...(hasCapacityShortage ? ["Besoin de capacite non couvert detecte"] : []),
+      ...(hasCapacityShortage ? ["Besoin de capacité non couvert détecté"] : []),
       ...situation.alerts.map((alert) => alert.message)
     ],
     recommendations: [
       worstVariance
-        ? `Investiguer les causes principales de l'ecart ${worstVariance.month}: ${worstVariance.mainVarianceReasons.join(", ")}.`
-        : "Maintenir une revue mensuelle des ecarts previsionnel/reel.",
+        ? `Investiguer les causes principales de l'écart ${worstVariance.month}: ${worstVariance.mainVarianceReasons.join(", ")}.`
+        : "Maintenir une revue mensuelle des écarts prévisionnel/réel.",
       hasCapacityShortage
         ? "Arbitrer entre staffing interne, sous-traitance et recrutement sur les competences en tension."
-        : "Conserver le suivi capacite pour anticiper les fins de mission."
+        : "Conserver le suivi capacité pour anticiper les fins de mission."
     ],
     limits: [
-      "Analyse basee uniquement sur les calculs fournis par ESN Forecast.",
-      "Aucune donnee externe ou hypothese non renseignee n'est inventee."
+      "Analyse basée uniquement sur les calculs fournis par ESN Forecast.",
+      "Aucune donnée externe ou hypothese non renseignée n'est inventee."
     ]
   };
 }
@@ -269,18 +269,18 @@ export function buildAiExecutiveAnalysis(situation: ExecutiveSituation): AiExecu
 function explainVariance(revenueVariance: number, costsVariance: number, marginVariance: number, cashVariance: number) {
   const reasons: string[] = [];
   if (Math.abs(revenueVariance) > EPSILON) {
-    reasons.push(revenueVariance < 0 ? "CA reel inferieur au previsionnel" : "CA reel superieur au previsionnel");
+    reasons.push(revenueVariance < 0 ? "CA réel inférieur au prévisionnel" : "CA réel supérieur au prévisionnel");
   }
   if (Math.abs(costsVariance) > EPSILON) {
-    reasons.push(costsVariance > 0 ? "Couts reels superieurs au previsionnel" : "Couts reels inferieurs au previsionnel");
+    reasons.push(costsVariance > 0 ? "Coûts réels supérieurs au prévisionnel" : "Coûts réels inférieurs au prévisionnel");
   }
   if (Math.abs(marginVariance) > EPSILON) {
-    reasons.push(marginVariance < 0 ? "Marge degradee" : "Marge amelioree");
+    reasons.push(marginVariance < 0 ? "Marge dégradée" : "Marge améliorée");
   }
   if (Math.abs(cashVariance) > EPSILON) {
-    reasons.push(cashVariance < 0 ? "Tresorerie sous prevision" : "Tresorerie au-dessus de la prevision");
+    reasons.push(cashVariance < 0 ? "Trésorerie sous prévision" : "Trésorerie au-dessus de la prévision");
   }
-  return reasons.length > 0 ? reasons : ["Aucun ecart significatif"];
+  return reasons.length > 0 ? reasons : ["Aucun écart significatif"];
 }
 
 function dateRangeIntersectsMonth(need: MissionSkillNeed, year: number, month: number) {

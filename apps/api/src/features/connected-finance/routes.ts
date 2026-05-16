@@ -516,7 +516,7 @@ connectedFinanceRouter.post("/reports/codir/generate", async (req, res, next) =>
 connectedFinanceRouter.post("/ai/analyze/cash-variance", async (req, res, next) => {
   try {
     const situation = await buildV3Situation(req.body.scenarioId, req.body.horizon);
-    res.json({ answer: "Les Ecarts cash sont calcules ? partir du solde bancaire reel et de la projection.", sourceFacts: situation.treasury, recommendations: situation.runway.recommendedActions });
+    res.json({ answer: "Les écarts cash sont calculés à partir du solde bancaire réel et de la projection.", sourceFacts: situation.treasury, recommendations: situation.runway.recommendedActions });
   } catch (error) {
     next(error);
   }
@@ -524,7 +524,7 @@ connectedFinanceRouter.post("/ai/analyze/cash-variance", async (req, res, next) 
 connectedFinanceRouter.post("/ai/analyze/connector-health", async (_req, res, next) => {
   try {
     const situation = await buildV3Situation();
-    res.json({ answer: "état des connectéurs calcule sans exposer de secret.", connectorHealth: situation.connectorHealth });
+    res.json({ answer: "état des connecteurs calcule sans exposer de secret.", connectorHealth: situation.connectorHealth });
   } catch (error) {
     next(error);
   }
@@ -532,7 +532,7 @@ connectedFinanceRouter.post("/ai/analyze/connector-health", async (_req, res, ne
 connectedFinanceRouter.post("/ai/analyze/codir", async (req, res, next) => {
   try {
     const report = await generateCodirReport(req.body.month ?? new Date().toISOString().slice(0, 7), req.body.scenarioId, req.body.horizon);
-    res.json({ summary: "Synthese CODIR generee ? partir du reel bancaire, des Ecarts et du runway.", source: report.payload });
+    res.json({ summary: "Synthèse CODIR générée à partir du réel bancaire, des écarts et du runway.", source: report.payload });
   } catch (error) {
     next(error);
   }

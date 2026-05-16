@@ -14,7 +14,7 @@ const firstCompany = async () => db.company.findFirst({ orderBy: { name: "asc" }
 
 async function organizationId() {
   const organization = await firstOrg();
-  if (!organization) throw new ApiError(404, "NOT_FOUND", "Aucune organisation disponible.", { action: "Executer le seed ou creer une organisation." });
+  if (!organization) throw new ApiError(404, "NOT_FOUND", "Aucune organisation disponible.", { action: "Exécuter le seed ou creer une organisation." });
   return organization.id;
 }
 
@@ -301,7 +301,7 @@ platformRouter.get("/backups/:id/download", async (req, res, next) => {
 platformRouter.post("/restores/dry-run", async (req, res, next) => {
   try {
     const orgId = req.body?.organizationId ?? await organizationId();
-    res.status(201).json(await db.restoreRun.create({ data: { organizationId: orgId, sourceBackupId: req.body?.sourceBackupId, mode: "dry_run", status: "success", resultSummary: { valid: true, warnings: ["Les tokens provider sont exclus de la restauration par defaut."] }, createdBy: "admin", complètedAt: new Date() } }));
+    res.status(201).json(await db.restoreRun.create({ data: { organizationId: orgId, sourceBackupId: req.body?.sourceBackupId, mode: "dry_run", status: "success", resultSummary: { valid: true, warnings: ["Les tokens provider sont exclus de la restauration par défaut."] }, createdBy: "admin", complètedAt: new Date() } }));
   } catch (error) {
     next(error);
   }

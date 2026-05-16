@@ -86,7 +86,7 @@ export async function runReportPdfJob(options: ReportPdfJobOptions = {}) {
         finishedAt,
         durationMs: finishedAt.getTime() - startedAt.getTime(),
         progressPercent: 100,
-        errorMessage: error instanceof Error ? error.message : "Erreur generation PDF inconnue",
+        errorMessage: error instanceof Error ? error.message : "Erreur génération PDF inconnue",
         errorDetails: { name: error instanceof Error ? error.name : "UnknownError", report }
       }
     });

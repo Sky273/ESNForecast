@@ -167,7 +167,7 @@ export async function recalculateRenegotiationCandidates() {
         organizationId: row.organizationId,
         companyId: row.companyId,
         missionId: row.missionId,
-        reason: row.currentDailyRate < row.calculatedFloorDailyRate ? "TJM sous le plancher" : "Marge inferieure ? la cible",
+        reason: row.currentDailyRate < row.calculatedFloorDailyRate ? "TJM sous le plancher" : "Marge inférieure ? la cible",
         severity: priority.severity,
         currentDailyRate: row.currentDailyRate,
         floorDailyRate: row.calculatedFloorDailyRate,

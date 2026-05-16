@@ -1,7 +1,7 @@
 const sum = (rows: any[], selector: (row: any) => number) => rows.reduce((total, row) => total + selector(row), 0);
 const round = (value: number) => Math.round(value * 100) / 100;
 
-export const budgetCategories = ["revenue", "employee_costs", "partner_costs", "freelancer_costs", "fixed_costs", "variable_costs", "cash_in", "cash_out", "gross_margin", "net_margin", "closing_cash", "utilization_rate", "bench_cost", "commercial_pipeline"];
+export const budgetCatégories = ["revenue", "employee_costs", "partner_costs", "freelancer_costs", "fixed_costs", "variable_costs", "cash_in", "cash_out", "gross_margin", "net_margin", "closing_cash", "utilization_rate", "bench_cost", "commercial_pipeline"];
 
 export function monthKey(year: number, month: number) {
   return `${year}-${String(month).padStart(2, "0")}`;
@@ -96,9 +96,9 @@ export function calculateAnnualLanding({ fiscalYear, budgetLines, rollingLines, 
     medianCase: { revenue: round(projectedRevenue), cash: round(projectedClosingCash) },
     highCase: { revenue: round(projectedRevenue * 1.06), cash: round(projectedClosingCash * 1.08) },
     mainDrivers: [
-      { label: "CA realise ? date", impact: round(actualRevenue) },
+      { label: "CA réalisé à date", impact: round(actualRevenue) },
       { label: "Forecast restant", impact: round(forecastRemaining) },
-      { label: "Ecart tresorerie final", impact: round(projectedClosingCash - closingCashBudget) }
+      { label: "Ecart trésorerie final", impact: round(projectedClosingCash - closingCashBudget) }
     ]
   };
 }
@@ -118,8 +118,8 @@ export function calculateRequiredPipeline({ targetRevenue, actualRevenue, signed
     latestSignatureMonth: "2026-09",
     recommendations: [
       "Securiser les prolongations critiques avant fin T3",
-      "Creer du pipeline qualifie sur les comptes Banque et Energie",
-      "Prioriser les offres ? marge superieure ? 28 %"
+      "Créer du pipeline qualifié sur les comptes Banque et Energie",
+      "Prioriser les offres ? marge supérieure ? 28 %"
     ]
   };
 }
@@ -162,13 +162,13 @@ export function buildWhatMustBeTrue({ projectedAnnualRevenue, budgetRevenue, pro
     },
     {
       conditionType: "cash_condition",
-      description: "Conserver une tresorerie finale au-dessus du budget",
+      description: "Conserver une trésorerie finale au-dessus du budget",
       targetValue: budgetClosingCash,
       currentValue: projectedClosingCash,
       gap: round(projectedClosingCash - budgetClosingCash),
       riskLevel: projectedClosingCash >= budgetClosingCash ? "low" : "critical",
       status: projectedClosingCash >= budgetClosingCash ? "satisfied" : "not_satisfied",
-      relatedActions: ["Accelerer encaissements", "Reporter depenses non essentielles"]
+      relatedActions: ["Accelerer encaissements", "Reporter dépenses non essentielles"]
     },
     {
       conditionType: "staffing_condition",
