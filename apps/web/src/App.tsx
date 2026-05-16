@@ -576,7 +576,7 @@ function renderPage(page: string, scenarioId: string, horizon: number, setHorizo
   if (page === "audit") return <AuditPage />;
   if (page === "admin") return <AdminPage />;
   if (page === "observability") return <ObservabilityPage />;
-  if (page === "jobs") return <JobsPage />;
+  if (page === "jobs") return <JobsPage scenarioId={scenarioId} horizon={horizon} />;
   if (page === "systemStatus") return <SystemStatusPage />;
   if (page === "backofficeSupport") return <BackofficeSupportPage />;
   if (page === "backups") return <BackupsPage />;

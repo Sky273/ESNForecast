@@ -1,7 +1,7 @@
 import type React from "react";
 import { useEffect, useMemo, useState } from "react";
 import { Bar, BarChart, CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { api } from "../../api";
+import { API_URL, api } from "../../api";
 import { CrudPage } from "../../components/CrudPage";
 import { Badge, money, percent } from "../../components/Format";
 import { KpiCard } from "../../components/KpiCard";
@@ -273,10 +273,18 @@ export function BankConsentsPage() {
 }
 
 export function CodirReportPage({ scenarioId, horizon }: V3Context) {
-  const { data } = useObject(`/reports/codir.json?month=2026-06&scenarioId=${scenarioId}&horizon=${horizon}`);
+  const month = new Date().toISOString().slice(0, 7);
+  const query = `month=${encodeURIComponent(month)}&scenarioId=${encodeURIComponent(scenarioId)}&horizon=${horizon}`;
+  const { data } = useObject(`/reports/codir.json?${query}`);
   return (
     <section className="space-y-5">
-      <PageTitle title="Rapport CODIR connecté" subtitle="Rapport mensuel basé sur réel bancaire, Écarts, anomalies et prévision recalibrée." />
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <PageTitle title="Rapport CODIR connecté" subtitle="Rapport mensuel basé sur le réel bancaire, les écarts, les anomalies et la prévision recalibrée." />
+        <div className="flex flex-wrap gap-2">
+          <a className="rounded-md border border-line bg-white px-3 py-2 text-sm font-medium" href={`${API_URL}/reports/codir.json?${query}`} target="_blank" rel="noreferrer">Exporter JSON</a>
+          <a className="rounded-md bg-brand px-3 py-2 text-sm font-medium text-white" href={`${API_URL}/reports/codir.pdf?${query}`} target="_blank" rel="noreferrer">Exporter PDF</a>
+        </div>
+      </div>
       <div className="grid gap-3 md:grid-cols-3">
         <KpiCard label="Cash" value={money(data?.payload?.bankSummary?.currentCash ?? 0)} />
         <KpiCard label="Anomalies" value={String(data?.payload?.anomalies?.length ?? 0)} />

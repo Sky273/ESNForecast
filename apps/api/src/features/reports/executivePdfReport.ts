@@ -115,7 +115,9 @@ export function buildExecutivePdf(projection: Projection, options: { scenarioNam
 export function buildCodirPdf(report: { payload: any; report?: any }) {
   const payload = report.payload ?? {};
   const bank = payload.bankSummary ?? {};
-  const treasury = payload.treasury ?? {};
+  const treasuryRows = asArray(payload.treasury);
+  const reportMonth = payload.month ?? report.report?.month;
+  const treasury = treasuryRows.find((row: any) => row.month === reportMonth) ?? treasuryRows[0] ?? {};
   const runway = payload.runway ?? {};
   const anomalies = asArray(payload.anomalies);
   const quality = asArray(payload.dataQualityIssues);
@@ -139,7 +141,7 @@ export function buildCodirPdf(report: { payload: any; report?: any }) {
 
   const cards = [
     ["Cash bancaire", money(bank.currentCash), "Solde consolide"],
-    ["Écart cash", money(treasury.varianceAmount), treasury.varianceRate !== undefined ? percent(treasury.varianceRate) : "Prév. vs réel"],
+    ["Écart cash", money(treasury.variance), treasury.forecastClosingCash !== undefined && treasury.actualClosingCash !== undefined ? `Réel ${money(treasury.actualClosingCash)} vs prévu ${money(treasury.forecastClosingCash)}` : "Prévision vs réel"],
     ["Runway", `${Math.round(runway.runwayWeightedMonths ?? 0)} mois`, "Pondéré"],
     ["Anomalies", String(anomalies.length), `${anomalies.filter((item: any) => item.severity === "critical").length} critiques`],
     ["Qualité données", String(quality.length), "Points ouverts"],

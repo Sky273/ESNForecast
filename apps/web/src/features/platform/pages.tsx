@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { api } from "../../api";
+import { API_URL, api } from "../../api";
 import { KpiCard } from "../../components/KpiCard";
 import { PageHeader, StatusBadge } from "../../components/PageHeader";
 import { useApi } from "../../hooks/useApi";
@@ -28,6 +28,16 @@ function Table({ rows, columns }: { rows: any[]; columns: { key: string; label: 
         </tbody>
       </table>
     </div>
+  );
+}
+
+function reportPdfLink(row: any) {
+  const endpoint = row?.resultSummary?.sourceEndpoint;
+  if (row?.type !== "report_pdf" || row?.status !== "success" || typeof endpoint !== "string") return "-";
+  return (
+    <a className="rounded-md border border-line px-2 py-1 text-xs text-brand" href={`${API_URL}${endpoint.replace(/^\/api/, "")}`} target="_blank" rel="noreferrer">
+      Ouvrir PDF
+    </a>
   );
 }
 
@@ -84,7 +94,7 @@ export function ObservabilityPage() {
   );
 }
 
-export function JobsPage() {
+export function JobsPage({ scenarioId, horizon }: { scenarioId?: string; horizon?: number } = {}) {
   const { data: jobs, refetch } = useApi<any[]>("/jobs");
   const [actionError, setActionError] = useState("");
   const launchReforecast = async () => {
@@ -99,7 +109,7 @@ export function JobsPage() {
   const launchReportPdf = async () => {
     setActionError("");
     try {
-      await api("/jobs/report-pdf", { method: "POST", body: JSON.stringify({ report: "codir" }) });
+      await api("/jobs/report-pdf", { method: "POST", body: JSON.stringify({ report: "codir", scenarioId, horizon }) });
       await refetch();
     } catch (caught) {
       setActionError(caught instanceof Error ? caught.message : "Le rapport PDF n'a pas pu être lancé.");
@@ -127,7 +137,7 @@ export function JobsPage() {
 
   return (
     <>
-      <PageHeader title="Supervision jobs" description="Suivi des synchronisations, imports, projections, reforecast et rapports." actions={<><button className="rounded-md bg-brand px-3 py-2 text-sm font-medium text-white" onClick={launchReforecast}>Lancer un reforecast</button><button className="rounded-md border border-line bg-white px-3 py-2 text-sm font-medium" onClick={launchConnectorSync}>Lancer sync connecteurs</button><button className="rounded-md border border-line bg-white px-3 py-2 text-sm font-medium" onClick={launchReportPdf}>Lancer rapport PDF</button></>} />
+      <PageHeader title="Supervision jobs" description="Suivi des synchronisations, imports, projections, reforecast et rapports." actions={<><button className="rounded-md bg-brand px-3 py-2 text-sm font-medium text-white" onClick={launchReforecast}>Lancer un reforecast</button><button className="rounded-md border border-line bg-white px-3 py-2 text-sm font-medium" onClick={launchConnectorSync}>Lancer sync connecteurs</button><button className="rounded-md border border-line bg-white px-3 py-2 text-sm font-medium" onClick={launchReportPdf}>Générer rapport CODIR PDF</button></>} />
       {actionError ? <div className="mb-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{actionError}</div> : null}
       <Table rows={jobs ?? []} columns={[
         { key: "type", label: "Type" },
@@ -135,6 +145,7 @@ export function JobsPage() {
         { key: "progressPercent", label: "Progression", render: (row) => `${row.progressPercent ?? 0}%` },
         { key: "durationMs", label: "Duree ms" },
         { key: "errorMessage", label: "Erreur" },
+        { key: "resultSummary", label: "Sortie", render: (row) => reportPdfLink(row) },
         { key: "actions", label: "Actions", render: (row) => (
           <div className="flex gap-2">
             <button className="rounded-md border border-line px-2 py-1 text-xs" onClick={() => retry(row)}>{["connector_sync", "reforecast", "report_pdf"].includes(row.type) ? "Exécuter" : "Mettre en retry"}</button>
