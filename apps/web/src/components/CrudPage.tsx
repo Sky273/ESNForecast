@@ -1,6 +1,6 @@
 import { Download, Plus, Save, Trash2 } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { api } from "../api";
+import { API_URL, api } from "../api";
 import type { Field } from "../types";
 import { Badge } from "./Format";
 import { useApiList } from "../hooks/useApi";
@@ -41,8 +41,9 @@ export function CrudPage<T extends Record<string, any>>({
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
-    if (editingId) await api(`${path}/${editingId}`, { method: "PUT", body: JSON.stringify(draft) });
-    else await api(path, { method: "POST", body: JSON.stringify(draft) });
+    const payload = pickEditableFields(fields, draft);
+    if (editingId) await api(`${path}/${editingId}`, { method: "PUT", body: JSON.stringify(payload) });
+    else await api(path, { method: "POST", body: JSON.stringify(payload) });
     setDraft(initial);
     setEditingId(null);
     await reload();
@@ -55,7 +56,7 @@ export function CrudPage<T extends Record<string, any>>({
           <h1 className="text-2xl font-semibold tracking-normal">{title}</h1>
           <p className="text-sm text-muted">{data.length} {t("common.records")}</p>
         </div>
-        <a className="inline-flex items-center gap-2 rounded-md border border-line bg-white px-3 py-2 text-sm" href="/api/export/resources.csv">
+        <a className="inline-flex items-center gap-2 rounded-md border border-line bg-white px-3 py-2 text-sm" href={`${API_URL}/export/resources.csv`}>
           <Download size={16} /> CSV
         </a>
       </div>
@@ -107,7 +108,7 @@ export function CrudPage<T extends Record<string, any>>({
                   <tr key={row.id} className="border-t border-line">
                     {columns.map((column) => <td key={column.key} className="px-3 py-3">{column.render ? column.render(row) : formatCellValue(row[column.key], optionLabelsByField[column.key])}</td>)}
                     <td className="flex gap-2 px-3 py-3">
-                      <button className="rounded-md border border-line px-2 py-1" onClick={() => { setEditingId(row.id); setDraft(row); }}>{t("common.edit")}</button>
+                      <button className="rounded-md border border-line px-2 py-1" onClick={() => { setEditingId(row.id); setDraft({ ...initial, ...pickEditableFields(fields, row) }); }}>{t("common.edit")}</button>
                       <button className="rounded-md border border-line p-1 text-risk" title={t("common.delete")} onClick={async () => { await api(`${path}/${row.id}`, { method: "DELETE" }); await reload(); }}><Trash2 size={16} /></button>
                     </td>
                   </tr>
@@ -120,6 +121,10 @@ export function CrudPage<T extends Record<string, any>>({
       </div>
     </section>
   );
+}
+
+export function pickEditableFields(fields: Field[], source: Record<string, any>) {
+  return Object.fromEntries(fields.map((field) => [field.name, source[field.name]]));
 }
 
 function useCrudOptionSources(fields: Field[], draft: Record<string, any>) {
@@ -145,8 +150,9 @@ function useCrudOptionSources(fields: Field[], draft: Record<string, any>) {
         setOptions((current) => ({ ...current, [source.fieldName]: [] }));
         return;
       }
-      api<any[]>(source.path)
-        .then((rows) => {
+      api<unknown>(source.path)
+        .then((payload) => {
+          const rows = normalizeListResponse(payload);
           setOptions((current) => ({
             ...current,
             [source.fieldName]: rows.map((row) => ({
@@ -164,7 +170,18 @@ function useCrudOptionSources(fields: Field[], draft: Record<string, any>) {
   return options;
 }
 
-function updateDraftSelectValue(fields: Field[], draft: Record<string, any>, fieldName: string, value: string) {
+export function normalizeListResponse(payload: unknown): Record<string, any>[] {
+  if (Array.isArray(payload)) return payload;
+  if (payload && typeof payload === "object") {
+    const record = payload as Record<string, unknown>;
+    for (const key of ["rows", "data", "items", "resources", "connectors"]) {
+      if (Array.isArray(record[key])) return record[key] as Record<string, any>[];
+    }
+  }
+  return [];
+}
+
+export function updateDraftSelectValue(fields: Field[], draft: Record<string, any>, fieldName: string, value: string) {
   const next = { ...draft, [fieldName]: value };
   fields.forEach((field) => {
     if (field.optionDependsOn === fieldName) next[field.name] = "";

@@ -25,7 +25,7 @@ export function getProviderConfig(provider: ProviderName): ProviderConfig {
     apiBaseUrl: process.env[`${prefix}_API_BASE_URL`] ?? defaultBaseUrl(provider),
     redirectUri: process.env[`${prefix}_REDIRECT_URI`],
     webhookSecret: process.env[`${prefix}_WEBHOOK_SECRET`],
-    configuréd: Boolean(clientId && clientSecret)
+    configured: Boolean(clientId && clientSecret)
   };
 }
 

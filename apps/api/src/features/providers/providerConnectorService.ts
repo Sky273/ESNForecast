@@ -65,6 +65,7 @@ export async function handleOAuthCallback(providerName: ProviderName, query: Rec
     providerAccountId: token.providerAccountId,
     environment: provider.validateConfig().environment
   });
+  await ensureBankConnection(connector, token.providerAccountId, { consentExpiresAt: token.expiresInSeconds ? new Date(Date.now() + token.expiresInSeconds * 1000) : undefined });
   await secretManager.storeProviderToken({
     organizationId: session.organizationId,
     companyId: session.companyId,
@@ -188,6 +189,7 @@ export async function syncConnector(connectorId: string, mode: "full" | "increme
         updatedCount += result.created ? 0 : 1;
       }
       await saveCursor(connectorId, "transactions", transactions.nextCursor);
+      await prisma.bankConnection.updateMany({ where: { connectorId }, data: { status: "connected", lastSyncAt: new Date() } });
       logs.push({ accounts: accounts.length, transactions: transactions.transactions.length });
     } else {
       const invoiceCursor = await getCursor(connectorId, "invoices");
@@ -219,6 +221,7 @@ export async function syncConnector(connectorId: string, mode: "full" | "increme
 export async function revokeConnector(connectorId: string) {
   await secretManager.revokeProviderToken(connectorId);
   await prisma.connector.update({ where: { id: connectorId }, data: { status: "disconnected" } });
+  await prisma.bankConnection.updateMany({ where: { connectorId }, data: { status: "revoked" } });
   return { connectorId, revoked: true };
 }
 
@@ -276,7 +279,7 @@ export async function connectorHealth() {
     prisma.providerRateLimitState.findMany()
   ]);
   return {
-    providers: listProviderConfigs().map((config) => ({ provider: config.provider, environment: config.environment, configuréd: config.configuréd })),
+    providers: listProviderConfigs().map((config) => ({ provider: config.provider, environment: config.environment, configured: config.configured })),
     summary: {
       connected: connectors.filter((connector) => connector.status === "connected").length,
       errors: connectors.filter((connector) => connector.status === "error").length,
@@ -298,8 +301,10 @@ function resolveProviderName(provider: string): ProviderName {
 }
 
 async function upsertBankAccount(connector: any, account: NormalizedBankAccount) {
-  const existing = await findBankAccountForProvider(connector, account.externalAccountId, account);
+  const bankConnection = await ensureBankConnection(connector, account.externalConnectionId);
+  const existing = await findBankAccountForProvider(connector, account.externalAccountId, account, bankConnection.id);
   const data = {
+    bankConnectionId: bankConnection.id,
     name: account.name,
     ibanMasked: account.ibanMasked,
     currency: account.currency,
@@ -314,7 +319,7 @@ async function upsertBankAccount(connector: any, account: NormalizedBankAccount)
     return { created: false, accountId: updated.id };
   }
   const created = await prisma.bankAccount.create({
-    data: { organizationId: connector.organizationId, companyId: connector.companyId, bankConnectionId: connector.id, externalAccountId: account.externalAccountId, ...data }
+    data: { organizationId: connector.organizationId, companyId: connector.companyId, externalAccountId: account.externalAccountId, ...data }
   });
   return { created: true, accountId: created.id };
 }
@@ -323,7 +328,8 @@ async function upsertBankTransaction(connector: any, transaction: NormalizedBank
   const account = resolvedBankAccountId
     ? await prisma.bankAccount.findUnique({ where: { id: resolvedBankAccountId } })
     : await findBankAccountForProvider(connector, transaction.externalAccountId);
-  const targetAccount = account ?? await prisma.bankAccount.create({ data: { organizationId: connector.organizationId, companyId: connector.companyId, bankConnectionId: connector.id, externalAccountId: transaction.externalAccountId, name: transaction.externalAccountId, ibanMasked: "", currency: transaction.currency, type: "checking", currentBalance: 0, availableBalance: 0, balanceDate: new Date() } });
+  const bankConnection = account ? undefined : await ensureBankConnection(connector);
+  const targetAccount = account ?? await prisma.bankAccount.create({ data: { organizationId: connector.organizationId, companyId: connector.companyId, bankConnectionId: bankConnection!.id, externalAccountId: transaction.externalAccountId, name: transaction.externalAccountId, ibanMasked: "", currency: transaction.currency, type: "checking", currentBalance: 0, availableBalance: 0, balanceDate: new Date() } });
   const existing = await findBankTransactionForProvider(targetAccount.id, transaction);
   const transactionDate = new Date(`${transaction.transactionDate}T00:00:00.000Z`);
   const bookingDate = new Date(`${transaction.bookingDate}T00:00:00.000Z`);
@@ -339,11 +345,17 @@ async function upsertBankTransaction(connector: any, transaction: NormalizedBank
   return { created: true };
 }
 
-async function findBankAccountForProvider(connector: any, externalAccountId: string, incomingAccount?: NormalizedBankAccount) {
-  const accountForConnector = await prisma.bankAccount.findUnique({
+async function findBankAccountForProvider(connector: any, externalAccountId: string, incomingAccount?: NormalizedBankAccount, bankConnectionId?: string) {
+  if (bankConnectionId) {
+    const accountForBankConnection = await prisma.bankAccount.findUnique({
+      where: { bankConnectionId_externalAccountId: { bankConnectionId, externalAccountId } }
+    });
+    if (accountForBankConnection) return accountForBankConnection;
+  }
+  const legacyAccountForConnector = await prisma.bankAccount.findUnique({
     where: { bankConnectionId_externalAccountId: { bankConnectionId: connector.id, externalAccountId } }
   });
-  if (accountForConnector) return accountForConnector;
+  if (legacyAccountForConnector) return legacyAccountForConnector;
 
   const candidates = await prisma.bankAccount.findMany({
     where: {
@@ -353,18 +365,19 @@ async function findBankAccountForProvider(connector: any, externalAccountId: str
   });
   if (candidates.length === 0) return undefined;
 
-  const connectorIds = candidates.map((candidate) => candidate.bankConnectionId);
-  const matchingConnector = await prisma.connector.findFirst({
+  const bankConnectionIds = candidates.map((candidate) => candidate.bankConnectionId);
+  const matchingBankConnection = await prisma.bankConnection.findFirst({
     where: {
-      id: { in: connectorIds },
+      id: { in: bankConnectionIds },
       organizationId: connector.organizationId,
       companyId: connector.companyId,
+      connectorId: connector.id,
       provider: connector.provider
     },
     orderBy: { createdAt: "desc" }
   });
-  const providerCandidates = matchingConnector
-    ? candidates.filter((candidate) => candidate.bankConnectionId === matchingConnector.id)
+  const providerCandidates = matchingBankConnection
+    ? candidates.filter((candidate) => candidate.bankConnectionId === matchingBankConnection.id)
     : candidates;
   const sameExternalId = providerCandidates.find((candidate) => candidate.externalAccountId === externalAccountId);
   if (sameExternalId) return sameExternalId;
@@ -382,6 +395,49 @@ async function findBankAccountForProvider(connector: any, externalAccountId: str
     (!incomingAccount?.currency || candidate.currency === incomingAccount.currency) &&
     (!incomingAccount?.type || candidate.type === incomingAccount.type)
   );
+}
+
+async function ensureBankConnection(connector: any, externalConnectionId?: string, options: { consentExpiresAt?: Date } = {}) {
+  const configuration = connector.configuration && typeof connector.configuration === "object" ? connector.configuration as Record<string, unknown> : {};
+  const resolvedExternalConnectionId = externalConnectionId ?? String(configuration.providerAccountId ?? connector.id);
+  const exactMatch = await prisma.bankConnection.findFirst({
+    where: { connectorId: connector.id, externalConnectionId: resolvedExternalConnectionId },
+    orderBy: { createdAt: "desc" }
+  });
+  const existing = exactMatch ?? (!externalConnectionId ? await prisma.bankConnection.findFirst({
+    where: { connectorId: connector.id },
+    orderBy: { createdAt: "desc" }
+  }) : null);
+  const data = {
+    organizationId: connector.organizationId,
+    companyId: connector.companyId,
+    connectorId: connector.id,
+    provider: connector.provider,
+    externalConnectionId: resolvedExternalConnectionId,
+    status: "connected",
+    consentExpiresAt: options.consentExpiresAt ?? existing?.consentExpiresAt ?? null
+  };
+  const bankConnection = existing
+    ? await prisma.bankConnection.update({ where: { id: existing.id }, data })
+    : await prisma.bankConnection.create({ data });
+  const activeConsent = await prisma.bankConsent.findFirst({
+    where: { bankConnectionId: bankConnection.id, status: "active" },
+    orderBy: { createdAt: "desc" }
+  });
+  if (!activeConsent) {
+    await prisma.bankConsent.create({
+      data: {
+        organizationId: connector.organizationId,
+        bankConnectionId: bankConnection.id,
+        provider: connector.provider,
+        status: "active",
+        grantedAt: new Date(),
+        expiresAt: options.consentExpiresAt,
+        scopes: ["accounts", "transactions"]
+      }
+    });
+  }
+  return bankConnection;
 }
 
 async function findBankTransactionForProvider(bankAccountId: string, transaction: NormalizedBankTransaction) {

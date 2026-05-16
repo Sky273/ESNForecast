@@ -473,7 +473,7 @@ deliveryRouter.post("/business-rules/evaluate", async (req, res, next) => {
   }
 });
 
-deliveryRouter.get("/connectors", async (_req, res, next) => {
+async function getDeliveryConnectors(_req: unknown, res: any, next: any) {
   try {
     const [accounting, hr, opportunities] = await Promise.all([
       prisma.accountingSync.findMany(),
@@ -484,8 +484,9 @@ deliveryRouter.get("/connectors", async (_req, res, next) => {
   } catch (error) {
     next(error);
   }
-});
-deliveryRouter.post("/connectors/:provider/sync", async (req, res, next) => {
+}
+
+async function syncDeliveryConnector(req: any, res: any, next: any) {
   try {
     const provider = req.params.provider;
     const row = provider.startsWith("hr")
@@ -495,8 +496,16 @@ deliveryRouter.post("/connectors/:provider/sync", async (req, res, next) => {
   } catch (error) {
     next(error);
   }
-});
-deliveryRouter.get("/connectors/:provider/status", async (req, res, next) => {
+}
+
+deliveryRouter.get("/delivery/connectors", getDeliveryConnectors);
+deliveryRouter.post("/delivery/connectors/:provider/sync", syncDeliveryConnector);
+deliveryRouter.get("/delivery/connectors/:provider/status", getDeliveryConnectorStatus);
+deliveryRouter.get("/connectors", getDeliveryConnectors);
+deliveryRouter.post("/connectors/:provider/sync", syncDeliveryConnector);
+deliveryRouter.get("/connectors/:provider/status", getDeliveryConnectorStatus);
+
+async function getDeliveryConnectorStatus(req: any, res: any, next: any) {
   try {
     const [accounting, hr] = await Promise.all([
       prisma.accountingSync.findFirst({ where: { provider: req.params.provider }, orderBy: { createdAt: "desc" } }),
@@ -506,7 +515,7 @@ deliveryRouter.get("/connectors/:provider/status", async (req, res, next) => {
   } catch (error) {
     next(error);
   }
-});
+}
 
 deliveryRouter.get("/crm/opportunities", async (_req, res, next) => {
   try {

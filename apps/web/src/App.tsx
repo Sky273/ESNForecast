@@ -64,6 +64,7 @@ const navGroups: NavGroup[] = [
       { id: "trajectory", label: "Trajectoire", icon: TrendingUp },
       { id: "executiveV2", label: "Vue direction", icon: Sparkles },
       { id: "treasury", label: "Trésorerie", icon: TrendingUp },
+      { id: "connectedFinance", label: "Finance connect\u00e9e", icon: Landmark },
       { id: "actuals", label: "Prévisionnel vs réel", icon: BarChart3 },
       { id: "codirReport", label: "Rapport CODIR", icon: FileText },
       { id: "budgetForecastActual", label: "Rapport Budget / Forecast / Actual", icon: FileText }
@@ -108,6 +109,7 @@ const navGroups: NavGroup[] = [
       { id: "offers", label: "Offres / devis", icon: Receipt },
       { id: "clients", label: "Clients", icon: Building2 },
       { id: "profitabilityMissions", label: "Rentabilite missions", icon: BarChart3 },
+      { id: "assignments", label: "Affectations", icon: Users },
       { id: "timesheets", label: "CRA", icon: BookOpenCheck, badge: "2" },
       { id: "monthlyClose", label: "Cloture mensuelle", icon: LockKeyhole }
     ]
@@ -123,6 +125,7 @@ const navGroups: NavGroup[] = [
       { id: "bench", label: "Intercontrat", icon: AlertTriangle },
       { id: "staffingForecast", label: "Staffing prévisionnel", icon: Users },
       { id: "capacity", label: "Capacity planning", icon: Gauge },
+      { id: "profitabilityResources", label: "Rentabilit\u00e9 ressources", icon: BarChart3 },
       { id: "plannedHires", label: "Recrutements prévisionnels", icon: Users },
       { id: "skills", label: "Compétences", icon: Sparkles }
     ]
@@ -133,6 +136,7 @@ const navGroups: NavGroup[] = [
     icon: Euro,
     items: [
       { id: "realInvoices", label: "Factures", icon: Receipt },
+      { id: "billing", label: "Facturation pr\u00e9visionnelle", icon: Receipt },
       { id: "payments", label: "Paiements", icon: Euro },
       { id: "cashIn", label: "Encaissements", icon: TrendingUp },
       { id: "cashOut", label: "Décaissements", icon: Euro },
@@ -140,7 +144,10 @@ const navGroups: NavGroup[] = [
       { id: "variableCosts", label: "Frais variables", icon: Euro },
       { id: "bankTransactions", label: "Transactions bancaires", icon: Receipt },
       { id: "bankReconciliation", label: "Rapprochement bancaire", icon: Calculator },
+      { id: "reconciliation", label: "Rapprochement facturation", icon: Calculator },
       { id: "importedAccounting", label: "Comptabilite importee", icon: FileText },
+      { id: "realTreasury", label: "Tr\u00e9sorerie r\u00e9elle", icon: TrendingUp },
+      { id: "clientPaymentProfiles", label: "Profils de paiement", icon: Euro },
       { id: "runway", label: "Runway", icon: HeartPulse }
     ]
   },
@@ -165,6 +172,7 @@ const navGroups: NavGroup[] = [
     icon: Handshake,
     items: [
       { id: "realConnectors", label: "Connecteurs", icon: Handshake, badge: "!" },
+      { id: "connectors", label: "Connecteurs delivery", icon: Workflow },
       { id: "providerConnection", label: "Connexion provider", icon: Sparkles },
       { id: "connectorSupervision", label: "Supervision connecteurs", icon: Gauge },
       { id: "bankAccounts", label: "Comptes bancaires", icon: Landmark },
@@ -507,7 +515,7 @@ function renderPage(page: string, scenarioId: string, horizon: number, setHorizo
   if (page === "pricingReport") return <PricingReportPage />;
   if (page === "pricingHistory") return <PricingHistoryPage />;
   if (page === "executiveV2") return <ExecutiveCockpitPage scenarioId={scenarioId} horizon={horizon} />;
-  if (page === "connectédFinance") return <ConnectedFinanceDashboard scenarioId={scenarioId} horizon={horizon} />;
+  if (page === "connectedFinance") return <ConnectedFinanceDashboard scenarioId={scenarioId} horizon={horizon} />;
   if (page === "realConnectors") return <RealConnectorsPage />;
   if (page === "providerConnection") return <ProviderConnectionPage />;
   if (page === "projections") return <Projections horizon={horizon} />;

@@ -168,7 +168,7 @@ pricingRouter.post("/pricing/renegotiation-candidates/:id/create-action", async 
     const action = await db.actionItem.create({
       data: {
         actionPlanId: plan.id,
-        title: req.body?.title ?? "Renégociér TJM mission",
+        title: req.body?.title ?? "Renégocier le TJM de la mission",
         description: `TJM cible ${candidate.targetDailyRate} EUR, gain mensuel attendu ${candidate.monthlyImpactAmount} EUR.`,
         actionType: "client_renegotiation",
         status: "todo",
@@ -185,11 +185,11 @@ pricingRouter.post("/pricing/renegotiation-candidates/:id/create-action", async 
   }
 });
 
-pricingRouter.get("/pricing/decisions", async (_req, res, next) => { try { res.json(await enrichMissionLabels(await db.pricingDécision.findMany({ orderBy: { decidedAt: "desc" } }))); } catch (error) { next(error); } });
-pricingRouter.post("/pricing/decisions", async (req, res, next) => { try { const { organization, company } = await getPricingContext(); res.status(201).json(await db.pricingDécision.create({ data: { organizationId: organization.id, companyId: company.id, ...req.body } })); } catch (error) { next(error); } });
-pricingRouter.put("/pricing/decisions/:id", async (req, res, next) => { try { const { id, organizationId, companyId, createdAt, updatedAt, ...data } = req.body; res.json(await db.pricingDécision.update({ where: { id: req.params.id }, data })); } catch (error) { next(error); } });
-pricingRouter.delete("/pricing/decisions/:id", async (req, res, next) => { try { await db.pricingDécision.delete({ where: { id: req.params.id } }); res.status(204).send(); } catch (error) { next(error); } });
-pricingRouter.get("/pricing/missions/:missionId/decisions", async (req, res, next) => { try { res.json(await enrichMissionLabels(await db.pricingDécision.findMany({ where: { missionId: req.params.missionId }, orderBy: { decidedAt: "desc" } }))); } catch (error) { next(error); } });
+pricingRouter.get("/pricing/decisions", async (_req, res, next) => { try { res.json(await enrichMissionLabels(await db.pricingDecision.findMany({ orderBy: { decidedAt: "desc" } }))); } catch (error) { next(error); } });
+pricingRouter.post("/pricing/decisions", async (req, res, next) => { try { const { organization, company } = await getPricingContext(); res.status(201).json(await db.pricingDecision.create({ data: { organizationId: organization.id, companyId: company.id, ...req.body } })); } catch (error) { next(error); } });
+pricingRouter.put("/pricing/decisions/:id", async (req, res, next) => { try { const { id, organizationId, companyId, createdAt, updatedAt, ...data } = req.body; res.json(await db.pricingDecision.update({ where: { id: req.params.id }, data })); } catch (error) { next(error); } });
+pricingRouter.delete("/pricing/decisions/:id", async (req, res, next) => { try { await db.pricingDecision.delete({ where: { id: req.params.id } }); res.status(204).send(); } catch (error) { next(error); } });
+pricingRouter.get("/pricing/missions/:missionId/decisions", async (req, res, next) => { try { res.json(await enrichMissionLabels(await db.pricingDecision.findMany({ where: { missionId: req.params.missionId }, orderBy: { decidedAt: "desc" } }))); } catch (error) { next(error); } });
 
 pricingRouter.get("/pricing/margin-exceptions", async (_req, res, next) => { try { res.json(await enrichMissionLabels(await db.marginException.findMany({ orderBy: { targetReviewDate: "asc" } }))); } catch (error) { next(error); } });
 pricingRouter.post("/pricing/margin-exceptions", async (req, res, next) => { try { const { organization, company } = await getPricingContext(); res.status(201).json(await db.marginException.create({ data: { organizationId: organization.id, companyId: company.id, ...req.body } })); } catch (error) { next(error); } });

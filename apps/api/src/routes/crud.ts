@@ -34,7 +34,7 @@ export function crudRouter(prisma: PrismaClient, modelName: ModelName, options: 
 
   router.post("/", async (req, res, next) => {
     try {
-      const data = coerceDates(req.body, dateFields);
+      const data = sanitizeWritePayload(coerceDates(req.body, dateFields));
       const row = await model.create({ data });
       res.status(201).json(serializeDates(row));
     } catch (error) {
@@ -44,10 +44,7 @@ export function crudRouter(prisma: PrismaClient, modelName: ModelName, options: 
 
   router.put("/:id", async (req, res, next) => {
     try {
-      const data = coerceDates(req.body, dateFields);
-      delete data.id;
-      delete data.createdAt;
-      delete data.updatedAt;
+      const data = sanitizeWritePayload(coerceDates(req.body, dateFields));
       const row = await model.update({ where: { id: req.params.id }, data });
       res.json(serializeDates(row));
     } catch (error) {
@@ -65,4 +62,14 @@ export function crudRouter(prisma: PrismaClient, modelName: ModelName, options: 
   });
 
   return router;
+}
+
+function sanitizeWritePayload(data: Record<string, any>) {
+  delete data.id;
+  delete data.createdAt;
+  delete data.updatedAt;
+  for (const [key, value] of Object.entries(data)) {
+    if (Array.isArray(value) || (value && typeof value === "object" && !(value instanceof Date))) delete data[key];
+  }
+  return data;
 }

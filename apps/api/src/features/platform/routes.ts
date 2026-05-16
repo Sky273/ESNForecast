@@ -94,9 +94,9 @@ platformRouter.get("/system/status", async (_req, res, next) => {
       db.backupRun.findFirst({ orderBy: { createdAt: "desc" } })
     ]);
     res.json({
-      status: failedJobs || recentErrors ? "degraded" : "opérational",
-      api: "opérational",
-      database: "opérational",
+      status: failedJobs || recentErrors ? "degraded" : "operational",
+      api: "operational",
+      database: "operational",
       workers: "inline",
       connectors,
       failedJobs,
@@ -306,7 +306,7 @@ platformRouter.get("/backoffice/organizations/:id/diagnostics", async (req, res,
 
 async function createSupportAction(req: any, action: string) {
   return db.supportAction.create({
-    data: { organizationId: req.params.id, action, status: "success", requestedBy: "admin", correlationId: req.correlationId, result: { queuedAt: new Date().toISOString() }, complètedAt: new Date() }
+    data: { organizationId: req.params.id, action, status: "success", requestedBy: "admin", correlationId: req.correlationId, result: { queuedAt: new Date().toISOString() }, completedAt: new Date() }
   });
 }
 
@@ -344,7 +344,7 @@ platformRouter.post("/backups.demo", async (req, res, next) => {
   try {
     const orgId = req.body?.organizationId ?? await organizationId();
     const company = await firstCompany();
-    res.status(201).json(await db.backupRun.create({ data: { organizationId: orgId, companyId: company?.id, type: req.body?.type ?? "full_organization", status: "success", filePath: `backups/${orgId}-${Date.now()}.json`, sizeBytes: 42800, createdBy: "admin", complètedAt: new Date() } }));
+    res.status(201).json(await db.backupRun.create({ data: { organizationId: orgId, companyId: company?.id, type: req.body?.type ?? "full_organization", status: "success", filePath: `backups/${orgId}-${Date.now()}.json`, sizeBytes: 42800, createdBy: "admin", completedAt: new Date() } }));
   } catch (error) {
     next(error);
   }
@@ -382,7 +382,7 @@ platformRouter.get("/backups.demo/:id/download", async (req, res, next) => {
 platformRouter.post("/restores/dry-run", async (req, res, next) => {
   try {
     const orgId = req.body?.organizationId ?? await organizationId();
-    res.status(201).json(await db.restoreRun.create({ data: { organizationId: orgId, sourceBackupId: req.body?.sourceBackupId, mode: "dry_run", status: "success", resultSummary: { valid: true, warnings: ["Les tokens provider sont exclus de la restauration par défaut."] }, createdBy: "admin", complètedAt: new Date() } }));
+    res.status(201).json(await db.restoreRun.create({ data: { organizationId: orgId, sourceBackupId: req.body?.sourceBackupId, mode: "dry_run", status: "success", resultSummary: { valid: true, warnings: ["Les tokens provider sont exclus de la restauration par défaut."] }, createdBy: "admin", completedAt: new Date() } }));
   } catch (error) {
     next(error);
   }
@@ -413,7 +413,7 @@ platformRouter.post("/exports.demo/full", async (req, res, next) => {
   try {
     const orgId = req.body?.organizationId ?? await organizationId();
     const company = await firstCompany();
-    res.status(201).json(await db.exportRun.create({ data: { organizationId: orgId, companyId: company?.id, type: "full", format: req.body?.format ?? "json", status: "success", filePath: `exports/${orgId}-${Date.now()}.zip`, sizeBytes: 64000, createdBy: "admin", complètedAt: new Date() } }));
+    res.status(201).json(await db.exportRun.create({ data: { organizationId: orgId, companyId: company?.id, type: "full", format: req.body?.format ?? "json", status: "success", filePath: `exports/${orgId}-${Date.now()}.zip`, sizeBytes: 64000, createdBy: "admin", completedAt: new Date() } }));
   } catch (error) {
     next(error);
   }
@@ -539,7 +539,7 @@ platformRouter.get("/onboarding", async (req, res, next) => {
   try {
     const orgId = (typeof req.query.organizationId === "string" && req.query.organizationId) || await organizationId();
     const state = await db.onboardingState.findFirst({ where: { organizationId: orgId }, orderBy: { createdAt: "desc" } });
-    res.json(state ?? { organizationId: orgId, steps: {}, complètedAt: null });
+    res.json(state ?? { organizationId: orgId, steps: {}, completedAt: null });
   } catch (error) {
     next(error);
   }

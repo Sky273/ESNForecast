@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import type React from "react";
 import { Bar, BarChart, CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { api } from "../../api";
+import { API_URL, api } from "../../api";
 import { Badge, money, percent } from "../../components/Format";
 import { KpiCard } from "../../components/KpiCard";
 import { CrudPage } from "../../components/CrudPage";
 
 type V1Context = { scenarioId: string; horizon: number };
+
+export const cashForecastStatusOptions = ["planned", "paid", "late", "cancelled"];
 
 export function TreasuryPage({ scenarioId, horizon }: V1Context) {
   const { data, error } = useV1Projection(scenarioId, horizon);
@@ -204,10 +206,10 @@ export function ReportsPage({ scenarioId, horizon }: V1Context) {
     <section className="space-y-5">
       <PageTitle title="Rapports" subtitle="Exports direction, trésorerie et rentabilité." />
       <div className="grid gap-3 md:grid-cols-2">
-        <a className="rounded-lg border border-line bg-white p-4" href={`http://localhost:4000/api/reports/executive.pdf?scenarioId=${scenarioId}&horizon=${horizon}`}>Rapport direction PDF</a>
-        <a className="rounded-lg border border-line bg-white p-4" href={`http://localhost:4000/api/reports/executive.json?scenarioId=${scenarioId}&horizon=${horizon}`}>Rapport direction JSON</a>
-        <a className="rounded-lg border border-line bg-white p-4" href="http://localhost:4000/api/export/projection.csv">Projection CSV</a>
-        <a className="rounded-lg border border-line bg-white p-4" href="http://localhost:4000/api/export/resources.csv">Ressources CSV</a>
+        <a className="rounded-lg border border-line bg-white p-4" href={`${API_URL}/reports/executive.pdf?scenarioId=${scenarioId}&horizon=${horizon}`}>Rapport direction PDF</a>
+        <a className="rounded-lg border border-line bg-white p-4" href={`${API_URL}/reports/executive.json?scenarioId=${scenarioId}&horizon=${horizon}`}>Rapport direction JSON</a>
+        <a className="rounded-lg border border-line bg-white p-4" href={`${API_URL}/export/projection.csv`}>Projection CSV</a>
+        <a className="rounded-lg border border-line bg-white p-4" href={`${API_URL}/export/resources.csv`}>Ressources CSV</a>
       </div>
     </section>
   );
@@ -221,7 +223,7 @@ export function BillingPage() {
 
 export function CashInPage() {
   return <CrudPage title="Encaissements prévisionnels" path="/cash-in-forecasts" initial={{ scenarioId: "", sourceType: "invoice", sourceId: "", expectedDate: "2026-07-30", amount: 10000, probability: 1, weightedAmount: 10000, status: "planned" }} fields={[
-    { name: "scenarioId", label: "Scénario", type: "select", optionsPath: "/scenarios", optionLabelKey: "name", optionValueKey: "id", placeholder: "Sélectionner un scenario" }, { name: "sourceType", label: "Type de source", type: "select", options: [{ label: "Facture prévisionnelle", value: "invoice" }, { label: "Saisie manuelle", value: "manual" }, { label: "Autre", value: "other" }] }, { name: "sourceId", label: "Source", type: "select", optionsPath: "/invoice-forecasts", optionLabelFields: ["invoiceDate", "amountTTC"], optionValueKey: "id", placeholder: "Sélectionner une facture prévisionnelle" }, { name: "expectedDate", label: "Date prévue", type: "date" }, { name: "amount", label: "Montant", type: "number" }, { name: "probability", label: "Probabilité", type: "number" }, { name: "weightedAmount", label: "Montant pondéré", type: "number" }, { name: "status", label: "Statut", type: "select", options: ["planned", "confirmed", "received", "cancelled"].map((value) => ({ label: value, value })) }
+    { name: "scenarioId", label: "Scénario", type: "select", optionsPath: "/scenarios", optionLabelKey: "name", optionValueKey: "id", placeholder: "Sélectionner un scenario" }, { name: "sourceType", label: "Type de source", type: "select", options: [{ label: "Facture prévisionnelle", value: "invoice" }, { label: "Saisie manuelle", value: "manual" }, { label: "Autre", value: "other" }] }, { name: "sourceId", label: "Source", type: "select", optionsPath: "/invoice-forecasts", optionLabelFields: ["invoiceDate", "amountTTC"], optionValueKey: "id", placeholder: "Sélectionner une facture prévisionnelle" }, { name: "expectedDate", label: "Date prévue", type: "date" }, { name: "amount", label: "Montant", type: "number" }, { name: "probability", label: "Probabilité", type: "number" }, { name: "weightedAmount", label: "Montant pondéré", type: "number" }, { name: "status", label: "Statut", type: "select", options: cashForecastStatusOptions.map((value) => ({ label: value, value })) }
   ]} columns={[{ key: "expectedDate", label: "Date" }, { key: "sourceType", label: "Type de source" }, { key: "sourceId", label: "Source" }, { key: "amount", label: "Montant", render: (r: any) => money(r.amount) }, { key: "weightedAmount", label: "Pondéré", render: (r: any) => money(r.weightedAmount) }, { key: "status", label: "Statut" }]} />;
 }
 
@@ -231,7 +233,7 @@ export function CashOutPage() {
     { name: "sourceType", label: "Type de source", type: "select", options: [
       { label: "Salaire", value: "salary" },
       { label: "Charges employeur", value: "employer_tax" },
-      { label: "Facture fréelance", value: "freelancer_invoice" },
+      { label: "Facture freelance", value: "freelancer_invoice" },
       { label: "Facture partenaire", value: "partner_invoice" },
       { label: "Frais fixe", value: "fixed_cost" },
       { label: "Frais variable", value: "variable_cost" },
@@ -246,7 +248,7 @@ export function CashOutPage() {
       fixed_cost: { path: "/fixed-costs", optionLabelKey: "label" },
       variable_cost: { path: "/variable-costs", optionLabelKey: "label" }
     }, placeholder: "Sélectionner la source" },
-    { name: "expectedDate", label: "Date prévue", type: "date" }, { name: "amount", label: "Montant", type: "number" }, { name: "status", label: "Statut", type: "select", options: ["planned", "confirmed", "paid", "cancelled"].map((value) => ({ label: value, value })) }
+    { name: "expectedDate", label: "Date prévue", type: "date" }, { name: "amount", label: "Montant", type: "number" }, { name: "status", label: "Statut", type: "select", options: cashForecastStatusOptions.map((value) => ({ label: value, value })) }
   ]} columns={[{ key: "expectedDate", label: "Date" }, { key: "sourceType", label: "Type de source" }, { key: "sourceId", label: "Source" }, { key: "amount", label: "Montant", render: (r: any) => money(r.amount) }, { key: "status", label: "Statut" }]} />;
 }
 

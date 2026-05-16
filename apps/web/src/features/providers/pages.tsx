@@ -115,7 +115,7 @@ export function ProviderHealthPage() {
       window.location.assign(response.authorizationUrl);
       return;
     }
-    setMessage(action === "revoke" ? "Connecteur révoqué." : action === "reconnect" ? "Reconnexion initialisée." : "Synchronisation lancée.");
+    setMessage(response?.status === "failed" ? "La synchronisation a échoué. Consultez les erreurs provider." : action === "revoke" ? "Connecteur révoqué." : action === "reconnect" ? "Reconnexion initialisée." : "Synchronisation lancée.");
   };
   return (
     <section className="space-y-5">
@@ -249,9 +249,20 @@ function PageTitle({ title, subtitle }: { title: string; subtitle: string }) {
 
 function useRows(path: string) {
   const [rows, setRows] = useState<any[]>([]);
-  const reload = async () => setRows(await api<any[]>(path));
+  const reload = async () => setRows(normalizeRows(await api<unknown>(path)));
   useEffect(() => { void reload().catch(() => setRows([])); }, [path]);
   return { rows, reload };
+}
+
+function normalizeRows(payload: unknown): any[] {
+  if (Array.isArray(payload)) return payload;
+  if (payload && typeof payload === "object") {
+    const record = payload as Record<string, unknown>;
+    for (const key of ["rows", "data", "items", "resources", "connectors", "errors", "webhooks", "rateLimits", "runs"]) {
+      if (Array.isArray(record[key])) return record[key] as any[];
+    }
+  }
+  return [];
 }
 
 function useObject(path: string) {

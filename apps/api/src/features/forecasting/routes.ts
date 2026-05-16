@@ -389,7 +389,7 @@ function usersRouter() {
       res.status(201).json({
         ...serializeDates(maskUser(user)),
         invitationEmailSent: invitation.sent,
-        activationEmailStatus: invitation.sent ? "sent" : "smtp_not_configuréd",
+        activationEmailStatus: invitation.sent ? "sent" : "smtp_not_configured",
         activationPreviewUrl: !invitation.sent && process.env.NODE_ENV !== "production" ? invitation.activationUrl : undefined,
         activationExpiresAt: invitation.expiresAt.toISOString()
       });

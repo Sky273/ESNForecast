@@ -5,7 +5,7 @@ import { PageHeader, StatusBadge } from "../../components/PageHeader";
 import { useApi } from "../../hooks/useApi";
 
 function tone(status: string) {
-  if (["success", "opérational", "active", "stable", "completed"].includes(status)) return "good" as const;
+  if (["success", "operational", "active", "stable", "completed"].includes(status)) return "good" as const;
   if (["failed", "critical", "error", "open"].includes(status)) return "risk" as const;
   if (["retrying", "partial_success", "warning", "beta", "degraded"].includes(status)) return "warn" as const;
   return "neutral" as const;
@@ -152,7 +152,7 @@ export function SystemStatusPage() {
     <>
       <PageHeader title="Statut systeme" description="état applicatif, base, workers, connecteurs et erreurs récentes." />
       <div className="mb-5 grid gap-3 md:grid-cols-4">
-        <KpiCard label="état global" value={data?.status ?? "-"} tone={data?.status === "opérational" ? "good" : "risk"} />
+        <KpiCard label="État global" value={data?.status ?? "-"} tone={data?.status === "operational" ? "good" : "risk"} />
         <KpiCard label="API" value={data?.api ?? "-"} />
         <KpiCard label="Jobs en erreur" value={String(data?.failedJobs ?? "-")} tone={(data?.failedJobs ?? 0) ? "risk" : "good"} />
         <KpiCard label="Erreurs ouvertes" value={String(data?.recentErrors ?? "-")} tone={(data?.recentErrors ?? 0) ? "risk" : "good"} />

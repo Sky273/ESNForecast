@@ -87,7 +87,7 @@ export interface ProviderConfig {
   apiBaseUrl?: string;
   redirectUri?: string;
   webhookSecret?: string;
-  configuréd: boolean;
+  configured: boolean;
 }
 
 export interface OAuthTokenResponse {

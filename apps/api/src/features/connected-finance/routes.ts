@@ -29,6 +29,15 @@ const crud = (modelName: keyof typeof prisma, orderBy: any = { createdAt: "desc"
       next(error);
     }
   });
+  router.get("/:id", async (req, res, next) => {
+    try {
+      const row = await model.findUnique({ where: { id: req.params.id } });
+      if (!row) return res.status(404).json({ error: "Not found" });
+      res.json(serializeDates(row));
+    } catch (error) {
+      next(error);
+    }
+  });
   router.post("/", async (req, res, next) => {
     try {
       res.status(201).json(serializeDates(await model.create({ data: sanitize(coerceDates(req.body, dateFields)) })));

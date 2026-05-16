@@ -86,7 +86,7 @@ export function ImportedAccountingPage() {
   return <TablePage title="Comptabilite importee" subtitle="Factures et paiements importes depuis connectéur mock ou CSV." rows={rows} columns={[
     ["invoiceNumber", "Facture"],
     ["type", "Type"],
-    ["clientOrSuppliérName", "Tiers"],
+    ["clientOrSupplierName", "Tiers"],
     ["invoiceDate", "Date"],
     ["amountTTC", "TTC", money],
     ["paidAmount", "Paye", money],
@@ -235,7 +235,7 @@ export function ConnectorSupervisionPage() {
       window.location.assign(result.authorizationUrl);
       return;
     }
-    setMessage(action === "revoke" ? "Connecteur r\u00e9voqu\u00e9." : "Action envoy\u00e9e au connecteur.");
+    setMessage(result?.status === "failed" ? "La synchronisation a échoué. Consultez les erreurs provider." : action === "revoke" ? "Connecteur révoqué." : "Action envoyée au connecteur.");
   };
   return (
     <section className="space-y-5">
@@ -306,9 +306,20 @@ function TablePage({ title, subtitle, actions, rows, columns }: { title: string;
 
 function useRows(path: string) {
   const [rows, setRows] = useState<any[]>([]);
-  const reload = async () => setRows(await api<any[]>(path));
+  const reload = async () => setRows(normalizeRows(await api<unknown>(path)));
   useEffect(() => { void reload().catch(() => setRows([])); }, [path]);
   return { rows, reload };
+}
+
+function normalizeRows(payload: unknown): any[] {
+  if (Array.isArray(payload)) return payload;
+  if (payload && typeof payload === "object") {
+    const record = payload as Record<string, unknown>;
+    for (const key of ["rows", "data", "items", "resources", "connectors", "issues", "suggestions"]) {
+      if (Array.isArray(record[key])) return record[key] as any[];
+    }
+  }
+  return [];
 }
 
 function useObject(path: string) {

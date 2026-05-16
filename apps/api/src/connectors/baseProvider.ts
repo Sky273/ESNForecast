@@ -74,7 +74,7 @@ export abstract class BaseProvider implements FinancialConnectorProvider {
   async testConnection() {
     const validation = this.validateConfig();
     return validation.ok
-      ? { ok: true, message: `${this.getProviderName()} configuréd for ${validation.environment}` }
+      ? { ok: true, message: `${this.getProviderName()} configured for ${validation.environment}` }
       : { ok: true, message: `${this.getProviderName()} running in mock mode; missing ${validation.missing.join(", ")}` };
   }
 

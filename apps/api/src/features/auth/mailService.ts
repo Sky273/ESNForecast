@@ -19,7 +19,7 @@ export async function sendMail(input: SendMailInput): Promise<SendMailResult> {
 
   if (!host) {
     console.info(`[mail:disabled] ${input.subject} -> ${input.to}\n${input.text}`);
-    return { sent: false, reason: "SMTP_HOST not configuréd" };
+    return { sent: false, reason: "SMTP_HOST not configured" };
   }
 
   const transporter = nodemailer.createTransport({

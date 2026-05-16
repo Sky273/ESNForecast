@@ -256,8 +256,8 @@ export function AiAnalysisPage({ scenarioId, horizon }: V2Context) {
 }
 
 export function V2CrudPage({ kind }: { kind: "plannedHires" | "rules" | "notifications" | "documents" | "offers" | "connectors" }) {
-  if (kind === "plannedHires") return <CrudPage title="Recrutements prévisionnels" path="/planned-hires" initial={{ scenarioId: "", title: "", targetRôle: "", expectedStartDate: "2026-09-01", expectedMonthlyCost: 5000, expectedEmployerCharges: 2200, expectedFullCost: 7600, expectedTJM: 850, expectedUtilizationRate: 0.8, probability: 0.7, status: "planned" }} fields={[
-    { name: "scenarioId", label: "Scénario", type: "select", optionsPath: "/scenarios", optionLabelKey: "name", optionValueKey: "id", placeholder: "Sélectionner un scenario" }, { name: "title", label: "Titre" }, { name: "targetRôle", label: "Rôle" }, { name: "expectedStartDate", label: "Début", type: "date" }, { name: "expectedFullCost", label: "Coût complet", type: "number" }, { name: "expectedTJM", label: "TJM attendu", type: "number" }, { name: "expectedUtilizationRate", label: "Occupation", type: "number" }, { name: "status", label: "Statut", type: "select", options: ["planned", "approved", "cancelled", "hired", "delayed"].map((value) => ({ label: value, value })) }
+  if (kind === "plannedHires") return <CrudPage title="Recrutements prévisionnels" path="/planned-hires" initial={{ scenarioId: "", title: "", targetRole: "", expectedStartDate: "2026-09-01", expectedMonthlyCost: 5000, expectedEmployerCharges: 2200, expectedFullCost: 7600, expectedTJM: 850, expectedUtilizationRate: 0.8, probability: 0.7, status: "planned" }} fields={[
+    { name: "scenarioId", label: "Scénario", type: "select", optionsPath: "/scenarios", optionLabelKey: "name", optionValueKey: "id", placeholder: "Sélectionner un scenario" }, { name: "title", label: "Titre" }, { name: "targetRole", label: "Rôle" }, { name: "expectedStartDate", label: "Début", type: "date" }, { name: "expectedFullCost", label: "Coût complet", type: "number" }, { name: "expectedTJM", label: "TJM attendu", type: "number" }, { name: "expectedUtilizationRate", label: "Occupation", type: "number" }, { name: "status", label: "Statut", type: "select", options: ["planned", "approved", "cancelled", "hired", "delayed"].map((value) => ({ label: value, value })) }
   ]} columns={[{ key: "title", label: "Recrutement" }, { key: "expectedStartDate", label: "Début" }, { key: "expectedFullCost", label: "Coût", render: (row: any) => money(row.expectedFullCost) }, { key: "expectedTJM", label: "TJM", render: (row: any) => money(row.expectedTJM) }, { key: "status", label: "Statut" }]} />;
   if (kind === "rules") return <CrudPage title="Règles métier" path="/business-rules" initial={{ name: "", triggerType: "monthly_projection", condition: { metric: "closingCash", operator: "lt", value: 50000 }, action: { type: "alert", message: "Alerte" }, severity: "warning", isActive: true }} fields={[
     { name: "name", label: "Nom" }, { name: "triggerType", label: "Declencheur", type: "select", options: ["monthly_projection", "cash_threshold", "margin_threshold", "connector_error", "manual"].map((value) => ({ label: value, value })) }, { name: "severity", label: "Sévérité", type: "select", options: ["info", "warning", "critical"].map((value) => ({ label: value, value })) }, { name: "isActive", label: "Active", type: "checkbox" }
@@ -376,7 +376,7 @@ function fileToBase64(file: File) {
 }
 
 function ConnectorsPage() {
-  const { data } = useObject("/connectors");
+  const { data } = useObject("/delivery/connectors");
   const rows = [...(data?.accounting ?? []), ...(data?.hr ?? []), ...(data?.crm ?? [])];
   return <TablePage title="Connecteurs" subtitle="Architecture de synchronisation CSV/CRM/compta/RH optionnelle." rows={rows} columns={[["provider", "Provider"], ["externalSource", "Source"], ["status", "Statut"], ["lastSyncAt", "Dernière synchro"], ["opportunityName", "Opportunité"]]} />;
 }
@@ -391,8 +391,19 @@ function TablePage({ title, subtitle, rows, columns }: { title: string; subtitle
 
 function useRows(path: string) {
   const [rows, setRows] = useState<any[]>([]);
-  useEffect(() => { void api<any[]>(path).then(setRows).catch(() => setRows([])); }, [path]);
+  useEffect(() => { void api<unknown>(path).then((payload) => setRows(normalizeRows(payload))).catch(() => setRows([])); }, [path]);
   return { rows };
+}
+
+function normalizeRows(payload: unknown): any[] {
+  if (Array.isArray(payload)) return payload;
+  if (payload && typeof payload === "object") {
+    const record = payload as Record<string, unknown>;
+    for (const key of ["rows", "data", "items", "resources"]) {
+      if (Array.isArray(record[key])) return record[key] as any[];
+    }
+  }
+  return [];
 }
 
 function useObject(path: string) {
