@@ -2,42 +2,72 @@ import { FormEvent, useEffect, useState } from "react";
 import { api } from "../../api";
 import { Badge, money, percent } from "../../components/Format";
 
+const emptyDraft = (missionId = "") => ({
+  missionId,
+  resourceType: "employee",
+  resourceId: "",
+  startDate: "2026-06-01",
+  estimatedEndDate: "2026-12-31",
+  occupancyRate: 1,
+  calculationMode: "business_days",
+  specificDailyRate: 750,
+  specificDailyCost: 0
+});
+
 export function Assignments() {
   const [missions, setMissions] = useState<any[]>([]);
   const [resources, setResources] = useState<{ employees: any[]; partners: any[]; freelancers: any[] }>({ employees: [], partners: [], freelancers: [] });
   const [missionId, setMissionId] = useState("");
   const [assignments, setAssignments] = useState<any[]>([]);
-  const [draft, setDraft] = useState({ resourceType: "employee", resourceId: "", startDate: "2026-06-01", estimatedEndDate: "2026-12-31", occupancyRate: 1, calculationMode: "business_days", specificDailyRate: 750, specificDailyCost: 0 });
+  const [draft, setDraft] = useState(emptyDraft());
   const [editingId, setEditingId] = useState("");
 
   useEffect(() => {
     Promise.all([api<any[]>("/missions"), api<any[]>("/employees"), api<any[]>("/partner-resources"), api<any[]>("/freelancers")]).then(([missionRows, employees, partners, freelancers]) => {
+      const firstMissionId = missionRows[0]?.id ?? "";
       setMissions(missionRows);
-      setMissionId(missionRows[0]?.id ?? "");
+      setMissionId(firstMissionId);
+      setDraft(emptyDraft(firstMissionId));
       setResources({ employees, partners, freelancers });
     });
   }, []);
 
   useEffect(() => {
     if (missionId) void api<any[]>(`/missions/${missionId}/assignments`).then(setAssignments);
+    else setAssignments([]);
   }, [missionId]);
 
   const currentResources = draft.resourceType === "employee" ? resources.employees : draft.resourceType === "partner" ? resources.partners : resources.freelancers;
+  const resourceOptionLabel = (resource: any) => `${resource.firstName ?? ""} ${resource.lastName ?? ""}`.trim() || resource.name || resource.email || resource.id;
   const resourceLabel = (assignment: any) => {
     const pool = assignment.resourceType === "employee" ? resources.employees : assignment.resourceType === "partner" ? resources.partners : resources.freelancers;
     const resource = pool.find((item) => item.id === assignment.resourceId);
-    return resource ? `${resource.firstName ?? ""} ${resource.lastName ?? ""}`.trim() || resource.name || assignment.resourceId : assignment.resourceId;
+    return resource ? resourceOptionLabel(resource) : assignment.resourceId;
   };
+
+  const changeDisplayedMission = (nextMissionId: string) => {
+    setMissionId(nextMissionId);
+    if (!editingId) setDraft((current) => ({ ...current, missionId: nextMissionId }));
+  };
+
   const submit = async (event: FormEvent) => {
     event.preventDefault();
-    await api(editingId ? `/assignments/${editingId}` : `/missions/${missionId}/assignments`, { method: editingId ? "PUT" : "POST", body: JSON.stringify(draft) });
+    const targetMissionId = draft.missionId || missionId;
+    if (!targetMissionId) return;
+    await api(editingId ? `/assignments/${editingId}` : `/missions/${targetMissionId}/assignments`, {
+      method: editingId ? "PUT" : "POST",
+      body: JSON.stringify(draft)
+    });
     setEditingId("");
-    setDraft({ resourceType: "employee", resourceId: "", startDate: "2026-06-01", estimatedEndDate: "2026-12-31", occupancyRate: 1, calculationMode: "business_days", specificDailyRate: 750, specificDailyCost: 0 });
-    setAssignments(await api(`/missions/${missionId}/assignments`));
+    setMissionId(targetMissionId);
+    setDraft(emptyDraft(targetMissionId));
+    setAssignments(await api(`/missions/${targetMissionId}/assignments`));
   };
+
   const editAssignment = (assignment: any) => {
     setEditingId(assignment.id);
     setDraft({
+      missionId: assignment.missionId,
       resourceType: assignment.resourceType,
       resourceId: assignment.resourceId,
       startDate: String(assignment.startDate ?? "").slice(0, 10),
@@ -48,9 +78,13 @@ export function Assignments() {
       specificDailyCost: assignment.specificDailyCost ?? 0
     });
   };
+
   const deleteAssignment = async (id: string) => {
     await api(`/assignments/${id}`, { method: "DELETE" });
-    if (editingId === id) setEditingId("");
+    if (editingId === id) {
+      setEditingId("");
+      setDraft(emptyDraft(missionId));
+    }
     setAssignments(await api(`/missions/${missionId}/assignments`));
   };
 
@@ -62,14 +96,21 @@ export function Assignments() {
       </div>
       <div className="rounded-lg border border-line bg-white p-4">
         <label>
-          <span className="mb-1 block text-xs font-medium text-muted">Mission</span>
-          <select className="w-full rounded-md border border-line px-3 py-2" value={missionId} onChange={(event) => setMissionId(event.target.value)}>
+          <span className="mb-1 block text-xs font-medium text-muted">Mission affichée</span>
+          <select className="w-full rounded-md border border-line px-3 py-2" value={missionId} onChange={(event) => changeDisplayedMission(event.target.value)}>
             {missions.map((mission) => <option key={mission.id} value={mission.id}>{mission.title}</option>)}
           </select>
         </label>
       </div>
       <form className="rounded-lg border border-line bg-white p-4" onSubmit={submit}>
         <div className="grid gap-3 md:grid-cols-4">
+          <label>
+            <span className="mb-1 block text-xs font-medium text-muted">Mission de l'affectation</span>
+            <select className="w-full rounded-md border border-line px-3 py-2" value={draft.missionId} onChange={(event) => setDraft({ ...draft, missionId: event.target.value })} required>
+              <option value="">Sélectionner une mission</option>
+              {missions.map((mission) => <option key={mission.id} value={mission.id}>{mission.title}</option>)}
+            </select>
+          </label>
           <label>
             <span className="mb-1 block text-xs font-medium text-muted">Type ressource</span>
             <select className="w-full rounded-md border border-line px-3 py-2" value={draft.resourceType} onChange={(event) => setDraft({ ...draft, resourceType: event.target.value, resourceId: "" })}>
@@ -82,7 +123,7 @@ export function Assignments() {
             <span className="mb-1 block text-xs font-medium text-muted">Ressource</span>
             <select className="w-full rounded-md border border-line px-3 py-2" value={draft.resourceId} onChange={(event) => setDraft({ ...draft, resourceId: event.target.value })}>
               <option value="">Sélectionner</option>
-              {currentResources.map((resource) => <option key={resource.id} value={resource.id}>{resource.firstName} {resource.lastName}</option>)}
+              {currentResources.map((resource) => <option key={resource.id} value={resource.id}>{resourceOptionLabel(resource)}</option>)}
             </select>
           </label>
           <label><span className="mb-1 block text-xs font-medium text-muted">Début</span><input className="w-full rounded-md border border-line px-3 py-2" type="date" value={draft.startDate} onChange={(event) => setDraft({ ...draft, startDate: event.target.value })} /></label>

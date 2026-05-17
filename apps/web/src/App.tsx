@@ -121,6 +121,7 @@ const navGroups: NavGroup[] = [
     items: [
       { id: "employees", label: "Ressources internes", icon: Users },
       { id: "partners", label: "Partenaires", icon: Handshake },
+      { id: "partnerResources", label: "Ressources partenaires", icon: Users },
       { id: "freelancers", label: "Indépendants", icon: Contact },
       { id: "bench", label: "Intercontrat", icon: AlertTriangle },
       { id: "staffingForecast", label: "Staffing prévisionnel", icon: Users },
