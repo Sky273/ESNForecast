@@ -316,7 +316,28 @@ connectedFinanceRouter.post("/bank/categorization-rules/evaluate", async (_req, 
 connectedFinanceRouter.get("/reconciliation/suggestions", async (_req, res, next) => {
   try {
     const rows = await prisma.reconciliationSuggestion.findMany({ orderBy: { confidenceScore: "desc" } });
-    res.json(serializeDates(rows.length ? rows : await refreshReconciliationSuggestions()));
+    res.json(serializeDates(await enrichReconciliationSuggestions(rows.length ? rows : await refreshReconciliationSuggestions())));
+  } catch (error) {
+    next(error);
+  }
+});
+connectedFinanceRouter.get("/reconciliation/candidates", async (req, res, next) => {
+  try {
+    res.json(serializeDates(await buildReconciliationCandidates(stringParam(req.query.targetType), stringParam(req.query.q))));
+  } catch (error) {
+    next(error);
+  }
+});
+connectedFinanceRouter.get("/reconciliation/queue", async (_req, res, next) => {
+  try {
+    res.json(serializeDates(await buildReconciliationQueue()));
+  } catch (error) {
+    next(error);
+  }
+});
+connectedFinanceRouter.post("/reconciliation/suggestions/refresh", async (_req, res, next) => {
+  try {
+    res.json(serializeDates(await enrichReconciliationSuggestions(await refreshReconciliationSuggestions())));
   } catch (error) {
     next(error);
   }
@@ -324,20 +345,7 @@ connectedFinanceRouter.get("/reconciliation/suggestions", async (_req, res, next
 connectedFinanceRouter.post("/reconciliation/suggestions/:id/accept", async (req, res, next) => {
   try {
     const suggestion = await prisma.reconciliationSuggestion.update({ where: { id: req.params.id }, data: { status: "accepted", resolvedAt: new Date(), resolvedBy: req.body.resolvedBy } });
-    const reconciliation = await prisma.financialReconciliation.create({
-      data: {
-        organizationId: suggestion.organizationId,
-        transactionId: suggestion.transactionId,
-        targetType: suggestion.targetType,
-        targetId: suggestion.targetId,
-        amountMatched: req.body.amountMatched ?? 0,
-        dateVarianceDays: req.body.dateVarianceDays ?? 0,
-        amountVariance: req.body.amountVariance ?? 0,
-        confidenceScore: suggestion.confidenceScore,
-        matchedBy: "user",
-        status: "reconciled"
-      }
-    });
+    const reconciliation = await upsertFinancialReconciliation(await buildFinancialReconciliationData(suggestion, req.body));
     await prisma.bankTransaction.update({ where: { id: suggestion.transactionId }, data: { reconciliationStatus: "reconciled", confidenceScore: suggestion.confidenceScore } });
     res.json(serializeDates({ suggestion, reconciliation }));
   } catch (error) {
@@ -345,6 +353,66 @@ connectedFinanceRouter.post("/reconciliation/suggestions/:id/accept", async (req
   }
 });
 connectedFinanceRouter.post("/reconciliation/suggestions/:id/reject", async (req, res, next) => updateStatus(prisma.reconciliationSuggestion, req.params.id, { status: "rejected", resolvedAt: new Date(), resolvedBy: req.body.resolvedBy }, res, next));
+connectedFinanceRouter.post("/reconciliation/suggestions/:id/match", async (req, res, next) => {
+  try {
+    const suggestion = await prisma.reconciliationSuggestion.update({
+      where: { id: req.params.id },
+      data: {
+        targetType: req.body.targetType,
+        targetId: req.body.targetId,
+        confidenceScore: 1,
+        status: "accepted",
+        resolvedAt: new Date(),
+        resolvedBy: req.body.resolvedBy
+      }
+    });
+    const reconciliation = await upsertFinancialReconciliation(await buildFinancialReconciliationData(suggestion, req.body));
+    await prisma.bankTransaction.update({ where: { id: suggestion.transactionId }, data: { reconciliationStatus: "reconciled", confidenceScore: 1 } });
+    res.json(serializeDates({ suggestion, reconciliation }));
+  } catch (error) {
+    next(error);
+  }
+});
+connectedFinanceRouter.post("/reconciliation/transactions/:id/match", async (req, res, next) => {
+  try {
+    const transaction = await prisma.bankTransaction.findUnique({ where: { id: req.params.id } });
+    if (!transaction) return res.status(404).json({ error: "Transaction not found" });
+    const suggestion = await prisma.reconciliationSuggestion.create({
+      data: {
+        organizationId: transaction.organizationId,
+        transactionId: transaction.id,
+        targetType: stringParam(req.body.targetType) ?? "manual",
+        targetId: stringParam(req.body.targetId),
+        confidenceScore: 1,
+        reason: stringParam(req.body.notes) ?? "Rapprochement manuel",
+        status: "accepted",
+        resolvedAt: new Date(),
+        resolvedBy: stringParam(req.body.resolvedBy)
+      }
+    });
+    await prisma.reconciliationSuggestion.updateMany({
+      where: { transactionId: transaction.id, status: "pending", id: { not: suggestion.id } },
+      data: { status: "rejected", resolvedAt: new Date(), resolvedBy: stringParam(req.body.resolvedBy) }
+    });
+    const reconciliation = await upsertFinancialReconciliation(await buildFinancialReconciliationData(suggestion, req.body));
+    await prisma.bankTransaction.update({ where: { id: transaction.id }, data: { reconciliationStatus: "reconciled", confidenceScore: 1 } });
+    res.json(serializeDates({ suggestion, reconciliation }));
+  } catch (error) {
+    next(error);
+  }
+});
+connectedFinanceRouter.post("/reconciliation/transactions/:id/ignore", async (req, res, next) => {
+  try {
+    const transaction = await prisma.bankTransaction.update({ where: { id: req.params.id }, data: { reconciliationStatus: "ignored" } });
+    await prisma.reconciliationSuggestion.updateMany({
+      where: { transactionId: transaction.id, status: "pending" },
+      data: { status: "rejected", resolvedAt: new Date(), resolvedBy: stringParam(req.body.resolvedBy) }
+    });
+    res.json(serializeDates(transaction));
+  } catch (error) {
+    next(error);
+  }
+});
 connectedFinanceRouter.get("/reconciliation/financial", async (_req, res, next) => {
   try {
     res.json(serializeDates(await prisma.financialReconciliation.findMany({ orderBy: { createdAt: "desc" } })));
@@ -578,6 +646,223 @@ function buildWhere(query: Record<string, unknown>) {
   return Object.keys(where).length ? where : undefined;
 }
 
+async function enrichReconciliationSuggestions(rows: any[]) {
+  const [transactions, accounts, invoices, payments, fixedCosts, variableCosts] = await Promise.all([
+    prisma.bankTransaction.findMany({ where: { id: { in: unique(rows.map((row) => row.transactionId)) } } }),
+    prisma.bankAccount.findMany(),
+    prisma.invoice.findMany({ where: { id: { in: unique(rows.filter((row) => row.targetType === "invoice").map((row) => row.targetId).filter(Boolean)) } } }),
+    prisma.payment.findMany({ where: { id: { in: unique(rows.filter((row) => row.targetType === "payment").map((row) => row.targetId).filter(Boolean)) } } }),
+    prisma.fixedCost.findMany({ where: { id: { in: unique(rows.filter((row) => row.targetType === "fixed_cost").map((row) => row.targetId).filter(Boolean)) } } }),
+    prisma.variableCost.findMany({ where: { id: { in: unique(rows.filter((row) => row.targetType === "variable_cost").map((row) => row.targetId).filter(Boolean)) } } })
+  ]);
+  const accountById = new Map(accounts.map((account) => [account.id, account]));
+  const transactionById = new Map(transactions.map((transaction) => [transaction.id, transaction]));
+  const targetLabels = buildTargetLabelMap({ invoices, payments, fixedCosts, variableCosts });
+  return rows.map((row) => {
+    const transaction = transactionById.get(row.transactionId);
+    const targetKey = targetMapKey(row.targetType, row.targetId);
+    return {
+      ...row,
+      transactionLabel: transaction ? formatTransactionLabel(transaction, accountById.get(transaction.bankAccountId)) : row.transactionId,
+      transactionDate: transaction?.transactionDate,
+      transactionAmount: transaction?.amount,
+      transactionCounterparty: transaction?.counterpartyName,
+      transactionAccountName: transaction ? accountById.get(transaction.bankAccountId)?.name : undefined,
+      targetLabel: targetLabels.get(targetKey) ?? formatTargetFallback(row.targetType, row.targetId),
+      targetTypeLabel: targetTypeLabel(row.targetType)
+    };
+  });
+}
+
+async function buildReconciliationQueue() {
+  const pendingTransactions = await prisma.bankTransaction.findMany({
+    where: { reconciliationStatus: { in: ["unreconciled", "suggested"] }, status: { not: "cancelled" } },
+    orderBy: [{ transactionDate: "desc" }, { amount: "desc" }],
+    take: 300
+  });
+  const pendingTransactionIds = unique(pendingTransactions.map((transaction) => transaction.id));
+  let suggestions = await prisma.reconciliationSuggestion.findMany({
+    where: { transactionId: { in: pendingTransactionIds }, status: "pending" },
+    orderBy: { confidenceScore: "desc" }
+  });
+  if (pendingTransactions.length && suggestions.length === 0) {
+    await refreshReconciliationSuggestions();
+    suggestions = await prisma.reconciliationSuggestion.findMany({
+      where: { transactionId: { in: pendingTransactionIds }, status: "pending" },
+      orderBy: { confidenceScore: "desc" }
+    });
+  }
+  const enrichedSuggestions = await enrichReconciliationSuggestions(suggestions);
+  const suggestionsByTransaction = new Map<string, any[]>();
+  for (const suggestion of enrichedSuggestions) {
+    const bucket = suggestionsByTransaction.get(suggestion.transactionId) ?? [];
+    bucket.push(suggestion);
+    suggestionsByTransaction.set(suggestion.transactionId, bucket);
+  }
+  const accounts = await prisma.bankAccount.findMany({ where: { id: { in: unique(pendingTransactions.map((transaction) => transaction.bankAccountId)) } } });
+  const accountById = new Map(accounts.map((account) => [account.id, account]));
+  const items = pendingTransactions.map((transaction) => {
+    const transactionSuggestions = suggestionsByTransaction.get(transaction.id) ?? [];
+    const bestSuggestion = transactionSuggestions[0];
+    const absoluteAmount = Math.abs(transaction.amount);
+    const priority = absoluteAmount >= 10000 || !bestSuggestion ? "high" : absoluteAmount >= 2500 ? "medium" : "normal";
+    return {
+      id: transaction.id,
+      transactionId: transaction.id,
+      transactionLabel: formatTransactionLabel(transaction, accountById.get(transaction.bankAccountId)),
+      transactionDate: transaction.transactionDate,
+      transactionAmount: transaction.amount,
+      transactionDirection: transaction.direction,
+      transactionCounterparty: transaction.counterpartyName,
+      transactionAccountName: accountById.get(transaction.bankAccountId)?.name,
+      reconciliationStatus: transaction.reconciliationStatus,
+      priority,
+      queueStatus: bestSuggestion ? "suggested" : "manual_review",
+      ageDays: daysBetween(new Date(), transaction.transactionDate),
+      suggestionCount: transactionSuggestions.length,
+      bestSuggestion,
+      suggestions: transactionSuggestions
+    };
+  });
+  return {
+    summary: {
+      total: items.length,
+      suggested: items.filter((item) => item.queueStatus === "suggested").length,
+      manualReview: items.filter((item) => item.queueStatus === "manual_review").length,
+      highPriority: items.filter((item) => item.priority === "high").length,
+      amountToProcess: items.reduce((sum, item) => sum + Math.abs(item.transactionAmount ?? 0), 0)
+    },
+    items
+  };
+}
+
+async function buildReconciliationCandidates(targetType?: string, q?: string) {
+  const [invoices, payments, fixedCosts, variableCosts] = await Promise.all([
+    !targetType || targetType === "invoice" ? prisma.invoice.findMany({ orderBy: { invoiceDate: "desc" }, take: 200 }) : Promise.resolve([]),
+    !targetType || targetType === "payment" ? prisma.payment.findMany({ orderBy: { paymentDate: "desc" }, take: 200 }) : Promise.resolve([]),
+    !targetType || targetType === "fixed_cost" ? prisma.fixedCost.findMany({ orderBy: { startDate: "desc" }, take: 200 }) : Promise.resolve([]),
+    !targetType || targetType === "variable_cost" ? prisma.variableCost.findMany({ orderBy: { date: "desc" }, take: 200 }) : Promise.resolve([])
+  ]);
+  const candidates = [
+    ...invoices.map((row) => ({ targetType: "invoice", targetId: row.id, label: invoiceLabel(row), amount: row.amountTTC, date: row.invoiceDate })),
+    ...payments.map((row) => ({ targetType: "payment", targetId: row.id, label: paymentLabel(row), amount: row.amount, date: row.paymentDate })),
+    ...fixedCosts.map((row) => ({ targetType: "fixed_cost", targetId: row.id, label: fixedCostLabel(row), amount: row.monthlyAmount, date: row.startDate })),
+    ...variableCosts.map((row) => ({ targetType: "variable_cost", targetId: row.id, label: variableCostLabel(row), amount: row.amount, date: row.date }))
+  ];
+  const needle = q?.toLowerCase().trim();
+  return needle ? candidates.filter((candidate) => candidate.label.toLowerCase().includes(needle)) : candidates;
+}
+
+async function upsertFinancialReconciliation(data: any) {
+  const existing = await prisma.financialReconciliation.findFirst({
+    where: { transactionId: data.transactionId, status: "reconciled" },
+    orderBy: { createdAt: "desc" }
+  });
+  if (existing) {
+    return prisma.financialReconciliation.update({ where: { id: existing.id }, data });
+  }
+  return prisma.financialReconciliation.create({ data });
+}
+
+async function buildFinancialReconciliationData(suggestion: any, body: Record<string, unknown>) {
+  const transaction = await prisma.bankTransaction.findUnique({ where: { id: suggestion.transactionId } });
+  const target = await getReconciliationTarget(suggestion.targetType, suggestion.targetId);
+  const targetAmount = target?.amount ?? Math.abs(transaction?.amount ?? 0);
+  const targetDate = target?.date;
+  return {
+    organizationId: suggestion.organizationId,
+    transactionId: suggestion.transactionId,
+    targetType: suggestion.targetType,
+    targetId: suggestion.targetId,
+    amountMatched: numberParam(body.amountMatched) ?? Math.min(Math.abs(transaction?.amount ?? targetAmount), Math.abs(targetAmount)),
+    dateVarianceDays: targetDate && transaction ? daysBetween(transaction.transactionDate, targetDate) : 0,
+    amountVariance: transaction ? Math.abs(transaction.amount) - Math.abs(targetAmount) : 0,
+    confidenceScore: suggestion.confidenceScore,
+    matchedBy: stringParam(body.matchedBy) ?? "user",
+    status: "reconciled",
+    notes: stringParam(body.notes)
+  };
+}
+
+async function getReconciliationTarget(targetType: string, targetId?: string | null) {
+  if (!targetId) return undefined;
+  if (targetType === "invoice") {
+    const row = await prisma.invoice.findUnique({ where: { id: targetId } });
+    return row ? { amount: row.amountTTC, date: row.dueDate } : undefined;
+  }
+  if (targetType === "payment") {
+    const row = await prisma.payment.findUnique({ where: { id: targetId } });
+    return row ? { amount: row.amount, date: row.paymentDate } : undefined;
+  }
+  if (targetType === "fixed_cost") {
+    const row = await prisma.fixedCost.findUnique({ where: { id: targetId } });
+    return row ? { amount: row.monthlyAmount, date: row.startDate } : undefined;
+  }
+  if (targetType === "variable_cost") {
+    const row = await prisma.variableCost.findUnique({ where: { id: targetId } });
+    return row ? { amount: row.amount, date: row.date } : undefined;
+  }
+  return undefined;
+}
+
+function buildTargetLabelMap(groups: { invoices: any[]; payments: any[]; fixedCosts: any[]; variableCosts: any[] }) {
+  const labels = new Map<string, string>();
+  groups.invoices.forEach((row) => labels.set(targetMapKey("invoice", row.id), invoiceLabel(row)));
+  groups.payments.forEach((row) => labels.set(targetMapKey("payment", row.id), paymentLabel(row)));
+  groups.fixedCosts.forEach((row) => labels.set(targetMapKey("fixed_cost", row.id), fixedCostLabel(row)));
+  groups.variableCosts.forEach((row) => labels.set(targetMapKey("variable_cost", row.id), variableCostLabel(row)));
+  return labels;
+}
+
+function invoiceLabel(row: any) {
+  return `${row.invoiceNumber ?? "Facture"} - ${moneyLabel(row.amountTTC)} - ${dateLabel(row.invoiceDate)}`;
+}
+
+function paymentLabel(row: any) {
+  return `Paiement ${dateLabel(row.paymentDate)} - ${moneyLabel(row.amount)}`;
+}
+
+function fixedCostLabel(row: any) {
+  return `${row.label ?? "Frais fixe"} - ${moneyLabel(row.monthlyAmount)}`;
+}
+
+function variableCostLabel(row: any) {
+  return `${row.label ?? "Frais variable"} - ${moneyLabel(row.amount)} - ${dateLabel(row.date)}`;
+}
+
+function formatTransactionLabel(transaction: any, account?: any) {
+  return `${dateLabel(transaction.transactionDate)} - ${transaction.label} - ${moneyLabel(transaction.amount)}${account?.name ? ` - ${account.name}` : ""}`;
+}
+
+function targetMapKey(targetType: string, targetId?: string | null) {
+  return `${targetType}:${targetId ?? ""}`;
+}
+
+function formatTargetFallback(targetType: string, targetId?: string | null) {
+  return targetId ? `${targetTypeLabel(targetType)} ${targetId}` : targetTypeLabel(targetType);
+}
+
+function targetTypeLabel(value: string) {
+  const labels: Record<string, string> = { invoice: "Facture", payment: "Paiement", fixed_cost: "Frais fixe", variable_cost: "Frais variable", tax: "Taxe", manual: "Manuel" };
+  return labels[value] ?? value;
+}
+
+function moneyLabel(value: number) {
+  return new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(value ?? 0);
+}
+
+function dateLabel(value: Date | string) {
+  return new Date(value).toISOString().slice(0, 10);
+}
+
+function unique(values: Array<string | null | undefined>) {
+  return Array.from(new Set(values.filter((value): value is string => Boolean(value))));
+}
+
+function daysBetween(left: Date, right: Date) {
+  return Math.round((left.getTime() - right.getTime()) / 86400000);
+}
+
 function sanitize(data: Record<string, unknown>) {
   const copy = { ...data };
   delete copy.id;
@@ -613,5 +898,6 @@ function stringParam(value: unknown) {
 }
 
 function numberParam(value: unknown) {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
   return typeof value === "string" && value ? Number(value) : undefined;
 }
