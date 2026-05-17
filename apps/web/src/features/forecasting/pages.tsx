@@ -344,8 +344,13 @@ function PageTitle({ title, subtitle }: { title: string; subtitle: string }) {
 }
 
 function ReportLink({ title, description, href }: { title: string; description: string; href: string }) {
+  const openReport = (event: React.MouseEvent<HTMLAnchorElement>) => {
+    event.preventDefault();
+    window.open(href, "_blank", "noopener,noreferrer");
+  };
+
   return (
-    <a className="rounded-lg border border-line bg-white p-4 transition hover:border-brand/50 hover:shadow-sm" href={href} target="_blank" rel="noreferrer">
+    <a className="rounded-lg border border-line bg-white p-4 transition hover:border-brand/50 hover:shadow-sm" href={href} target="_blank" rel="noreferrer" onClick={openReport}>
       <span className="block font-semibold">{title}</span>
       <span className="mt-1 block text-sm text-muted">{description}</span>
     </a>
