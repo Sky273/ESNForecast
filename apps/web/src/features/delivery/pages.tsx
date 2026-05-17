@@ -107,15 +107,178 @@ export function PaymentsPage() {
 }
 
 export function ReconciliationPage() {
-  const { data } = useObject("/reconciliation/billing");
-  const { rows: invoiceForecasts } = useRows("/invoice-forecasts");
-  const { rows: invoices } = useRows("/invoices");
-  const invoiceForecastLabels = useMemo(() => new Map(invoiceForecasts.map((row) => [row.id, `${row.invoiceDate ?? ""} - ${money(row.amountTTC ?? row.amountHT ?? 0)}`])), [invoiceForecasts]);
-  const invoiceLabels = useMemo(() => new Map(invoices.map((row) => [row.id, row.invoiceNumber ?? `${row.invoiceDate ?? ""} - ${money(row.amountTTC ?? 0)}`])), [invoices]);
+  const { data, reload } = useObject("/reconciliation/billing/queue");
+  const [selectedId, setSelectedId] = useState("");
+  const [queueFilter, setQueueFilter] = useState("all");
+  const [search, setSearch] = useState("");
+  const [candidateQuery, setCandidateQuery] = useState("");
+  const [invoiceId, setInvoiceId] = useState("");
+  const [paymentId, setPaymentId] = useState("");
+  const [notes, setNotes] = useState("");
+  const [candidates, setCandidates] = useState<any[]>([]);
+  const items = useMemo(() => data?.items ?? [], [data]);
+  const filteredRows = useMemo(() => {
+    const needle = search.trim().toLowerCase();
+    return items.filter((row: any) => {
+      const matchesFilter = queueFilter === "all" || row.queueStatus === queueFilter || row.priority === queueFilter || row.paymentStatus === queueFilter;
+      const matchesSearch = !needle || [row.forecastLabel, row.clientLabel, row.missionLabel, row.invoiceLabel, row.invoiceNumber].filter(Boolean).join(" ").toLowerCase().includes(needle);
+      return matchesFilter && matchesSearch;
+    });
+  }, [items, queueFilter, search]);
+  const selected = useMemo(() => filteredRows.find((row: any) => row.id === selectedId) ?? filteredRows[0], [filteredRows, selectedId]);
+  const selectedCandidate = useMemo(() => candidates.find((candidate) => candidate.invoiceId === invoiceId), [candidates, invoiceId]);
+  const displayedPayments = selectedCandidate?.payments ?? selected?.payments ?? [];
+
+  useEffect(() => {
+    if (!selected) return;
+    setInvoiceId(selected.invoiceId ?? selected.bestSuggestion?.invoiceId ?? "");
+    setPaymentId(selected.payments?.[0]?.id ?? "");
+    setCandidateQuery("");
+    setNotes(selected.notes ?? "");
+  }, [selected?.id]);
+
+  useEffect(() => {
+    if (!selected) return;
+    void api<any[]>("/reconciliation/billing/candidates?forecastId=" + encodeURIComponent(selected.invoiceForecastId) + "&q=" + encodeURIComponent(candidateQuery)).then((rows) => {
+      setCandidates(rows);
+      setInvoiceId((current) => current || rows[0]?.invoiceId || "");
+    }).catch(() => setCandidates([]));
+  }, [selected?.invoiceForecastId, candidateQuery]);
+
+  useEffect(() => {
+    setPaymentId((current) => displayedPayments.some((payment: any) => payment.id === current) ? current : displayedPayments[0]?.id || "");
+  }, [displayedPayments]);
+
+  const refreshSuggestions = async () => {
+    await api("/reconciliation/billing/suggestions/refresh", { method: "POST", body: JSON.stringify({}) });
+    setSelectedId("");
+    await reload();
+  };
+  const matchForecast = async (targetInvoiceId = invoiceId, targetPaymentId = paymentId) => {
+    if (!selected || !targetInvoiceId) return;
+    await api("/reconciliation/billing/forecasts/" + selected.invoiceForecastId + "/match", { method: "POST", body: JSON.stringify({ invoiceId: targetInvoiceId, paymentId: targetPaymentId || undefined, notes }) });
+    setSelectedId("");
+    await reload();
+  };
+  const acceptBestSuggestion = async () => {
+    if (!selected?.bestSuggestion?.invoiceId) return;
+    await matchForecast(selected.bestSuggestion.invoiceId, selected.payments?.[0]?.id ?? "");
+  };
+  const ignoreForecast = async () => {
+    if (!selected) return;
+    await api("/reconciliation/billing/forecasts/" + selected.invoiceForecastId + "/ignore", { method: "POST", body: JSON.stringify({ notes }) });
+    setSelectedId("");
+    await reload();
+  };
+  const cancelReconciliation = async () => {
+    if (!selected?.reconciliationId) return;
+    await api("/reconciliation/billing/" + selected.reconciliationId + "/cancel", { method: "POST", body: JSON.stringify({ notes }) });
+    setSelectedId("");
+    await reload();
+  };
+
   return (
     <section className="space-y-5">
-      <PageTitle title="Rapprochement facturation" subtitle="Factures pr\u00e9vues, factures r\u00e9elles et paiements associ\u00e9s." />
-      <SimpleTable rows={data?.suggestions ?? []} columns={[["invoiceForecastId", "Facture pr\u00e9vue", (value: string) => invoiceForecastLabels.get(value) ?? value], ["invoiceId", "Facture r\u00e9elle", (value: string) => invoiceLabels.get(value) ?? value], ["amountVariance", "\u00c9cart montant", money], ["dateVarianceDays", "\u00c9cart jours"]]} />
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <PageTitle title="Rapprochement facturation" subtitle="File de traitement des factures prévues à rapprocher avec les factures réelles et paiements." />
+        <div className="flex flex-wrap gap-2">
+          <button className="rounded-md border border-line bg-white px-3 py-2 text-sm" onClick={() => void reload()}>Rafraîchir</button>
+          <button className="rounded-md bg-brand px-3 py-2 text-sm font-medium text-white" onClick={() => void refreshSuggestions()}>Recalculer les suggestions</button>
+        </div>
+      </div>
+      <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
+        <KpiCard label="À traiter" value={String(data?.summary?.total ?? 0)} />
+        <KpiCard label="Avec suggestion" value={String(data?.summary?.suggested ?? 0)} tone={(data?.summary?.suggested ?? 0) > 0 ? "good" : "default"} />
+        <KpiCard label="Revue manuelle" value={String(data?.summary?.manualReview ?? 0)} tone={(data?.summary?.manualReview ?? 0) > 0 ? "risk" : "good"} />
+        <KpiCard label="Rapprochées" value={String(data?.summary?.matched ?? 0)} tone="good" />
+        <KpiCard label="Paiement à suivre" value={String(data?.summary?.paymentPending ?? 0)} tone={(data?.summary?.paymentPending ?? 0) > 0 ? "risk" : "good"} />
+        <KpiCard label="Montant prévu restant" value={money(data?.summary?.amountToInvoice ?? 0)} />
+      </div>
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(430px,0.75fr)]">
+        <div className="space-y-3">
+          <div className="flex flex-wrap gap-2 rounded-lg border border-line bg-white p-3">
+            <input className="min-w-64 flex-1 rounded-md border border-line px-3 py-2 text-sm" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Rechercher client, mission, facture..." />
+            <select className="rounded-md border border-line bg-white px-3 py-2 text-sm" value={queueFilter} onChange={(event) => setQueueFilter(event.target.value)}>
+              <option value="all">Toutes</option>
+              <option value="suggested">Avec suggestion</option>
+              <option value="manual_review">Revue manuelle</option>
+              <option value="matched">Rapprochées</option>
+              <option value="pending">Paiement absent</option>
+              <option value="partial">Paiement partiel</option>
+              <option value="high">Priorité haute</option>
+            </select>
+          </div>
+          <SimpleTable rows={filteredRows} columns={[
+            ["forecastLabel", "Facture prévue", (value: string, row: any) => <button className="text-left font-medium text-brand" onClick={() => setSelectedId(row.id)}>{value}</button>],
+            ["clientLabel", "Client"],
+            ["missionLabel", "Mission"],
+            ["forecastAmountTTC", "Prévu TTC", money],
+            ["invoiceLabel", "Facture réelle", (value: string) => value ?? "À rapprocher"],
+            ["amountVariance", "Écart", money],
+            ["paymentStatus", "Paiement", (value: string) => billingPaymentBadge(value)],
+            ["queueStatus", "Statut", (value: string) => billingQueueBadge(value)]
+          ]} />
+        </div>
+        <aside className="rounded-lg border border-line bg-white p-4 shadow-sm">
+          {selected ? (
+            <div className="space-y-4">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h2 className="text-lg font-semibold">Traitement facturation</h2>
+                  <p className="text-sm text-muted">{selected.forecastLabel}</p>
+                </div>
+                <Badge tone={selected.priority === "high" ? "risk" : selected.priority === "medium" ? "warn" : "neutral"}>{priorityLabel(selected.priority)}</Badge>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <KpiCard label="Prévu TTC" value={money(selected.forecastAmountTTC ?? 0)} />
+                <KpiCard label="Restant à encaisser" value={money(selected.remainingAmount ?? 0)} tone={(selected.remainingAmount ?? 0) > 0 ? "risk" : "good"} />
+              </div>
+              <div className="rounded-md border border-line bg-surface p-3 text-sm">
+                <div className="font-medium">Meilleure suggestion</div>
+                {selected.bestSuggestion ? (
+                  <div className="mt-2 space-y-1">
+                    <div>{selected.bestSuggestion.invoiceLabel}</div>
+                    <div className="text-muted">{selected.bestSuggestion.reason}</div>
+                    <div>Score : {percent(selected.bestSuggestion.score ?? 0)}</div>
+                    <button className="mt-2 rounded-md bg-brand px-3 py-2 text-sm font-medium text-white" onClick={() => void acceptBestSuggestion()}>Accepter cette suggestion</button>
+                  </div>
+                ) : <div className="mt-2 text-muted">Aucune facture réelle suffisamment proche. Choisissez une cible manuellement.</div>}
+              </div>
+              {displayedPayments.length ? (
+                <div>
+                  <div className="mb-2 text-sm font-medium">Paiements associés</div>
+                  <div className="space-y-2">
+                    {displayedPayments.map((payment: any) => (
+                      <label key={payment.id} className="flex cursor-pointer items-center justify-between gap-3 rounded-md border border-line px-3 py-2 text-sm">
+                        <span>{payment.label}</span>
+                        <input type="radio" name="billing-payment" checked={paymentId === payment.id} onChange={() => setPaymentId(payment.id)} />
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              ) : <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">Aucun paiement associé à la facture réelle sélectionnée.</div>}
+              <div className="border-t border-line pt-4">
+                <h3 className="text-base font-semibold">Rapprochement manuel</h3>
+                <div className="mt-3 grid gap-3">
+                  <label className="text-sm">Recherche facture réelle<input className="mt-1 w-full rounded-md border border-line px-3 py-2" value={candidateQuery} onChange={(event) => { setCandidateQuery(event.target.value); setInvoiceId(""); }} placeholder="Numéro, client, mission..." /></label>
+                  <label className="text-sm">Facture réelle<select className="mt-1 w-full rounded-md border border-line px-3 py-2" value={invoiceId} onChange={(event) => setInvoiceId(event.target.value)}>
+                    <option value="">Sélectionner une facture</option>
+                    {candidates.map((candidate) => <option key={candidate.invoiceId} value={candidate.invoiceId}>{candidate.label} - score {Math.round((candidate.score ?? 0) * 100)} %</option>)}
+                  </select></label>
+                  <label className="text-sm">Commentaire<textarea className="mt-1 min-h-20 w-full rounded-md border border-line px-3 py-2" value={notes} onChange={(event) => setNotes(event.target.value)} /></label>
+                </div>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <button className="rounded-md bg-brand px-4 py-2 text-sm font-medium text-white disabled:opacity-60" disabled={!invoiceId} onClick={() => void matchForecast()}>Rapprocher</button>
+                  <button className="rounded-md border border-line px-4 py-2 text-sm" onClick={() => void ignoreForecast()}>Ignorer la prévision</button>
+                  {selected.reconciliationId ? <button className="rounded-md border border-line px-4 py-2 text-sm text-red-700" onClick={() => void cancelReconciliation()}>Annuler le rapprochement</button> : null}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="py-12 text-center text-sm text-muted">Aucune facture prévue à traiter.</div>
+          )}
+        </aside>
+      </div>
     </section>
   );
 }
@@ -546,8 +709,15 @@ function normalizeRows(payload: unknown): any[] {
 
 function useObject(path: string) {
   const [data, setData] = useState<any>(null);
-  useEffect(() => { void api<any>(path).then(setData).catch(() => setData(null)); }, [path]);
-  return { data };
+  const reload = useCallback(async () => {
+    try {
+      setData(await api<any>(path));
+    } catch {
+      setData(null);
+    }
+  }, [path]);
+  useEffect(() => { void reload(); }, [reload]);
+  return { data, reload };
 }
 
 function PageTitle({ title, subtitle }: { title: string; subtitle: string }) {
@@ -565,6 +735,31 @@ function staffingStatusLabel(value: string) {
     uncovered: "Non couvert",
     surplus: "Sur-staffé"
   };
+  return labels[value] ?? value;
+}
+
+function billingQueueBadge(value: string) {
+  const labels: Record<string, string> = {
+    suggested: "Suggestion",
+    manual_review: "Revue manuelle",
+    matched: "Rapprochée",
+    ignored: "Ignorée"
+  };
+  return <Badge tone={value === "manual_review" ? "risk" : value === "matched" ? "good" : value === "ignored" ? "neutral" : "warn"}>{labels[value] ?? value}</Badge>;
+}
+
+function billingPaymentBadge(value: string) {
+  const labels: Record<string, string> = {
+    paid: "Payée",
+    partial: "Partielle",
+    pending: "À encaisser",
+    not_invoiced: "Non facturée"
+  };
+  return <Badge tone={value === "paid" ? "good" : value === "partial" ? "warn" : "risk"}>{labels[value] ?? value}</Badge>;
+}
+
+function priorityLabel(value: string) {
+  const labels: Record<string, string> = { high: "Priorité haute", medium: "Priorité moyenne", normal: "Priorité normale" };
   return labels[value] ?? value;
 }
 

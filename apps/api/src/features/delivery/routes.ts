@@ -304,19 +304,49 @@ deliveryRouter.post("/invoices/:id/mark-paid", async (req, res, next) => {
 
 deliveryRouter.get("/reconciliation/billing", async (_req, res, next) => {
   try {
-    const [forecasts, invoices, reconciliations] = await Promise.all([
-      prisma.invoiceForecast.findMany(),
-      prisma.invoice.findMany(),
-      prisma.billingReconciliation.findMany()
-    ]);
-    res.json(serializeDates({ forecasts, invoices, reconciliations, suggestions: suggestReconciliation(forecasts, invoices) }));
+    res.json(serializeDates(await buildBillingReconciliationQueue()));
   } catch (error) {
     next(error);
   }
 });
-
+deliveryRouter.get("/reconciliation/billing/queue", async (_req, res, next) => {
+  try {
+    res.json(serializeDates(await buildBillingReconciliationQueue()));
+  } catch (error) {
+    next(error);
+  }
+});
+deliveryRouter.post("/reconciliation/billing/suggestions/refresh", async (_req, res, next) => {
+  try {
+    res.json(serializeDates(await refreshBillingReconciliationSuggestions()));
+  } catch (error) {
+    next(error);
+  }
+});
+deliveryRouter.get("/reconciliation/billing/candidates", async (req, res, next) => {
+  try {
+    res.json(serializeDates(await buildBillingCandidates(stringParam(req.query.forecastId), stringParam(req.query.q))));
+  } catch (error) {
+    next(error);
+  }
+});
+deliveryRouter.post("/reconciliation/billing/forecasts/:id/match", async (req, res, next) => {
+  try {
+    res.json(serializeDates(await matchBillingForecast(req.params.id, req.body)));
+  } catch (error) {
+    next(error);
+  }
+});
+deliveryRouter.post("/reconciliation/billing/forecasts/:id/ignore", async (req, res, next) => {
+  try {
+    res.json(serializeDates(await ignoreBillingForecast(req.params.id, req.body)));
+  } catch (error) {
+    next(error);
+  }
+});
+deliveryRouter.post("/reconciliation/billing/:id/cancel", async (req, res, next) => updateStatus(prisma.billingReconciliation, req.params.id, { status: "cancelled", notes: req.body.notes, updatedAt: new Date() }, res, next));
 deliveryRouter.post("/reconciliation/billing/:id/match", (req, res, next) => updateStatus(prisma.billingReconciliation, req.params.id, { status: "matched", ...req.body }, res, next));
-deliveryRouter.post("/reconciliation/billing/:id/ignore", (req, res, next) => updateStatus(prisma.billingReconciliation, req.params.id, { status: "ignored" }, res, next));
+deliveryRouter.post("/reconciliation/billing/:id/ignore", (req, res, next) => updateStatus(prisma.billingReconciliation, req.params.id, { status: "ignored", ...req.body }, res, next));
 
 deliveryRouter.get("/capacity", async (req, res, next) => {
   try {
@@ -679,11 +709,242 @@ async function requireCompany() {
   return company;
 }
 
-function suggestReconciliation(forecasts: Array<{ id: string; amountHT: number; expectedPaymentDate: Date }>, invoices: Array<{ id: string; amountHT: number; dueDate: Date }>) {
-  return forecasts.flatMap((forecast) => {
-    const match = invoices.find((invoice) => Math.abs(invoice.amountHT - forecast.amountHT) < 1);
-    if (!match) return [];
-    const dateVarianceDays = Math.round((match.dueDate.getTime() - forecast.expectedPaymentDate.getTime()) / 86400000);
-    return [{ invoiceForecastId: forecast.id, invoiceId: match.id, amountVariance: match.amountHT - forecast.amountHT, dateVarianceDays }];
+async function buildBillingReconciliationQueue() {
+  const [forecasts, invoices, payments, reconciliations, clients, missions, scenarios] = await Promise.all([
+    prisma.invoiceForecast.findMany({ orderBy: [{ expectedPaymentDate: "asc" }, { invoiceDate: "asc" }], take: 400 }),
+    prisma.invoice.findMany({ orderBy: { invoiceDate: "desc" }, take: 600 }),
+    prisma.payment.findMany({ orderBy: { paymentDate: "desc" }, take: 800 }),
+    prisma.billingReconciliation.findMany({ where: { status: { not: "cancelled" } }, orderBy: { updatedAt: "desc" } }),
+    prisma.client.findMany(),
+    prisma.mission.findMany(),
+    prisma.scenario.findMany()
+  ]);
+  const context = buildBillingContext(clients, missions, scenarios, payments);
+  const reconciliationsByForecast = new Map<string, any>();
+  for (const reconciliation of reconciliations) {
+    if (reconciliation.invoiceForecastId && !reconciliationsByForecast.has(reconciliation.invoiceForecastId)) {
+      reconciliationsByForecast.set(reconciliation.invoiceForecastId, reconciliation);
+    }
+  }
+  const items = forecasts.map((forecast) => buildBillingQueueItem(forecast, invoices, reconciliationsByForecast.get(forecast.id), context));
+  return {
+    summary: {
+      total: items.length,
+      suggested: items.filter((item) => item.queueStatus === "suggested").length,
+      manualReview: items.filter((item) => item.queueStatus === "manual_review").length,
+      matched: items.filter((item) => item.queueStatus === "matched").length,
+      paymentPending: items.filter((item) => item.paymentStatus === "pending" || item.paymentStatus === "partial").length,
+      amountToInvoice: items.filter((item) => item.queueStatus !== "matched" && item.queueStatus !== "ignored").reduce((sum, item) => sum + (item.forecastAmountTTC ?? 0), 0),
+      amountVariance: items.reduce((sum, item) => sum + Math.abs(item.amountVariance ?? 0), 0)
+    },
+    items,
+    suggestions: items.flatMap((item) => item.suggestions.map((suggestion: any) => ({ ...suggestion, invoiceForecastId: item.invoiceForecastId })))
+  };
+}
+
+async function refreshBillingReconciliationSuggestions() {
+  const queue = await buildBillingReconciliationQueue();
+  return queue.suggestions;
+}
+
+async function buildBillingCandidates(forecastId?: string, q?: string) {
+  const [forecast, invoices, payments, clients, missions, scenarios] = await Promise.all([
+    forecastId ? prisma.invoiceForecast.findUnique({ where: { id: forecastId } }) : Promise.resolve(null),
+    prisma.invoice.findMany({ orderBy: { invoiceDate: "desc" }, take: 600 }),
+    prisma.payment.findMany({ orderBy: { paymentDate: "desc" }, take: 800 }),
+    prisma.client.findMany(),
+    prisma.mission.findMany(),
+    prisma.scenario.findMany()
+  ]);
+  const context = buildBillingContext(clients, missions, scenarios, payments);
+  const candidates = invoices.map((invoice) => {
+    const score = forecast ? scoreBillingCandidate(forecast, invoice, context) : 0;
+    const invoicePayments = context.paymentsByInvoice.get(invoice.id) ?? [];
+    const paidAmount = invoicePayments.reduce((sum: number, payment: any) => sum + payment.amount, 0) || invoice.paidAmount || 0;
+    return {
+      invoiceId: invoice.id,
+      label: invoiceLabel(invoice, context),
+      invoiceNumber: invoice.invoiceNumber,
+      amountHT: invoice.amountHT,
+      amountTTC: invoice.amountTTC,
+      invoiceDate: invoice.invoiceDate,
+      dueDate: invoice.dueDate,
+      status: invoice.status,
+      paidAmount,
+      payments: invoicePayments.map((payment: any) => ({ id: payment.id, label: paymentLabel(payment), amount: payment.amount, paymentDate: payment.paymentDate, status: payment.status })),
+      score,
+      amountVariance: forecast ? invoice.amountHT - forecast.amountHT : 0,
+      dateVarianceDays: forecast ? daysBetween(invoice.dueDate, forecast.expectedPaymentDate) : 0
+    };
   });
+  const needle = q?.trim().toLowerCase();
+  return (needle ? candidates.filter((candidate) => [candidate.label, candidate.invoiceNumber].join(" ").toLowerCase().includes(needle)) : candidates).sort((left, right) => right.score - left.score).slice(0, 100);
+}
+
+async function matchBillingForecast(forecastId: string, body: Record<string, unknown>) {
+  const forecast = await prisma.invoiceForecast.findUnique({ where: { id: forecastId } });
+  if (!forecast) throw new Error("Invoice forecast not found");
+  const invoiceId = stringParam(body.invoiceId);
+  if (!invoiceId) throw new Error("invoiceId is required");
+  const invoice = await prisma.invoice.findUnique({ where: { id: invoiceId } });
+  if (!invoice) throw new Error("Invoice not found");
+  const paymentId = stringParam(body.paymentId);
+  const payment = paymentId ? await prisma.payment.findUnique({ where: { id: paymentId } }) : await prisma.payment.findFirst({ where: { invoiceId: invoice.id, status: { in: ["received", "reconciled"] } }, orderBy: { paymentDate: "desc" } });
+  const amountVariance = invoice.amountHT - forecast.amountHT;
+  const dateVarianceDays = daysBetween(invoice.dueDate, forecast.expectedPaymentDate);
+  const status = Math.abs(amountVariance) > 1 ? "amount_variance" : Math.abs(dateVarianceDays) > 7 ? "date_variance" : payment ? "matched_paid" : "matched";
+  const existing = await prisma.billingReconciliation.findFirst({ where: { invoiceForecastId: forecast.id, status: { not: "cancelled" } }, orderBy: { updatedAt: "desc" } });
+  const data = {
+    invoiceForecastId: forecast.id,
+    invoiceId: invoice.id,
+    paymentId: payment?.id,
+    status,
+    amountVariance,
+    dateVarianceDays,
+    notes: stringParam(body.notes)
+  };
+  const reconciliation = existing
+    ? await prisma.billingReconciliation.update({ where: { id: existing.id }, data })
+    : await prisma.billingReconciliation.create({ data });
+  if (payment && payment.status !== "reconciled") {
+    await prisma.payment.update({ where: { id: payment.id }, data: { status: "reconciled" } });
+  }
+  return reconciliation;
+}
+
+async function ignoreBillingForecast(forecastId: string, body: Record<string, unknown>) {
+  const forecast = await prisma.invoiceForecast.findUnique({ where: { id: forecastId } });
+  if (!forecast) throw new Error("Invoice forecast not found");
+  const existing = await prisma.billingReconciliation.findFirst({ where: { invoiceForecastId: forecast.id, status: { not: "cancelled" } }, orderBy: { updatedAt: "desc" } });
+  const data = {
+    invoiceForecastId: forecast.id,
+    status: "ignored",
+    amountVariance: 0,
+    dateVarianceDays: 0,
+    notes: stringParam(body.notes)
+  };
+  return existing
+    ? prisma.billingReconciliation.update({ where: { id: existing.id }, data })
+    : prisma.billingReconciliation.create({ data });
+}
+
+function buildBillingQueueItem(forecast: any, invoices: any[], reconciliation: any, context: any) {
+  const suggestions = invoices.map((invoice) => {
+    const score = scoreBillingCandidate(forecast, invoice, context);
+    return {
+      invoiceForecastId: forecast.id,
+      invoiceId: invoice.id,
+      invoiceLabel: invoiceLabel(invoice, context),
+      score,
+      amountVariance: invoice.amountHT - forecast.amountHT,
+      dateVarianceDays: daysBetween(invoice.dueDate, forecast.expectedPaymentDate),
+      reason: billingSuggestionReason(forecast, invoice, context, score)
+    };
+  }).filter((suggestion) => suggestion.score >= 0.45).sort((left, right) => right.score - left.score).slice(0, 5);
+  const matchedInvoice = reconciliation?.invoiceId ? invoices.find((invoice) => invoice.id === reconciliation.invoiceId) : undefined;
+  const bestSuggestion = suggestions[0];
+  const invoice = matchedInvoice ?? (reconciliation ? undefined : bestSuggestion ? invoices.find((candidate) => candidate.id === bestSuggestion.invoiceId) : undefined);
+  const invoicePayments = invoice ? context.paymentsByInvoice.get(invoice.id) ?? [] : [];
+  const paidAmount = invoicePayments.reduce((sum: number, payment: any) => sum + payment.amount, 0) || invoice?.paidAmount || 0;
+  const forecastAmountTTC = forecast.amountTTC ?? forecast.amountHT * (1 + (forecast.vatRate ?? 0.2));
+  const paymentStatus = invoice ? paidAmount + 0.01 >= invoice.amountTTC ? "paid" : paidAmount > 0 ? "partial" : "pending" : "not_invoiced";
+  const queueStatus = reconciliation?.status === "ignored" ? "ignored" : reconciliation ? "matched" : bestSuggestion ? "suggested" : "manual_review";
+  const amountVariance = reconciliation?.amountVariance ?? (invoice ? invoice.amountHT - forecast.amountHT : 0);
+  const dateVarianceDays = reconciliation?.dateVarianceDays ?? (invoice ? daysBetween(invoice.dueDate, forecast.expectedPaymentDate) : 0);
+  const priority = queueStatus === "manual_review" || Math.abs(amountVariance) > 1000 || Math.abs(dateVarianceDays) > 14 ? "high" : paymentStatus === "pending" || paymentStatus === "partial" ? "medium" : "normal";
+  return {
+    id: forecast.id,
+    invoiceForecastId: forecast.id,
+    reconciliationId: reconciliation?.id,
+    forecastLabel: forecastLabel(forecast, context),
+    missionLabel: context.missionById.get(forecast.missionId)?.title ?? forecast.missionId,
+    clientLabel: context.clientByMissionId.get(forecast.missionId)?.name ?? "-",
+    scenarioLabel: context.scenarioById.get(forecast.scenarioId)?.name ?? forecast.scenarioId,
+    forecastInvoiceDate: forecast.invoiceDate,
+    forecastDueDate: forecast.dueDate,
+    forecastExpectedPaymentDate: forecast.expectedPaymentDate,
+    forecastAmountHT: forecast.amountHT,
+    forecastAmountTTC,
+    queueStatus,
+    priority,
+    invoiceId: invoice?.id,
+    invoiceLabel: invoice ? invoiceLabel(invoice, context) : undefined,
+    invoiceNumber: invoice?.invoiceNumber,
+    invoiceStatus: invoice?.status,
+    invoiceAmountHT: invoice?.amountHT,
+    invoiceAmountTTC: invoice?.amountTTC,
+    paymentStatus,
+    paidAmount,
+    remainingAmount: invoice ? Math.max(0, invoice.amountTTC - paidAmount) : forecastAmountTTC,
+    amountVariance,
+    dateVarianceDays,
+    notes: reconciliation?.notes,
+    bestSuggestion,
+    suggestions,
+    payments: invoicePayments.map((payment: any) => ({ id: payment.id, label: paymentLabel(payment), amount: payment.amount, paymentDate: payment.paymentDate, status: payment.status }))
+  };
+}
+
+function buildBillingContext(clients: any[], missions: any[], scenarios: any[], payments: any[]) {
+  const clientById = new Map(clients.map((client) => [client.id, client]));
+  const missionById = new Map(missions.map((mission) => [mission.id, mission]));
+  const clientByMissionId = new Map(missions.map((mission) => [mission.id, clientById.get(mission.clientId)]));
+  const scenarioById = new Map(scenarios.map((scenario) => [scenario.id, scenario]));
+  const paymentsByInvoice = new Map<string, any[]>();
+  for (const payment of payments) {
+    const bucket = paymentsByInvoice.get(payment.invoiceId) ?? [];
+    bucket.push(payment);
+    paymentsByInvoice.set(payment.invoiceId, bucket);
+  }
+  return { clientById, missionById, clientByMissionId, scenarioById, paymentsByInvoice };
+}
+
+function scoreBillingCandidate(forecast: any, invoice: any, context: any) {
+  const mission = context.missionById.get(forecast.missionId);
+  let score = 0;
+  if (invoice.missionId && invoice.missionId === forecast.missionId) score += 0.35;
+  if (mission?.clientId && invoice.clientId === mission.clientId) score += 0.25;
+  const amountDelta = Math.abs(invoice.amountHT - forecast.amountHT);
+  score += amountDelta <= 1 ? 0.25 : amountDelta <= Math.max(500, forecast.amountHT * 0.05) ? 0.15 : amountDelta <= Math.max(1500, forecast.amountHT * 0.15) ? 0.05 : 0;
+  const dateDelta = Math.abs(daysBetween(invoice.dueDate, forecast.expectedPaymentDate));
+  score += dateDelta <= 7 ? 0.15 : dateDelta <= 30 ? 0.08 : dateDelta <= 60 ? 0.03 : 0;
+  return Math.min(1, Number(score.toFixed(2)));
+}
+
+function billingSuggestionReason(forecast: any, invoice: any, context: any, score: number) {
+  const reasons = [];
+  const mission = context.missionById.get(forecast.missionId);
+  if (invoice.missionId === forecast.missionId) reasons.push("même mission");
+  if (mission?.clientId && invoice.clientId === mission.clientId) reasons.push("même client");
+  if (Math.abs(invoice.amountHT - forecast.amountHT) <= Math.max(500, forecast.amountHT * 0.05)) reasons.push("montant proche");
+  if (Math.abs(daysBetween(invoice.dueDate, forecast.expectedPaymentDate)) <= 30) reasons.push("date proche");
+  return reasons.length ? `${reasons.join(", ")} - score ${Math.round(score * 100)} %` : `Score ${Math.round(score * 100)} %`;
+}
+
+function forecastLabel(forecast: any, context: any) {
+  const mission = context.missionById.get(forecast.missionId);
+  const client = context.clientByMissionId.get(forecast.missionId);
+  return `${client?.name ?? "Client"} - ${mission?.title ?? "Mission"} - ${moneyLabel(forecast.amountTTC ?? forecast.amountHT)}`;
+}
+
+function invoiceLabel(invoice: any, context: any) {
+  const client = context.clientById.get(invoice.clientId);
+  const mission = invoice.missionId ? context.missionById.get(invoice.missionId) : undefined;
+  return `${invoice.invoiceNumber ?? "Facture"} - ${client?.name ?? "Client"}${mission?.title ? ` - ${mission.title}` : ""} - ${moneyLabel(invoice.amountTTC)}`;
+}
+
+function paymentLabel(payment: any) {
+  return `${dateLabel(payment.paymentDate)} - ${moneyLabel(payment.amount)} - ${payment.status}`;
+}
+
+function moneyLabel(value: number) {
+  return new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(value ?? 0);
+}
+
+function dateLabel(value: Date | string) {
+  return new Date(value).toISOString().slice(0, 10);
+}
+
+function daysBetween(left: Date, right: Date) {
+  return Math.round((left.getTime() - right.getTime()) / 86400000);
 }
