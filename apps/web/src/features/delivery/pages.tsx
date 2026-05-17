@@ -1,5 +1,5 @@
 import type React from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Bar, BarChart, CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { API_URL, api } from "../../api";
 import { CrudPage } from "../../components/CrudPage";
@@ -108,10 +108,14 @@ export function PaymentsPage() {
 
 export function ReconciliationPage() {
   const { data } = useObject("/reconciliation/billing");
+  const { rows: invoiceForecasts } = useRows("/invoice-forecasts");
+  const { rows: invoices } = useRows("/invoices");
+  const invoiceForecastLabels = useMemo(() => new Map(invoiceForecasts.map((row) => [row.id, `${row.invoiceDate ?? ""} - ${money(row.amountTTC ?? row.amountHT ?? 0)}`])), [invoiceForecasts]);
+  const invoiceLabels = useMemo(() => new Map(invoices.map((row) => [row.id, row.invoiceNumber ?? `${row.invoiceDate ?? ""} - ${money(row.amountTTC ?? 0)}`])), [invoices]);
   return (
     <section className="space-y-5">
-      <PageTitle title="Rapprochement facturation" subtitle="Factures prévues, factures réelles et paiements associés." />
-      <SimpleTable rows={data?.suggestions ?? []} columns={[["invoiceForecastId", "Facture prévue"], ["invoiceId", "Facture réelle"], ["amountVariance", "Écart montant", money], ["dateVarianceDays", "Écart jours"]]} />
+      <PageTitle title="Rapprochement facturation" subtitle="Factures pr\u00e9vues, factures r\u00e9elles et paiements associ\u00e9s." />
+      <SimpleTable rows={data?.suggestions ?? []} columns={[["invoiceForecastId", "Facture pr\u00e9vue", (value: string) => invoiceForecastLabels.get(value) ?? value], ["invoiceId", "Facture r\u00e9elle", (value: string) => invoiceLabels.get(value) ?? value], ["amountVariance", "\u00c9cart montant", money], ["dateVarianceDays", "\u00c9cart jours"]]} />
     </section>
   );
 }
@@ -255,7 +259,7 @@ export function AiAnalysisPage({ scenarioId, horizon }: V2Context) {
   );
 }
 
-export function V2CrudPage({ kind }: { kind: "plannedHires" | "rules" | "notifications" | "documents" | "offers" | "connectors" }) {
+export function V2CrudPage({ kind }: { kind: "plannedHires" | "rules" | "notifications" | "documents" | "offers" | "connectors" | "workflows" | "webhooks" | "apiKeys" | "crmOpportunities" | "hrAbsences" }) {
   if (kind === "plannedHires") return <CrudPage title="Recrutements prévisionnels" path="/planned-hires" initial={{ scenarioId: "", title: "", targetRole: "", expectedStartDate: "2026-09-01", expectedMonthlyCost: 5000, expectedEmployerCharges: 2200, expectedFullCost: 7600, expectedTJM: 850, expectedUtilizationRate: 0.8, probability: 0.7, status: "planned" }} fields={[
     { name: "scenarioId", label: "Scénario", type: "select", optionsPath: "/scenarios", optionLabelKey: "name", optionValueKey: "id", placeholder: "Sélectionner un scenario" }, { name: "title", label: "Titre" }, { name: "targetRole", label: "Rôle" }, { name: "expectedStartDate", label: "Début", type: "date" }, { name: "expectedFullCost", label: "Coût complet", type: "number" }, { name: "expectedTJM", label: "TJM attendu", type: "number" }, { name: "expectedUtilizationRate", label: "Occupation", type: "number" }, { name: "status", label: "Statut", type: "select", options: ["planned", "approved", "cancelled", "hired", "delayed"].map((value) => ({ label: value, value })) }
   ]} columns={[{ key: "title", label: "Recrutement" }, { key: "expectedStartDate", label: "Début" }, { key: "expectedFullCost", label: "Coût", render: (row: any) => money(row.expectedFullCost) }, { key: "expectedTJM", label: "TJM", render: (row: any) => money(row.expectedTJM) }, { key: "status", label: "Statut" }]} />;
@@ -263,9 +267,135 @@ export function V2CrudPage({ kind }: { kind: "plannedHires" | "rules" | "notific
     { name: "name", label: "Nom" }, { name: "triggerType", label: "Declencheur", type: "select", options: ["monthly_projection", "cash_threshold", "margin_threshold", "connector_error", "manual"].map((value) => ({ label: value, value })) }, { name: "severity", label: "Sévérité", type: "select", options: ["info", "warning", "critical"].map((value) => ({ label: value, value })) }, { name: "isActive", label: "Active", type: "checkbox" }
   ]} columns={[{ key: "name", label: "Regle" }, { key: "triggerType", label: "Declencheur" }, { key: "severity", label: "Sévérité" }, { key: "isActive", label: "Active", render: (row: any) => row.isActive ? "Oui" : "Non" }]} />;
   if (kind === "notifications") return <CrudPage title="Notifications" path="/notifications" initial={{ type: "manual", severity: "info", title: "", message: "", status: "unread" }} fields={[{ name: "type", label: "Type", type: "select", options: ["manual", "alert", "workflow", "system"].map((value) => ({ label: value, value })) }, { name: "severity", label: "Sévérité", type: "select", options: ["info", "warning", "critical"].map((value) => ({ label: value, value })) }, { name: "title", label: "Titre" }, { name: "message", label: "Message", type: "textarea" }, { name: "status", label: "Statut", type: "select", options: ["unread", "read", "archived"].map((value) => ({ label: value, value })) }]} columns={[{ key: "createdAt", label: "Date" }, { key: "severity", label: "Sévérité" }, { key: "title", label: "Titre" }, { key: "status", label: "Statut" }]} />;
+  if (kind === "workflows") return <CrudPage title="Workflows d'approbation" path="/workflows" initial={{ entityType: "invoice", entityId: "", requestedBy: "", status: "pending", comment: "" }} fields={[
+    { name: "entityType", label: "Entit\u00e9", type: "select", options: ["invoice", "payment", "budget", "pricing", "other"].map((value) => ({ label: value, value })) },
+    { name: "entityId", label: "Objet li\u00e9" },
+    { name: "requestedBy", label: "Demand\u00e9 par" },
+    { name: "status", label: "Statut", type: "select", options: ["pending", "approved", "rejected", "cancelled"].map((value) => ({ label: value, value })) },
+    { name: "comment", label: "Commentaire", type: "textarea" }
+  ]} columns={[{ key: "entityType", label: "Entit\u00e9" }, { key: "entityId", label: "Objet" }, { key: "requestedBy", label: "Demandeur" }, { key: "status", label: "Statut" }, { key: "createdAt", label: "Cr\u00e9\u00e9 le" }]} />;
+  if (kind === "webhooks") return <CrudPage title="Abonnements webhooks" path="/webhooks" initial={{ name: "", targetUrl: "", eventTypes: [], isActive: true, secretMasked: "" }} fields={[
+    { name: "name", label: "Nom" },
+    { name: "targetUrl", label: "URL cible" },
+    { name: "secretMasked", label: "Secret masqu\u00e9" },
+    { name: "isActive", label: "Actif", type: "checkbox" }
+  ]} columns={[{ key: "name", label: "Nom" }, { key: "targetUrl", label: "URL" }, { key: "isActive", label: "Actif", render: (row: any) => row.isActive ? "Oui" : "Non" }, { key: "lastTriggeredAt", label: "Dernier appel" }]} />;
+  if (kind === "apiKeys") return <ApiKeysPage />;
+  if (kind === "crmOpportunities") return <CrmOpportunitiesPage />;
+  if (kind === "hrAbsences") return <HrAbsencesPage />;
   if (kind === "documents") return <CrudPage title="Documents" path="/documents" initial={{ companyId: "", entityType: "mission", entityId: "", fileName: "", mimeType: "application/pdf", size: 0, storagePath: "", category: "contract" }} fields={[{ name: "companyId", label: "Société", type: "select", optionsPath: "/companies", optionLabelKey: "name", optionValueKey: "id", placeholder: "Sélectionner une société" }, { name: "entityType", label: "Entité", type: "select", options: [{ label: "Mission", value: "mission" }, { label: "Facture", value: "invoice" }, { label: "Client", value: "client" }, { label: "Paiement", value: "payment" }, { label: "Autre", value: "other" }] }, { name: "entityId", label: "Entité liée", type: "select", optionDependsOn: "entityType", optionSourcesByValue: { mission: { path: "/missions", optionLabelKey: "title" }, invoice: { path: "/invoices", optionLabelKey: "invoiceNumber" }, client: { path: "/clients", optionLabelKey: "name" }, payment: { path: "/payments", optionLabelFields: ["paymentDate", "amount"] } }, placeholder: "Sélectionner une entite" }, { name: "fileName", label: "Fichier" }, { name: "mimeType", label: "MIME" }, { name: "size", label: "Taille", type: "number" }, { name: "storagePath", label: "Chemin" }, { name: "category", label: "Catégorie", type: "select", options: ["contract", "invoice", "report", "support", "other"].map((value) => ({ label: value, value })) }]} columns={[{ key: "fileName", label: "Fichier" }, { key: "entityType", label: "Entité" }, { key: "entityId", label: "Entité liée" }, { key: "category", label: "Catégorie" }, { key: "uploadedAt", label: "Ajoute le" }]} />;
   if (kind === "offers") return <CrudPage title="Offres et devis" path="/offers" initial={{ clientId: "", title: "", status: "draft", pricingMode: "daily_rate", totalAmount: 100000, expectedMargin: 30000, probability: 0.5 }} fields={[{ name: "clientId", label: "Client", type: "select", optionsPath: "/clients", optionLabelKey: "name", optionValueKey: "id", placeholder: "Sélectionner un client" }, { name: "title", label: "Titre" }, { name: "status", label: "Statut", type: "select", options: ["draft", "sent", "won", "lost", "cancelled"].map((value) => ({ label: value, value })) }, { name: "pricingMode", label: "Prix", type: "select", options: ["daily_rate", "fixed_price", "mixed"].map((value) => ({ label: value, value })) }, { name: "totalAmount", label: "Montant", type: "number" }, { name: "expectedMargin", label: "Marge", type: "number" }, { name: "probability", label: "Probabilité", type: "number" }]} columns={[{ key: "title", label: "Offre" }, { key: "status", label: "Statut" }, { key: "totalAmount", label: "Montant", render: (row: any) => money(row.totalAmount) }, { key: "expectedMargin", label: "Marge", render: (row: any) => money(row.expectedMargin) }]} />;
   return <ConnectorsPage />;
+}
+
+function ApiKeysPage() {
+  const { rows, reload } = useRows("/api-keys");
+  const [draft, setDraft] = useState({ name: "", scopes: "read:forecast", expiresAt: "" });
+  const [createdKey, setCreatedKey] = useState("");
+
+  const create = async (event: React.FormEvent) => {
+    event.preventDefault();
+    const scopes = draft.scopes.split(",").map((scope) => scope.trim()).filter(Boolean);
+    const result = await api<any>("/api-keys", { method: "POST", body: JSON.stringify({ name: draft.name, scopes, expiresAt: draft.expiresAt || null }) });
+    setCreatedKey(result.rawKey ?? "");
+    setDraft({ name: "", scopes: "read:forecast", expiresAt: "" });
+    await reload();
+  };
+
+  const revoke = async (id: string) => {
+    await api("/api-keys/" + id, { method: "DELETE" });
+    await reload();
+  };
+
+  return (
+    <section className="space-y-5">
+      <PageTitle title="Cl\u00e9s API" subtitle="Cr\u00e9ation et r\u00e9vocation des cl\u00e9s destin\u00e9es aux int\u00e9grations techniques." />
+      <form className="rounded-lg border border-line bg-white p-4" onSubmit={create}>
+        <div className="grid gap-3 md:grid-cols-3">
+          <label className="text-sm">Nom<input className="mt-1 w-full rounded-md border border-line px-3 py-2" required value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} /></label>
+          <label className="text-sm">Scopes<input className="mt-1 w-full rounded-md border border-line px-3 py-2" value={draft.scopes} onChange={(event) => setDraft({ ...draft, scopes: event.target.value })} /></label>
+          <label className="text-sm">Expiration<input className="mt-1 w-full rounded-md border border-line px-3 py-2" type="date" value={draft.expiresAt} onChange={(event) => setDraft({ ...draft, expiresAt: event.target.value })} /></label>
+        </div>
+        <button className="mt-4 rounded-md bg-brand px-4 py-2 text-sm font-medium text-white">Cr\u00e9er la cl\u00e9</button>
+      </form>
+      {createdKey ? <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">Copiez cette cl\u00e9 maintenant, elle ne sera plus affich\u00e9e : <code>{createdKey}</code></div> : null}
+      <SimpleTable rows={rows} columns={[
+        ["name", "Nom"],
+        ["scopes", "Scopes", (value: string[]) => Array.isArray(value) ? value.join(", ") : ""],
+        ["createdAt", "Cr\u00e9\u00e9e le"],
+        ["revokedAt", "R\u00e9voqu\u00e9e le", (value: string) => value || "Active"],
+        ["id", "Actions", (_value: string, row: any) => row.revokedAt ? "" : <button className="rounded border border-line px-2 py-1 text-xs text-red-700" onClick={() => void revoke(row.id)}>R\u00e9voquer</button>]
+      ]} />
+    </section>
+  );
+}
+
+function CrmOpportunitiesPage() {
+  const { rows, reload } = useRows("/crm/opportunities");
+  const convert = async (id: string) => {
+    await api("/crm/opportunities/" + id + "/convert-to-mission", { method: "POST" });
+    await reload();
+  };
+  return (
+    <section className="space-y-5">
+      <PageTitle title="Opportunit\u00e9s CRM" subtitle="Lecture des opportunit\u00e9s import\u00e9es et conversion en mission lorsque l'affaire est qualifi\u00e9e." />
+      <SimpleTable rows={rows} columns={[
+        ["opportunityName", "Opportunit\u00e9"],
+        ["clientName", "Client"],
+        ["amount", "Montant", (value: number) => money(value)],
+        ["probability", "Probabilit\u00e9", (value: number) => percent(value)],
+        ["expectedCloseDate", "Cl\u00f4ture pr\u00e9vue"],
+        ["status", "Statut"],
+        ["id", "Actions", (_value: string, row: any) => <button className="rounded border border-line px-2 py-1 text-xs" onClick={() => void convert(row.id)}>Convertir en mission</button>]
+      ]} />
+    </section>
+  );
+}
+
+function HrAbsencesPage() {
+  const { rows, reload } = useRows("/hr/absences");
+  const [employees, setEmployees] = useState<any[]>([]);
+  const [draft, setDraft] = useState({ employeeId: "", type: "paid_leave", startDate: "", endDate: "", status: "planned", comment: "" });
+
+  useEffect(() => {
+    void api<any[]>("/employees").then((data) => {
+      setEmployees(data);
+      setDraft((current) => ({ ...current, employeeId: current.employeeId || data[0]?.id || "" }));
+    }).catch(() => setEmployees([]));
+  }, []);
+
+  const employeeLabels = useMemo(() => new Map(employees.map((employee) => [employee.id, ((employee.firstName ?? "") + " " + (employee.lastName ?? "")).trim() || employee.email || employee.id])), [employees]);
+
+  const create = async (event: React.FormEvent) => {
+    event.preventDefault();
+    await api("/hr/absences", { method: "POST", body: JSON.stringify(draft) });
+    setDraft((current) => ({ ...current, startDate: "", endDate: "", comment: "" }));
+    await reload();
+  };
+
+  return (
+    <section className="space-y-5">
+      <PageTitle title="Absences RH" subtitle="Absences utilis\u00e9es pour fiabiliser la capacit\u00e9 disponible et le staffing." />
+      <form className="rounded-lg border border-line bg-white p-4" onSubmit={create}>
+        <div className="grid gap-3 md:grid-cols-3">
+          <label className="text-sm">Collaborateur<select className="mt-1 w-full rounded-md border border-line px-3 py-2" value={draft.employeeId} onChange={(event) => setDraft({ ...draft, employeeId: event.target.value })}>{employees.map((employee) => <option key={employee.id} value={employee.id}>{employeeLabels.get(employee.id)}</option>)}</select></label>
+          <label className="text-sm">Type<select className="mt-1 w-full rounded-md border border-line px-3 py-2" value={draft.type} onChange={(event) => setDraft({ ...draft, type: event.target.value })}>{["paid_leave", "sick_leave", "training", "other"].map((value) => <option key={value} value={value}>{value}</option>)}</select></label>
+          <label className="text-sm">Statut<select className="mt-1 w-full rounded-md border border-line px-3 py-2" value={draft.status} onChange={(event) => setDraft({ ...draft, status: event.target.value })}>{["planned", "approved", "cancelled"].map((value) => <option key={value} value={value}>{value}</option>)}</select></label>
+          <label className="text-sm">D\u00e9but<input className="mt-1 w-full rounded-md border border-line px-3 py-2" type="date" required value={draft.startDate} onChange={(event) => setDraft({ ...draft, startDate: event.target.value })} /></label>
+          <label className="text-sm">Fin<input className="mt-1 w-full rounded-md border border-line px-3 py-2" type="date" required value={draft.endDate} onChange={(event) => setDraft({ ...draft, endDate: event.target.value })} /></label>
+          <label className="text-sm">Commentaire<input className="mt-1 w-full rounded-md border border-line px-3 py-2" value={draft.comment} onChange={(event) => setDraft({ ...draft, comment: event.target.value })} /></label>
+        </div>
+        <button className="mt-4 rounded-md bg-brand px-4 py-2 text-sm font-medium text-white">Cr\u00e9er l'absence</button>
+      </form>
+      <SimpleTable rows={rows} columns={[
+        ["employeeId", "Collaborateur", (value: string) => employeeLabels.get(value) ?? value],
+        ["type", "Type"],
+        ["startDate", "D\u00e9but"],
+        ["endDate", "Fin"],
+        ["status", "Statut"]
+      ]} />
+    </section>
+  );
 }
 
 export function DocumentsPage() {
@@ -391,8 +521,16 @@ function TablePage({ title, subtitle, rows, columns }: { title: string; subtitle
 
 function useRows(path: string) {
   const [rows, setRows] = useState<any[]>([]);
-  useEffect(() => { void api<unknown>(path).then((payload) => setRows(normalizeRows(payload))).catch(() => setRows([])); }, [path]);
-  return { rows };
+  const reload = useCallback(async () => {
+    try {
+      const payload = await api<unknown>(path);
+      setRows(normalizeRows(payload));
+    } catch {
+      setRows([]);
+    }
+  }, [path]);
+  useEffect(() => { void reload(); }, [reload]);
+  return { rows, reload };
 }
 
 function normalizeRows(payload: unknown): any[] {

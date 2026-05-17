@@ -97,6 +97,7 @@ const navGroups: NavGroup[] = [
       { id: "simulations", label: "Simulations", icon: Workflow },
       { id: "monteCarlo", label: "Monte Carlo", icon: Gauge },
       { id: "reforecast", label: "Reforecast", icon: TrendingUp },
+      { id: "reforecastSuggestions", label: "Suggestions reforecast", icon: Sparkles },
       { id: "forecastReliability", label: "Fiabilité prévisionnelle", icon: Shield }
     ]
   },
@@ -143,6 +144,7 @@ const navGroups: NavGroup[] = [
       { id: "cashOut", label: "Décaissements", icon: Euro },
       { id: "fixedCosts", label: "Frais fixes", icon: WalletCards },
       { id: "variableCosts", label: "Frais variables", icon: Euro },
+      { id: "financialCategories", label: "Cat\u00e9gories financi\u00e8res", icon: SettingsIcon },
       { id: "bankTransactions", label: "Transactions bancaires", icon: Receipt },
       { id: "bankReconciliation", label: "Rapprochement bancaire", icon: Calculator },
       { id: "reconciliation", label: "Rapprochement facturation", icon: Calculator },
@@ -172,10 +174,10 @@ const navGroups: NavGroup[] = [
     label: "Connecteurs & données",
     icon: Handshake,
     items: [
-      { id: "realConnectors", label: "Connecteurs", icon: Handshake, badge: "!" },
-      { id: "connectors", label: "Connecteurs delivery", icon: Workflow },
-      { id: "providerConnection", label: "Connexion provider", icon: Sparkles },
-      { id: "connectorSupervision", label: "Supervision connecteurs", icon: Gauge },
+      { id: "realConnectors", label: "Catalogue providers", icon: Handshake, badge: "!" },
+      { id: "providerConnection", label: "Connexion bancaire/comptable", icon: Sparkles },
+      { id: "connectorSupervision", label: "Supervision & syncs", icon: Gauge },
+      { id: "connectors", label: "Connecteurs internes", icon: Workflow, keywords: "delivery webhooks technique" },
       { id: "bankAccounts", label: "Comptes bancaires", icon: Landmark },
       { id: "bankConsents", label: "Consentements bancaires", icon: Shield },
       { id: "dataQuality", label: "Santé des données", icon: Shield, badge: "3" },
@@ -204,7 +206,8 @@ const navGroups: NavGroup[] = [
     icon: FileText,
     items: [
       { id: "documents", label: "Documents", icon: FileText },
-      { id: "reports", label: "Rapports", icon: FileText },
+      { id: "reports", label: "Centre de rapports", icon: FileText },
+      { id: "workflows", label: "Workflows", icon: Workflow },
       { id: "backups", label: "Exports & sauvegardes", icon: DatabaseBackup }
     ]
   },
@@ -220,6 +223,8 @@ const navGroups: NavGroup[] = [
       { id: "providerErrors", label: "Erreurs providers", icon: AlertTriangle },
       { id: "providerWebhooks", label: "Webhooks", icon: Bell },
       { id: "providerRateLimits", label: "Rate limits", icon: BarChart3 },
+      { id: "webhookSubscriptions", label: "Abonnements webhooks", icon: Bell },
+      { id: "apiKeys", label: "Cl\u00e9s API", icon: LockKeyhole },
       { id: "performance", label: "Performance", icon: Gauge }
     ]
   },
@@ -229,6 +234,8 @@ const navGroups: NavGroup[] = [
     icon: SettingsIcon,
     items: [
       { id: "admin", label: "Utilisateurs", icon: Users },
+      { id: "crmOpportunities", label: "Opportunit\u00e9s CRM", icon: BriefcaseBusiness },
+      { id: "hrAbsences", label: "Absences RH", icon: BookOpenCheck },
       { id: "rules", label: "Roles & permissions", icon: Shield },
       { id: "settings", label: "Paramètres", icon: SettingsIcon },
       { id: "audit", label: "Audit", icon: History },
@@ -526,6 +533,15 @@ function renderPage(page: string, scenarioId: string, horizon: number, setHorizo
   if (page === "treasury") return <TreasuryPage scenarioId={scenarioId} horizon={horizon} />;
   if (page === "realTreasury") return <RealTreasuryPage scenarioId={scenarioId} horizon={horizon} />;
   if (page === "reforecast") return <ReforecastPage scenarioId={scenarioId} horizon={horizon} />;
+  if (page === "reforecastSuggestions") return <CrudPage title="Suggestions reforecast" path="/reforecast/suggestions" initial={{ scenarioId, month: new Date().toISOString().slice(0, 7), suggestionType: "cash_shift", impactAmount: 0, confidenceScore: 0.7, status: "suggested" }} fields={[
+    { name: "scenarioId", label: "Sc\u00e9nario", type: "select", optionsPath: "/scenarios", optionLabelKey: "name", optionValueKey: "id", placeholder: "S\u00e9lectionner un sc\u00e9nario" },
+    { name: "month", label: "Mois" },
+    { name: "suggestionType", label: "Type" },
+    { name: "impactAmount", label: "Impact", type: "number" },
+    { name: "confidenceScore", label: "Confiance", type: "number" },
+    { name: "status", label: "Statut", type: "select", options: ["suggested", "accepted", "rejected"].map((value) => ({ label: value, value })) },
+    { name: "message", label: "Message", type: "textarea" }
+  ]} columns={[{ key: "month", label: "Mois" }, { key: "suggestionType", label: "Type" }, { key: "impactAmount", label: "Impact" }, { key: "confidenceScore", label: "Confiance" }, { key: "status", label: "Statut" }]} />;
   if (page === "runway") return <RunwayPage scenarioId={scenarioId} horizon={horizon} />;
   if (page === "scenarios") return <ScenariosPage scenarioId={scenarioId} horizon={horizon} />;
   if (page === "simulations") return <SimulationsPage />;
@@ -547,6 +563,13 @@ function renderPage(page: string, scenarioId: string, horizon: number, setHorizo
   if (page === "reconciliation") return <ReconciliationPage />;
   if (page === "cashIn") return <CashInPage />;
   if (page === "cashOut") return <CashOutPage />;
+  if (page === "financialCategories") return <CrudPage title={"Cat\u00e9gories financi\u00e8res"} path="/financial-categories" initial={{ organizationId: "", name: "", type: "expense", parentId: "", isActive: true }} fields={[
+    { name: "organizationId", label: "Organisation", type: "select", optionsPath: "/organizations", optionLabelKey: "name", optionValueKey: "id", placeholder: "S\u00e9lectionner une organisation" },
+    { name: "name", label: "Nom" },
+    { name: "type", label: "Type", type: "select", options: ["revenue", "expense", "tax", "cash", "other"].map((value) => ({ label: value, value })) },
+    { name: "parentId", label: "Cat\u00e9gorie parente", type: "select", optionsPath: "/financial-categories", optionLabelKey: "name", optionValueKey: "id", placeholder: "Aucune" },
+    { name: "isActive", label: "Active", type: "checkbox" }
+  ]} columns={[{ key: "name", label: "Cat\u00e9gorie" }, { key: "type", label: "Type" }, { key: "parentId", label: "Parent" }, { key: "isActive", label: "Active" }]} />;
   if (page === "plannedHires") return <V2CrudPage kind="plannedHires" />;
   if (page === "strategicRisks") return <StrategicRisksPage scenarioId={scenarioId} horizon={horizon} />;
   if (page === "forecastReliability") return <ForecastReliabilityPage />;
@@ -569,6 +592,11 @@ function renderPage(page: string, scenarioId: string, horizon: number, setHorizo
   if (page === "aiAnalysis") return <AiAnalysisPage scenarioId={scenarioId} horizon={horizon} />;
   if (page === "rules") return <V2CrudPage kind="rules" />;
   if (page === "notifications") return <V2CrudPage kind="notifications" />;
+  if (page === "workflows") return <V2CrudPage kind="workflows" />;
+  if (page === "webhookSubscriptions") return <V2CrudPage kind="webhooks" />;
+  if (page === "apiKeys") return <V2CrudPage kind="apiKeys" />;
+  if (page === "crmOpportunities") return <V2CrudPage kind="crmOpportunities" />;
+  if (page === "hrAbsences") return <V2CrudPage kind="hrAbsences" />;
   if (page === "documents") return <DocumentsPage />;
   if (page === "connectors") return <V2CrudPage kind="connectors" />;
   if (page === "alerts") return <AlertsPage scenarioId={scenarioId} horizon={horizon} />;

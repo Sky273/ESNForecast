@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Field } from "../types";
-import { normalizeListResponse, pickEditableFields, updateDraftSelectValue } from "./CrudPage";
+import { formatCrudCellValue, normalizeListResponse, pickEditableFields, updateDraftSelectValue } from "./CrudPage";
 
 describe("CrudPage helpers", () => {
   const fields: Field[] = [
@@ -38,5 +38,16 @@ describe("CrudPage helpers", () => {
       missionId: "",
       amount: 1200
     });
+  });
+
+  it("uses relation labels instead of raw ids when a row contains included data", () => {
+    expect(formatCrudCellValue({ clientId: "client-1", client: { name: "AssurOne" } }, "clientId")).toBe("AssurOne");
+    expect(formatCrudCellValue({ missionId: "mission-1", mission: { title: "Audit sécurité santé" } }, "missionId")).toBe("Audit sécurité santé");
+    expect(formatCrudCellValue({ ownerUserId: "usr-1", ownerUser: { name: "Claire Finance" } }, "ownerUserId")).toBe("Claire Finance");
+  });
+
+  it("keeps select option labels as the first display source", () => {
+    const labels = new Map([["client-1", "Client chargé depuis le select"]]);
+    expect(formatCrudCellValue({ clientId: "client-1", client: { name: "AssurOne" } }, "clientId", labels)).toBe("Client chargé depuis le select");
   });
 });

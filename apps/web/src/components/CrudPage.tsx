@@ -106,7 +106,7 @@ export function CrudPage<T extends Record<string, any>>({
               <tbody>
                 {visibleRows.map((row) => (
                   <tr key={row.id} className="border-t border-line">
-                    {columns.map((column) => <td key={column.key} className="px-3 py-3">{column.render ? column.render(row) : formatCellValue(row[column.key], optionLabelsByField[column.key])}</td>)}
+                    {columns.map((column) => <td key={column.key} className="px-3 py-3">{column.render ? column.render(row) : formatCrudCellValue(row, column.key, optionLabelsByField[column.key])}</td>)}
                     <td className="flex gap-2 px-3 py-3">
                       <button className="rounded-md border border-line px-2 py-1" onClick={() => { setEditingId(row.id); setDraft({ ...initial, ...pickEditableFields(fields, row) }); }}>{t("common.edit")}</button>
                       <button className="rounded-md border border-line p-1 text-risk" title={t("common.delete")} onClick={async () => { await api(`${path}/${row.id}`, { method: "DELETE" }); await reload(); }}><Trash2 size={16} /></button>
@@ -197,9 +197,28 @@ function formatOptionLabel(row: Record<string, any>, labelKey: string, valueKey:
   return String(row[labelKey] ?? row.name ?? row.title ?? row.email ?? row[valueKey]);
 }
 
-function formatCellValue(value: unknown, labels?: Map<string, string>) {
+export function formatCrudCellValue(row: Record<string, any>, key: string, labels?: Map<string, string>) {
+  const value = row[key];
   if (value === null || value === undefined) return "";
-  return labels?.get(String(value)) ?? String(value);
+  const optionLabel = labels?.get(String(value));
+  if (optionLabel) return optionLabel;
+
+  const relationKey = key.endsWith("Id") ? key.slice(0, -2) : "";
+  const relation = relationKey ? row[relationKey] : undefined;
+  if (relation && typeof relation === "object") {
+    const label = relation.name ?? relation.title ?? relation.label ?? relation.email;
+    if (label) return String(label);
+    const fullName = [relation.firstName, relation.lastName].filter(Boolean).join(" ");
+    if (fullName) return fullName;
+  }
+
+  if (key === "ownerUserId" || key === "createdBy" || key === "updatedBy") {
+    const user = row.ownerUser ?? row.user ?? row.createdByUser ?? row.updatedByUser;
+    const label = user?.name ?? user?.email;
+    if (label) return String(label);
+  }
+
+  return String(value);
 }
 
 function formatInputValue(value: unknown, type?: Field["type"]) {

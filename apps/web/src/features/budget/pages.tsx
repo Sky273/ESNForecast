@@ -69,6 +69,15 @@ function FormPanel({ title, children, onSubmit, submitLabel = "Enregistrer" }: {
   );
 }
 
+function InfoPanel({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <div className="mb-5 rounded-lg border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-950">
+      <div className="font-semibold">{title}</div>
+      <div className="mt-1 text-sky-900">{children}</div>
+    </div>
+  );
+}
+
 function TextInput({ label, value, onChange, type = "text" }: { label: string; value: any; onChange: (value: any) => void; type?: string }) {
   return <label><span className="mb-1 block text-xs font-medium text-muted">{label}</span><input className="w-full rounded-md border border-line px-3 py-2" type={type} step={type === "number" ? "any" : undefined} value={value ?? ""} onChange={(event) => onChange(type === "number" ? Number(event.target.value) : event.target.value)} /></label>;
 }
@@ -324,6 +333,7 @@ export function RollingForecastPage() {
   return (
     <>
       <PageHeader title="Rolling Forecast" description="Generation, archivage et ajustement des lignes du rolling forecast." actions={<div className="flex gap-2"><button className="rounded-md border border-line px-3 py-2 text-sm" onClick={archive}>Archiver le forecast actif</button><button className="rounded-md bg-brand px-3 py-2 text-sm font-medium text-white" onClick={() => activeId && setLine({ month: 1, year: YEAR, category: "revenue", amount: 0, source: "manual_override", confidenceScore: 0.7, comment: "" })}>Ajouter une ligne</button></div>} />
+      <InfoPanel title="Provenance des données">Les mois passés proviennent du réel disponible, le mois courant mélange réel partiel et forecast, et les mois futurs sont issus du forecast ou du reforecast. Les lignes peuvent être ajustées manuellement après génération.</InfoPanel>
       <FormPanel title="Generer un rolling forecast" onSubmit={generate} submitLabel="Generer">
         <TextInput label="Nom" value={draft.name} onChange={(value) => setDraft({ ...draft, name: value })} />
         <TextInput label="Annee" type="number" value={draft.fiscalYear} onChange={(value) => setDraft({ ...draft, fiscalYear: value })} />
@@ -344,6 +354,7 @@ export function AnnualLandingPage() {
   return (
     <>
       <PageHeader title="Atterrissage annuel" description="Estimation de fin d'année à partir du réel à date et du forecast restant." />
+      <InfoPanel title="Méthode de calcul">L'atterrissage combine le budget annuel, le réalisé à date et le forecast restant. Les écarts affichés sont des écarts probables par rapport au budget de référence.</InfoPanel>
       <div className="mb-5 grid gap-3 md:grid-cols-4"><KpiCard label="CA budget" value={money(data?.budgetRevenue)} /><KpiCard label="CA probable" value={money(data?.projectedAnnualRevenue)} tone={(data?.revenueGap ?? 0) < 0 ? "risk" : "good"} /><KpiCard label="Marge probable" value={money(data?.projectedGrossMargin)} /><KpiCard label="Cash probable" value={money(data?.projectedClosingCash)} tone={(data?.cashGap ?? 0) < 0 ? "risk" : "good"} /></div>
       <div className="grid gap-4 md:grid-cols-3">{["lowCase", "medianCase", "highCase"].map((key) => <div key={key} className="rounded-lg border border-line bg-white p-4"><div className="text-sm text-muted">{key}</div><div className="mt-2 text-xl font-semibold">{money(data?.[key]?.revenue)}</div><div className="text-sm text-muted">Cash {money(data?.[key]?.cash)}</div></div>)}</div>
     </>
@@ -384,6 +395,7 @@ export function VarianceAnalysesPage() {
   return (
     <>
       <PageHeader title="Écarts commentés" description="Recalcul, qualification, commentaires et causes des Écarts budgétaires." actions={<button className="rounded-md bg-brand px-3 py-2 text-sm font-medium text-white" onClick={recalculate}>Recalculer</button>} />
+      <InfoPanel title="Lecture fonctionnelle">Les écarts sont générés par comparaison budget / réel / forecast. Une fois détectés, ils peuvent être qualifiés, commentés, reliés à des causes et transformés en actions correctives.</InfoPanel>
       {selected ? <div className="grid gap-5 xl:grid-cols-2"><FormPanel title="Qualifier l'écart" onSubmit={saveStatus}><SelectInput label="Statut" value={selected.status} onChange={(value) => setSelected({ ...selected, status: value })} options={["new", "under_review", "explained", "action_required", "resolved", "ignored"]} /><SelectInput label="Sévérité" value={selected.severity} onChange={(value) => setSelected({ ...selected, severity: value })} options={["info", "warning", "critical"]} /><TextInput label="Responsable" value={selected.ownerUserId ?? ""} onChange={(value) => setSelected({ ...selected, ownerUserId: value })} /></FormPanel><FormPanel title="Ajouter une cause" onSubmit={addCause}><TextInput label="Type" value={cause.causeType} onChange={(value) => setCause({ ...cause, causeType: value })} /><TextInput label="Impact" type="number" value={cause.amountImpact} onChange={(value) => setCause({ ...cause, amountImpact: value })} /><TextInput label="Confiance" type="number" value={cause.confidenceScore} onChange={(value) => setCause({ ...cause, confidenceScore: value })} /><TextArea label="Description" value={cause.description} onChange={(value) => setCause({ ...cause, description: value })} /></FormPanel><FormPanel title="Ajouter un commentaire" onSubmit={addComment}><TextArea label="Commentaire direction/finance" value={comment} onChange={setComment} /></FormPanel></div> : null}
       <Table rows={data ?? []} onSelect={setSelected} selectedId={selected?.id} columns={[{ key: "month", label: "Mois" }, { key: "category", label: "Catégorie" }, { key: "varianceAmount", label: "Ecart", render: (row) => money(row.varianceAmount) }, { key: "variancePercent", label: "Ecart %", render: (row) => percent(row.variancePercent) }, { key: "severity", label: "Severite", render: (row) => <StatusBadge label={row.severity} tone={tone(row.severity)} /> }, { key: "status", label: "Statut", render: (row) => <StatusBadge label={row.status} tone={tone(row.status)} /> }, { key: "actions", label: "Actions", render: (row) => <ActionButton tone="risk" onClick={() => removeVariance(row.id)}>Supprimer</ActionButton> }]} />
     </>
@@ -447,6 +459,7 @@ export function RequiredPipelinePage() {
   return (
     <>
       <PageHeader title="Pipeline nécessaire" description="Paramètres commerciaux et pipeline brut nécessaire pour atteindre le budget." actions={<button type="button" className="rounded-md bg-brand px-3 py-2 text-sm font-medium text-white disabled:opacity-60" onClick={recalculate} disabled={recalculating}>{recalculating ? "Recalcul..." : "Recalculer"}</button>} />
+      <InfoPanel title="Hypothèses utilisées">Le calcul part de l'objectif de chiffre d'affaires, retranche le réalisé, le signé restant et le pipeline pondéré, puis applique le taux de conversion pour estimer le pipeline brut à générer.</InfoPanel>
       <FormPanel title="Hypothèses commerciales" onSubmit={(event) => { event.preventDefault(); void recalculate(); }} submitLabel={recalculating ? "Recalcul..." : "Recalculer"}>
         <TextInput label="CA signé restant" type="number" value={params.signedRemainingRevenue} onChange={(value) => setParams({ ...params, signedRemainingRevenue: value })} />
         <TextInput label="Pipeline pondéré" type="number" value={params.weightedPipelineRevenue} onChange={(value) => setParams({ ...params, weightedPipelineRevenue: value })} />
@@ -469,6 +482,7 @@ export function BudgetStaffingPage() {
   return (
     <>
       <PageHeader title="Staffing budgétaire" description="Hypothèses de capacité et calcul des jours/ETP nécessaires pour atteindre la trajectoire budgétaire." actions={<button className="rounded-md bg-brand px-3 py-2 text-sm font-medium text-white" onClick={refetch}>Recalculer</button>} />
+      <InfoPanel title="Différence avec le capacity planning">Le staffing budgétaire part du budget de chiffre d'affaires et estime les jours facturables et ETP nécessaires. Le capacity planning compare ensuite ces besoins aux compétences et capacités disponibles.</InfoPanel>
       <FormPanel title="Hypothèses staffing" onSubmit={(event) => { event.preventDefault(); refetch(); }} submitLabel="Recalculer">
         <TextInput label="TJM moyen" type="number" value={params.averageDailyRate} onChange={(value) => setParams({ ...params, averageDailyRate: value })} />
         <TextInput label="Capacité interne avant sept." type="number" value={params.internalCapacityBeforeSeptember} onChange={(value) => setParams({ ...params, internalCapacityBeforeSeptember: value })} />
@@ -503,6 +517,7 @@ export function WhatMustBeTruePage() {
   return (
     <>
       <PageHeader title="Conditions de réussite" description="Création, qualification et suivi des conditions nécessaires pour atteindre le budget." />
+      <InfoPanel title="Rôle de cet écran">Ces conditions traduisent les prérequis concrets pour atteindre l'objectif : pipeline à signer, marge à maintenir, cash à préserver, staffing à couvrir ou coûts à contenir.</InfoPanel>
       <FormPanel title={selectedId ? "Modifier une condition" : "Nouvelle condition"} onSubmit={save}>
         <SelectInput label="Type" value={draft.conditionType} onChange={(value) => setDraft({ ...draft, conditionType: value })} options={["revenue_condition", "margin_condition", "cash_condition", "sales_condition", "staffing_condition", "payment_condition", "cost_condition", "client_condition"]} />
         <TextInput label="Cible" type="number" value={draft.targetValue} onChange={(value) => setDraft({ ...draft, targetValue: value })} />
