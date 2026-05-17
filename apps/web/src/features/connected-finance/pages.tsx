@@ -227,6 +227,10 @@ export function DataQualityPage() {
 export function ConnectorSupervisionPage() {
   const { data, reload } = useObject("/connector-health");
   const [message, setMessage] = useState("");
+  const visibleConnectors = useMemo(
+    () => (data?.connectors ?? []).filter((connector: any) => !["disconnected", "revoked"].includes(connector.status)),
+    [data?.connectors]
+  );
   const run = async (id: string, action: "incremental-sync" | "full-sync" | "reconnect" | "revoke") => {
     setMessage("");
     const result = await api<any>("/connectors/" + id + "/" + action, { method: "POST", body: JSON.stringify({ returnUrl: window.location.origin + "/#/provider-connection" }) });
@@ -247,7 +251,7 @@ export function ConnectorSupervisionPage() {
         <KpiCard label={"Expir\u00e9s"} value={String(data?.summary?.expired ?? 0)} tone={(data?.summary?.expired ?? 0) > 0 ? "risk" : "good"} />
         <KpiCard label={"D\u00e9connect\u00e9s"} value={String(data?.summary?.disconnected ?? 0)} />
       </div>
-      <SimpleTable rows={data?.connectors ?? []} columns={[
+      <SimpleTable rows={visibleConnectors} columns={[
         ["provider", "Provider"], ["type", "Type"], ["name", "Nom"], ["status", "Statut"], ["lastSyncAt", "Dernier sync"], ["errorMessage", "Erreur"],
         ["id", "Actions", (_value: string, row: any) => (
           <div className="flex flex-wrap gap-2">
