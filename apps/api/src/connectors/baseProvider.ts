@@ -240,7 +240,8 @@ export abstract class BaseProvider implements FinancialConnectorProvider {
   }
 
   protected mockTransactions(_connectorId: string): NormalizedBankTransaction[] {
-    return [{ provider: this.getProviderName(), externalTransactionId: `${this.getProviderName()}-tx-${Date.now()}`, externalAccountId: `${this.getProviderName()}-account`, transactionDate: new Date().toISOString().slice(0, 10), bookingDate: new Date().toISOString().slice(0, 10), label: `${this.getProviderName()} sandbox transaction`, amount: 1200, currency: "EUR", direction: "credit", status: "booked", rawPayload: { mock: true } }];
+    const today = new Date().toISOString().slice(0, 10);
+    return [{ provider: this.getProviderName(), externalTransactionId: `${this.getProviderName()}-tx-sandbox`, externalAccountId: `${this.getProviderName()}-account`, transactionDate: today, bookingDate: today, label: `${this.getProviderName()} sandbox transaction`, amount: 1200, currency: "EUR", direction: "credit", status: "booked", rawPayload: { mock: true } }];
   }
 
   protected mockInvoices(_connectorId: string): NormalizedAccountingInvoice[] {

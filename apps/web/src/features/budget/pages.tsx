@@ -260,6 +260,7 @@ export function ObjectivesPage() {
   return (
     <>
       <PageHeader title="Objectifs" description="Création et suivi des objectifs financiers, commerciaux, opérationnels et staffing." />
+      <InfoPanel title="Provenance et rôle">Les objectifs sont saisis dans cet écran. Leur statut est ensuite recalculé par comparaison avec le réel, le budget et le forecast disponibles pour l'année fiscale.</InfoPanel>
       <FormPanel title={editingId ? "Modifier un objectif" : "Nouvel objectif"} onSubmit={save}>
         <TextInput label="Nom" value={draft.name} onChange={(value) => setDraft({ ...draft, name: value })} />
         <SelectInput label="Type" value={draft.type} onChange={(value) => setDraft({ ...draft, type: value })} options={objectiveTypes} />
@@ -368,6 +369,7 @@ export function BudgetForecastActualPage() {
   return (
     <>
       <PageHeader title="Budget / Forecast / Actual" description="Comparaison mensuelle budget, rolling forecast, reforecast et réel." actions={<button className="rounded-md bg-brand px-3 py-2 text-sm font-medium text-white" onClick={recalculate}>Recalculer</button>} />
+      <InfoPanel title="Source des chiffres">Le tableau consolide les lignes budgétaires, le réel mensuel, les rolling forecasts et les recalculs de reforecast. Le bouton Recalculer régénère les écarts à partir des données applicatives disponibles.</InfoPanel>
       <Table rows={calculated ?? report?.variances ?? []} columns={[{ key: "month", label: "Mois" }, { key: "category", label: "Catégorie" }, { key: "budgetValue", label: "Budget", render: (row) => money(row.budgetValue) }, { key: "actualValue", label: "Réel", render: (row) => money(row.actualValue) }, { key: "varianceAmount", label: "Écart", render: (row) => money(row.varianceAmount ?? row.varianceBudgetActual) }, { key: "severity", label: "Statut", render: (row) => <StatusBadge label={row.severity ?? row.status} tone={tone(row.severity ?? row.status)} /> }]} />
     </>
   );

@@ -50,6 +50,18 @@ function Panel({ title, children }: { title: string; children: React.ReactNode }
   );
 }
 
+function formatBytes(value: number | null | undefined) {
+  const bytes = Number(value ?? 0);
+  if (!bytes) return "-";
+  if (bytes < 1024) return `${bytes} o`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} Ko`;
+  return `${(bytes / 1024 / 1024).toFixed(1)} Mo`;
+}
+
+function formatDate(value: string | null | undefined) {
+  return value ? new Date(value).toLocaleString("fr-FR") : "-";
+}
+
 export function ObservabilityPage() {
   const { data: summary } = useApi<any>("/observability/summary");
   const { data: logs } = useApi<any[]>("/observability/logs");
@@ -216,10 +228,10 @@ export function BackupsPage() {
         </>
       } />
       <Panel title="Sauvegardes">
-        <Table rows={backups ?? []} columns={[{ key: "type", label: "Type" }, { key: "status", label: "Statut", render: (row) => <StatusBadge label={row.status} tone={tone(row.status)} /> }, { key: "sizeBytes", label: "Taille" }, { key: "filePath", label: "Chemin" }, { key: "id", label: "Actions", render: (row) => <a className="rounded border border-line px-2 py-1 text-xs" href={`/api/backups/${row.id}/download`}>Télécharger</a> }]} />
+        <Table rows={backups ?? []} columns={[{ key: "type", label: "Type" }, { key: "status", label: "Statut", render: (row) => <StatusBadge label={row.status} tone={tone(row.status)} /> }, { key: "sizeBytes", label: "Taille", render: (row) => formatBytes(row.sizeBytes) }, { key: "createdAt", label: "Créée le", render: (row) => formatDate(row.createdAt) }, { key: "id", label: "Actions", render: (row) => <a className="rounded border border-line px-2 py-1 text-xs" href={`/api/backups/${row.id}/download`}>Télécharger</a> }]} />
       </Panel>
       <Panel title="Exports complets">
-        <Table rows={exports ?? []} columns={[{ key: "type", label: "Type" }, { key: "format", label: "Format" }, { key: "status", label: "Statut", render: (row) => <StatusBadge label={row.status} tone={tone(row.status)} /> }, { key: "sizeBytes", label: "Taille" }, { key: "filePath", label: "Chemin" }, { key: "id", label: "Actions", render: (row) => <a className="rounded border border-line px-2 py-1 text-xs" href={`/api/exports/${row.id}/download`}>Télécharger</a> }]} />
+        <Table rows={exports ?? []} columns={[{ key: "type", label: "Type" }, { key: "format", label: "Format" }, { key: "status", label: "Statut", render: (row) => <StatusBadge label={row.status} tone={tone(row.status)} /> }, { key: "sizeBytes", label: "Taille", render: (row) => formatBytes(row.sizeBytes) }, { key: "createdAt", label: "Créé le", render: (row) => formatDate(row.createdAt) }, { key: "id", label: "Actions", render: (row) => <a className="rounded border border-line px-2 py-1 text-xs" href={`/api/exports/${row.id}/download`}>Télécharger</a> }]} />
       </Panel>
       <Panel title="Politiques de retention">
         <Table rows={policies ?? []} columns={[{ key: "domain", label: "Domaine" }, { key: "retentionDays", label: "Jours" }, { key: "action", label: "Action" }, { key: "isActive", label: "Actif", render: (row) => row.isActive ? "Oui" : "Non" }]} />

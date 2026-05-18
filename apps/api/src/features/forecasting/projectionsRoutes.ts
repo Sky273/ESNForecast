@@ -1,11 +1,19 @@
 import { Router } from "express";
-import { buildProjection } from "./projectionService";
+import { buildProjection, buildScenarioProjection } from "./projectionService";
 
 export const projectionsRouter = Router();
 
 projectionsRouter.get("/monthly", async (req, res, next) => {
   try {
     res.json(await buildProjection(Number(req.query.horizon) || undefined));
+  } catch (error) {
+    next(error);
+  }
+});
+
+projectionsRouter.get("/scenario/:scenarioId", async (req, res, next) => {
+  try {
+    res.json(await buildScenarioProjection(req.params.scenarioId, Number(req.query.horizon) || undefined));
   } catch (error) {
     next(error);
   }

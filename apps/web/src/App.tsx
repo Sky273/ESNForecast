@@ -109,7 +109,7 @@ const navGroups: NavGroup[] = [
       { id: "missions", label: "Missions", icon: BriefcaseBusiness },
       { id: "offers", label: "Offres / devis", icon: Receipt },
       { id: "clients", label: "Clients", icon: Building2 },
-      { id: "profitabilityMissions", label: "Rentabilite missions", icon: BarChart3 },
+      { id: "profitabilityMissions", label: "Rentabilité missions", icon: BarChart3 },
       { id: "assignments", label: "Affectations", icon: Users },
       { id: "timesheets", label: "CRA", icon: BookOpenCheck, badge: "2" },
       { id: "monthlyClose", label: "Cloture mensuelle", icon: LockKeyhole }
@@ -148,7 +148,7 @@ const navGroups: NavGroup[] = [
       { id: "bankTransactions", label: "Transactions bancaires", icon: Receipt },
       { id: "bankReconciliation", label: "Rapprochement bancaire", icon: Calculator },
       { id: "reconciliation", label: "Rapprochement facturation", icon: Calculator },
-      { id: "importedAccounting", label: "Comptabilite importee", icon: FileText },
+      { id: "importedAccounting", label: "Comptabilité importée", icon: FileText },
       { id: "realTreasury", label: "Tr\u00e9sorerie r\u00e9elle", icon: TrendingUp },
       { id: "clientPaymentProfiles", label: "Profils de paiement", icon: Euro },
       { id: "runway", label: "Runway", icon: HeartPulse }
@@ -181,7 +181,7 @@ const navGroups: NavGroup[] = [
       { id: "bankAccounts", label: "Comptes bancaires", icon: Landmark },
       { id: "bankConsents", label: "Consentements bancaires", icon: Shield },
       { id: "dataQuality", label: "Santé des données", icon: Shield, badge: "3" },
-      { id: "sourcePolicies", label: "Sources de verite", icon: SettingsIcon },
+      { id: "sourcePolicies", label: "Sources de vérité", icon: SettingsIcon },
       { id: "duplicates", label: "Doublons", icon: DatabaseBackup },
       { id: "connectorCompliance", label: "Conformité connecteurs", icon: Shield },
       { id: "consentCompliance", label: "Consentements providers", icon: Shield }
@@ -216,9 +216,9 @@ const navGroups: NavGroup[] = [
     label: "Exploitation",
     icon: Gauge,
     items: [
-      { id: "observability", label: "Observabilite", icon: Gauge },
+      { id: "observability", label: "Observabilité", icon: Gauge },
       { id: "jobs", label: "Jobs", icon: Workflow },
-      { id: "systemStatus", label: "Statut systeme", icon: HeartPulse },
+      { id: "systemStatus", label: "Statut système", icon: HeartPulse },
       { id: "providerHealth", label: "Health providers", icon: Shield },
       { id: "providerErrors", label: "Erreurs providers", icon: AlertTriangle },
       { id: "providerWebhooks", label: "Webhooks", icon: Bell },
@@ -236,7 +236,7 @@ const navGroups: NavGroup[] = [
       { id: "admin", label: "Utilisateurs", icon: Users },
       { id: "crmOpportunities", label: "Opportunit\u00e9s CRM", icon: BriefcaseBusiness },
       { id: "hrAbsences", label: "Absences RH", icon: BookOpenCheck },
-      { id: "rules", label: "Roles & permissions", icon: Shield },
+      { id: "rules", label: "Rôles & permissions", icon: Shield },
       { id: "settings", label: "Paramètres", icon: SettingsIcon },
       { id: "audit", label: "Audit", icon: History },
       { id: "financialAudit", label: "Audit financier", icon: History },
@@ -561,7 +561,7 @@ function renderPage(page: string, scenarioId: string, horizon: number, setHorizo
   if (page === "connectedFinance") return <ConnectedFinanceDashboard scenarioId={scenarioId} horizon={horizon} />;
   if (page === "realConnectors") return <RealConnectorsPage />;
   if (page === "providerConnection") return <ProviderConnectionPage />;
-  if (page === "projections") return <Projections horizon={horizon} />;
+  if (page === "projections") return <Projections scenarioId={scenarioId} horizon={horizon} />;
   if (page === "actuals") return <ActualsVariancesPage scenarioId={scenarioId} horizon={horizon} />;
   if (page === "timesheets") return <TimesheetsPage />;
   if (page === "monthlyClose") return <MonthlyClosePage />;

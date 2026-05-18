@@ -59,11 +59,61 @@ export function ExecutiveCockpitPage({ scenarioId, horizon }: DeliveryContext) {
 }
 
 export function TimesheetsPage() {
-  return <CrudPage title="CRA et temps réellement produit" path="/timesheets" initial={{ resourceType: "employee", resourceId: "", missionId: "", month: 6, year: 2026, workedDays: 20, billableDays: 18, nonBillableDays: 2, absenceDays: 0, vacationDays: 0, sickLeaveDays: 0, trainingDays: 0, internalDays: 0, status: "draft" }} fields={[
-    { name: "resourceType", label: "Type ressource", type: "select", options: [{ label: "Employe", value: "employee" }] }, { name: "resourceId", label: "Employe", type: "select", optionsPath: "/employees", optionLabelFields: ["firstName", "lastName"], optionValueKey: "id", placeholder: "Sélectionner un employe" }, { name: "missionId", label: "Mission", type: "select", optionsPath: "/missions", optionLabelKey: "title", optionValueKey: "id", placeholder: "Sélectionner une mission" }, { name: "month", label: "Mois", type: "number" }, { name: "year", label: "Année", type: "number" }, { name: "workedDays", label: "Jours travailles", type: "number" }, { name: "billableDays", label: "Jours facturables", type: "number" }, { name: "nonBillableDays", label: "Non facturables", type: "number" }, { name: "absenceDays", label: "Absences", type: "number" }, { name: "status", label: "Statut", type: "select", options: ["open", "closed", "reopened", "validated"].map((value) => ({ label: value, value })) }, { name: "notes", label: "Notes", type: "textarea" }
-  ]} columns={[{ key: "year", label: "Année" }, { key: "month", label: "Mois" }, { key: "resourceType", label: "Type" }, { key: "resourceId", label: "Ressource" }, { key: "missionId", label: "Mission" }, { key: "billableDays", label: "Facturables" }, { key: "status", label: "Statut" }]} />;
+  const initial = { resourceType: "employee", resourceId: "", missionId: "", month: 6, year: 2026, workedDays: 20, billableDays: 18, nonBillableDays: 2, absenceDays: 0, vacationDays: 0, sickLeaveDays: 0, trainingDays: 0, internalDays: 0, status: "draft", notes: "" };
+  const { rows, reload } = useRows("/timesheets");
+  const { rows: employees } = useRows("/employees");
+  const { rows: missions } = useRows("/missions");
+  const employeeLabels = useMemo(() => new Map(employees.map((employee: any) => [employee.id, [employee.firstName, employee.lastName].filter(Boolean).join(" ") || employee.email || employee.id])), [employees]);
+  const missionLabels = useMemo(() => new Map(missions.map((mission: any) => [mission.id, mission.title ?? mission.id])), [missions]);
+  const [draft, setDraft] = useState<any>(initial);
+  const [editingId, setEditingId] = useState("");
+  const save = async (event: React.FormEvent) => {
+    event.preventDefault();
+    await api(editingId ? `/timesheets/${editingId}` : "/timesheets", { method: editingId ? "PUT" : "POST", body: JSON.stringify(draft) });
+    setDraft(initial);
+    setEditingId("");
+    await reload();
+  };
+  const updateStatus = async (id: string, action: "submit" | "approve" | "reject" | "lock") => {
+    await api(`/timesheets/${id}/${action}`, { method: "POST", body: JSON.stringify({}) });
+    await reload();
+  };
+  const remove = async (id: string) => {
+    await api(`/timesheets/${id}`, { method: "DELETE" });
+    if (editingId === id) setEditingId("");
+    await reload();
+  };
+  return (
+    <section className="space-y-5">
+      <PageTitle title="CRA et temps réellement produit" subtitle="Saisie des jours travaillés, soumission, validation, rejet et verrouillage des CRA." />
+      <form onSubmit={save} className="rounded-lg border border-line bg-white p-4">
+        <div className="grid gap-3 md:grid-cols-4">
+          <SelectField label="Employé" value={draft.resourceId} onChange={(value) => setDraft({ ...draft, resourceId: value })} options={employees.map((employee: any) => ({ value: employee.id, label: employeeLabels.get(employee.id) ?? employee.id }))} />
+          <SelectField label="Mission" value={draft.missionId} onChange={(value) => setDraft({ ...draft, missionId: value })} options={missions.map((mission: any) => ({ value: mission.id, label: missionLabels.get(mission.id) ?? mission.id }))} />
+          <NumberField label="Mois" value={draft.month} onChange={(value) => setDraft({ ...draft, month: value })} />
+          <NumberField label="Année" value={draft.year} onChange={(value) => setDraft({ ...draft, year: value })} />
+          <NumberField label="Jours travaillés" value={draft.workedDays} onChange={(value) => setDraft({ ...draft, workedDays: value })} />
+          <NumberField label="Jours facturables" value={draft.billableDays} onChange={(value) => setDraft({ ...draft, billableDays: value })} />
+          <NumberField label="Non facturables" value={draft.nonBillableDays} onChange={(value) => setDraft({ ...draft, nonBillableDays: value })} />
+          <NumberField label="Absences" value={draft.absenceDays} onChange={(value) => setDraft({ ...draft, absenceDays: value })} />
+          <SelectField label="Statut" value={draft.status} onChange={(value) => setDraft({ ...draft, status: value })} options={["draft", "submitted", "approved", "rejected", "locked"].map((value) => ({ label: value, value }))} />
+          <label className="text-sm md:col-span-3">
+            <span className="mb-1 block text-xs font-medium text-muted">Notes</span>
+            <textarea className="min-h-20 w-full rounded-md border border-line px-3 py-2" value={draft.notes ?? ""} onChange={(event) => setDraft({ ...draft, notes: event.target.value })} />
+          </label>
+        </div>
+        <div className="mt-4 flex gap-2">
+          <button className="rounded-md bg-brand px-4 py-2 text-sm font-medium text-white" type="submit">{editingId ? "Enregistrer" : "Créer"}</button>
+          {editingId ? <button className="rounded-md border border-line px-4 py-2 text-sm" type="button" onClick={() => { setDraft(initial); setEditingId(""); }}>Annuler</button> : null}
+        </div>
+      </form>
+      <SimpleTable rows={rows} columns={[
+        ["year", "Année"], ["month", "Mois"], ["resourceId", "Ressource", (value: string) => employeeLabels.get(value) ?? value], ["missionId", "Mission", (value: string) => missionLabels.get(value) ?? value], ["billableDays", "Facturables"], ["status", "Statut", (value: string) => <Badge tone={value === "approved" || value === "locked" ? "good" : value === "rejected" ? "risk" : "warn"}>{value}</Badge>],
+        ["id", "Actions", (_value: string, row: any) => <div className="flex flex-wrap gap-2"><button className="rounded border border-line px-2 py-1 text-xs" onClick={() => { setEditingId(row.id); setDraft({ ...initial, ...row }); }}>Éditer</button><button className="rounded border border-line px-2 py-1 text-xs" onClick={() => void updateStatus(row.id, "submit")}>Soumettre</button><button className="rounded border border-line px-2 py-1 text-xs" onClick={() => void updateStatus(row.id, "approve")}>Valider</button><button className="rounded border border-line px-2 py-1 text-xs" onClick={() => void updateStatus(row.id, "reject")}>Rejeter</button><button className="rounded border border-line px-2 py-1 text-xs" onClick={() => void updateStatus(row.id, "lock")}>Verrouiller</button><button className="rounded border border-line px-2 py-1 text-xs text-risk" onClick={() => void remove(row.id)}>Supprimer</button></div>]
+      ]} />
+    </section>
+  );
 }
-
 export function ActualsVariancesPage({ scenarioId, horizon }: DeliveryContext) {
   const { rows: actuals } = useRows("/actuals/monthly");
   const { rows: variances } = useRows(`/variances/monthly?scenarioId=${scenarioId}&horizon=${horizon}`);
@@ -722,6 +772,27 @@ function useObject(path: string) {
 
 function PageTitle({ title, subtitle }: { title: string; subtitle: string }) {
   return <div><h1 className="text-2xl font-semibold tracking-normal">{title}</h1><p className="text-sm text-muted">{subtitle}</p></div>;
+}
+
+function SelectField({ label, value, options, onChange }: { label: string; value: string; options: Array<{ label: string; value: string }>; onChange: (value: string) => void }) {
+  return (
+    <label className="text-sm">
+      <span className="mb-1 block text-xs font-medium text-muted">{label}</span>
+      <select className="w-full rounded-md border border-line px-3 py-2" value={value ?? ""} onChange={(event) => onChange(event.target.value)}>
+        <option value="">Sélectionner</option>
+        {options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+      </select>
+    </label>
+  );
+}
+
+function NumberField({ label, value, onChange }: { label: string; value: number; onChange: (value: number) => void }) {
+  return (
+    <label className="text-sm">
+      <span className="mb-1 block text-xs font-medium text-muted">{label}</span>
+      <input className="w-full rounded-md border border-line px-3 py-2" type="number" value={value ?? 0} onChange={(event) => onChange(Number(event.target.value))} />
+    </label>
+  );
 }
 
 function ChartCard({ title, children }: { title: string; children: React.ReactElement }) {

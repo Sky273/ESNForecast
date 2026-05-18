@@ -62,18 +62,22 @@ function normalizeListResponse<T>(payload: unknown): T[] {
   return [];
 }
 
-export function useProjection(horizon: number) {
+export function useProjection(horizon: number, scenarioId?: string) {
   const [projection, setProjection] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     setLoading(true);
-    api(`/projections/monthly?horizon=${horizon}`)
+    setError(null);
+    const path = scenarioId
+      ? `/projections/scenario/${encodeURIComponent(scenarioId)}?horizon=${horizon}`
+      : `/projections/monthly?horizon=${horizon}`;
+    api(path)
       .then(setProjection)
       .catch((caught) => setError(caught instanceof Error ? caught.message : "Erreur projection"))
       .finally(() => setLoading(false));
-  }, [horizon]);
+  }, [horizon, scenarioId]);
 
   return { projection, loading, error };
 }

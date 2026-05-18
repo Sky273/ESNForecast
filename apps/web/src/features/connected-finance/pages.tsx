@@ -62,17 +62,90 @@ export function ConnectedFinanceDashboard({ scenarioId, horizon }: ConnectedFina
 }
 
 export function BankAccountsPage() {
-  return <CrudPage title="Banque - comptes" path="/bank/accounts" initial={{ organizationId: "", companyId: "", bankConnectionId: "", externalAccountId: "", name: "", ibanMasked: "FR76********1234", currency: "EUR", type: "checking", currentBalance: 0, availableBalance: 0, balanceDate: "2026-06-30", isActive: true }} fields={[
-    { name: "organizationId", label: "Organisation", type: "select", optionsPath: "/organizations", optionLabelKey: "name", optionValueKey: "id", placeholder: "Sélectionner une organisation" }, { name: "companyId", label: "Société", type: "select", optionsPath: "/companies", optionLabelKey: "name", optionValueKey: "id", placeholder: "Sélectionner une société" }, { name: "bankConnectionId", label: "Connexion bancaire", type: "select", optionsPath: "/bank/connections", optionLabelKey: "provider", optionValueKey: "id", placeholder: "Sélectionner une connexion" }, { name: "externalAccountId", label: "Compte externe" }, { name: "name", label: "Nom" }, { name: "ibanMasked", label: "IBAN masqué" }, { name: "currentBalance", label: "Solde", type: "number" }, { name: "availableBalance", label: "Disponible", type: "number" }, { name: "balanceDate", label: "Date solde", type: "date" }, { name: "type", label: "Type", type: "select", options: ["checking", "savings", "credit", "other"].map((value) => ({ label: value, value })) }, { name: "isActive", label: "Actif", type: "checkbox" }
-  ]} columns={[{ key: "name", label: "Compte" }, { key: "ibanMasked", label: "IBAN masqué" }, { key: "currentBalance", label: "Solde", render: (row: any) => money(row.currentBalance) }, { key: "availableBalance", label: "Disponible", render: (row: any) => money(row.availableBalance) }, { key: "balanceDate", label: "Date" }]} />;
+  const { rows, reload } = useRows("/bank/accounts");
+  const { rows: connections } = useRows("/bank/connections");
+  const connectionLabels = useMemo(() => new Map(connections.map((connection: any) => [connection.id, `${connection.provider} - ${connection.status}`])), [connections]);
+  const activeAccounts = rows.filter((row: any) => row.isActive !== false);
+  const totalCash = activeAccounts.reduce((total: number, row: any) => total + Number(row.currentBalance ?? 0), 0);
+  return (
+    <section className="space-y-5">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <PageTitle title="Comptes bancaires" subtitle="Comptes synchronisés depuis les connecteurs bancaires. Ces données sont gérées par le provider et ne se modifient pas manuellement." />
+        <button className="rounded-md border border-line bg-white px-3 py-2 text-sm" onClick={() => void reload()}>Rafraîchir</button>
+      </div>
+      <div className="grid gap-3 md:grid-cols-3">
+        <KpiCard label="Comptes actifs" value={String(activeAccounts.length)} />
+        <KpiCard label="Solde courant" value={money(totalCash)} />
+        <KpiCard label="Connexions bancaires" value={String(connections.length)} />
+      </div>
+      <SimpleTable rows={rows} columns={[
+        ["name", "Compte"],
+        ["bankConnectionId", "Connexion", (value: string) => connectionLabels.get(value) ?? "Connexion inconnue"],
+        ["ibanMasked", "IBAN masqué"],
+        ["currentBalance", "Solde", money],
+        ["availableBalance", "Disponible", money],
+        ["balanceDate", "Date solde"],
+        ["isActive", "Actif", (value: boolean) => value === false ? "Non" : "Oui"]
+      ]} />
+    </section>
+  );
 }
 
 export function BankTransactionsPage() {
-  return <CrudPage title="Transactions bancaires" path="/bank/transactions" initial={{ organizationId: "", companyId: "", bankAccountId: "", externalTransactionId: "", transactionDate: "2026-06-30", bookingDate: "2026-06-30", label: "", amount: 0, currency: "EUR", direction: "debit", status: "booked", categorizationStatus: "uncategorized", reconciliationStatus: "unreconciled", confidenceScore: 0 }} fields={[
-    { name: "organizationId", label: "Organisation", type: "select", optionsPath: "/organizations", optionLabelKey: "name", optionValueKey: "id", placeholder: "Sélectionner une organisation" }, { name: "companyId", label: "Société", type: "select", optionsPath: "/companies", optionLabelKey: "name", optionValueKey: "id", placeholder: "Sélectionner une société" }, { name: "bankAccountId", label: "Compte", type: "select", optionsPath: "/bank/accounts", optionLabelKey: "name", optionValueKey: "id", placeholder: "Sélectionner un compte" }, { name: "externalTransactionId", label: "ID externe" }, { name: "transactionDate", label: "Date", type: "date" }, { name: "label", label: "Libellé" }, { name: "counterpartyName", label: "Contrepartie" }, { name: "amount", label: "Montant", type: "number" }, { name: "direction", label: "Sens", type: "select", options: ["credit", "debit"].map((value) => ({ label: value, value })) }, { name: "status", label: "Statut", type: "select", options: ["pending", "booked", "cancelled"].map((value) => ({ label: value, value })) }, { name: "categoryId", label: "Catégorie", type: "select", optionsPath: "/financial-categories", optionLabelKey: "name", optionValueKey: "id", placeholder: "Aucune catégorie" }, { name: "categorizationStatus", label: "Categorisation", type: "select", options: ["uncategorized", "auto_categorized", "manually_categorized", "rule_categorized"].map((value) => ({ label: value, value })) }, { name: "reconciliationStatus", label: "Rapprochement", type: "select", options: ["unreconciled", "suggested", "reconciled", "ignored"].map((value) => ({ label: value, value })) }
-  ]} columns={[{ key: "transactionDate", label: "Date" }, { key: "label", label: "Libellé" }, { key: "counterpartyName", label: "Contrepartie" }, { key: "amount", label: "Montant", render: (row: any) => money(row.amount) }, { key: "categorizationStatus", label: "Catégorie" }, { key: "reconciliationStatus", label: "Rapprochement" }]} />;
+  const { rows, reload } = useRows("/bank/transactions");
+  const { rows: accounts } = useRows("/bank/accounts");
+  const { rows: categories } = useRows("/financial-categories");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [query, setQuery] = useState("");
+  const accountLabels = useMemo(() => new Map(accounts.map((account: any) => [account.id, account.name])), [accounts]);
+  const categoryLabels = useMemo(() => new Map(categories.map((category: any) => [category.id, category.name])), [categories]);
+  const filteredRows = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    return rows.filter((row: any) => {
+      const matchesStatus = statusFilter === "all" || row.reconciliationStatus === statusFilter || row.categorizationStatus === statusFilter;
+      const matchesQuery = !needle || [row.label, row.counterpartyName, accountLabels.get(row.bankAccountId), categoryLabels.get(row.categoryId)].filter(Boolean).join(" ").toLowerCase().includes(needle);
+      return matchesStatus && matchesQuery;
+    });
+  }, [rows, statusFilter, query, accountLabels, categoryLabels]);
+  const unreconciled = rows.filter((row: any) => !["reconciled", "ignored"].includes(row.reconciliationStatus));
+  return (
+    <section className="space-y-5">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <PageTitle title="Transactions bancaires" subtitle="Transactions synchronisées depuis la banque. La correction se fait via catégorisation et rapprochement, pas par édition brute." />
+        <div className="flex flex-wrap gap-2">
+          <button className="rounded-md border border-line bg-white px-3 py-2 text-sm" onClick={() => void reload()}>Rafraîchir</button>
+          <button className="rounded-md bg-brand px-3 py-2 text-sm font-medium text-white" onClick={() => { window.location.hash = "/bankReconciliation"; }}>Traiter le rapprochement</button>
+        </div>
+      </div>
+      <div className="grid gap-3 md:grid-cols-4">
+        <KpiCard label="Transactions" value={String(rows.length)} />
+        <KpiCard label="À rapprocher" value={String(unreconciled.length)} tone={unreconciled.length ? "risk" : "good"} />
+        <KpiCard label="Crédits" value={money(rows.filter((row: any) => row.direction === "credit").reduce((total: number, row: any) => total + Number(row.amount ?? 0), 0))} />
+        <KpiCard label="Débits" value={money(rows.filter((row: any) => row.direction === "debit").reduce((total: number, row: any) => total + Number(row.amount ?? 0), 0))} />
+      </div>
+      <div className="flex flex-wrap gap-2 rounded-lg border border-line bg-white p-3">
+        <input className="min-w-64 flex-1 rounded-md border border-line px-3 py-2 text-sm" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Rechercher libellé, contrepartie, compte, catégorie..." />
+        <select className="rounded-md border border-line bg-white px-3 py-2 text-sm" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+          <option value="all">Toutes</option>
+          <option value="uncategorized">Non catégorisées</option>
+          <option value="unreconciled">Non rapprochées</option>
+          <option value="suggested">Avec suggestion</option>
+          <option value="reconciled">Rapprochées</option>
+          <option value="ignored">Ignorées</option>
+        </select>
+      </div>
+      <SimpleTable rows={filteredRows} columns={[
+        ["transactionDate", "Date"],
+        ["label", "Libellé"],
+        ["counterpartyName", "Contrepartie"],
+        ["bankAccountId", "Compte", (value: string) => accountLabels.get(value) ?? "Compte inconnu"],
+        ["amount", "Montant", money],
+        ["categoryId", "Catégorie", (value: string) => value ? categoryLabels.get(value) ?? value : "À catégoriser"],
+        ["reconciliationStatus", "Rapprochement"]
+      ]} />
+    </section>
+  );
 }
-
 export function BankReconciliationPage() {
   const { data, reload } = useObject("/reconciliation/queue");
   const [selectedId, setSelectedId] = useState("");
@@ -232,7 +305,7 @@ export function BankReconciliationPage() {
 
 export function ImportedAccountingPage() {
   const { rows } = useRows("/accounting/imports/invoices");
-  return <TablePage title="Comptabilite importee" subtitle="Factures et paiements importes depuis connectéur mock ou CSV." rows={rows} columns={[
+  return <TablePage title="Comptabilité importée" subtitle="Factures et paiements importés depuis un connecteur comptable ou un import CSV." rows={rows} columns={[
     ["invoiceNumber", "Facture"],
     ["type", "Type"],
     ["clientOrSupplierName", "Tiers"],

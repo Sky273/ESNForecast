@@ -3,8 +3,8 @@ import { Badge, money, percent } from "../../components/Format";
 import { useProjection } from "../../hooks/useApi";
 import type { MonthProjection } from "../../types";
 
-export function Projections({ horizon }: { horizon: number }) {
-  const { projection, loading, error } = useProjection(horizon);
+export function Projections({ horizon, scenarioId }: { horizon: number; scenarioId?: string }) {
+  const { projection, loading, error } = useProjection(horizon, scenarioId);
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
   const month: MonthProjection | undefined = useMemo(
     () => projection?.months.find((item: MonthProjection) => item.month === selectedMonth) ?? projection?.months[0],
@@ -18,7 +18,7 @@ export function Projections({ horizon }: { horizon: number }) {
     <section className="space-y-5">
       <div>
         <h1 className="text-2xl font-semibold tracking-normal">Projection mensuelle</h1>
-        <p className="text-sm text-muted">Cliquez une ligne pour inspecter le détail du mois.</p>
+        <p className="text-sm text-muted">Projection calculée sur le scénario actif. Cliquez une ligne pour inspecter le détail du mois.</p>
       </div>
 
       <div className="overflow-x-auto rounded-lg border border-line bg-white">

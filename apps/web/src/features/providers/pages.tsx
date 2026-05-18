@@ -107,6 +107,10 @@ function ProviderConnectionPageLegacy() {
 export function ProviderHealthPage() {
   const { data, reload } = useObject("/connector-health");
   const [message, setMessage] = useState("");
+  const connectorLabels = useMemo(
+    () => new Map((data?.connectors ?? []).map((connector: any) => [connector.id, connectorDisplayName(connector)])),
+    [data?.connectors]
+  );
   const runConnectorAction = async (connectorId: string, action: "incremental-sync" | "full-sync" | "revoke" | "reconnect") => {
     setMessage("");
     const response = await api<any>(`/connectors/${connectorId}/${action}`, { method: "POST", body: JSON.stringify({ returnUrl: `${window.location.origin}/#/provider-connection` }) });
@@ -139,10 +143,18 @@ export function ProviderHealthPage() {
         )]
       ]} />
       <SimpleTable rows={data?.runs ?? []} columns={[
-        ["connectorId", "Connecteur"], ["status", "Statut", statusBadge], ["startedAt", "Début"], ["finishedAt", "Fin"], ["importedCount", "Importés"], ["updatedCount", "Mis à jour"], ["errorCount", "Erreurs"]
+        ["connectorId", "Connecteur", (value: string) => connectorLabels.get(value) ?? value], ["status", "Statut", statusBadge], ["startedAt", "Début"], ["finishedAt", "Fin"], ["importedCount", "Importés"], ["updatedCount", "Mis à jour"], ["errorCount", "Erreurs"]
       ]} />
     </section>
   );
+}
+
+function connectorDisplayName(connector: any) {
+  return connector.name || `${connector.provider ?? "provider"} ${connector.type ?? ""}`.trim() || connector.id;
+}
+
+function buildConnectorLabels(connectors: any[]) {
+  return new Map((connectors ?? []).map((connector) => [connector.id, connectorDisplayName(connector)]));
 }
 
 export function ProviderErrorsPage() {
@@ -175,8 +187,10 @@ export function ProviderWebhooksPage() {
 
 export function ProviderRateLimitsPage() {
   const { rows } = useRows("/connector-health/rate-limits");
+  const { data: health } = useObject("/connector-health");
+  const connectorLabels = useMemo(() => buildConnectorLabels(health?.connectors ?? []), [health]);
   return <TablePage title="Rate limits" subtitle="état des quotas provider et throttling." rows={rows} columns={[
-    ["provider", "Provider"], ["connectorId", "Connecteur"], ["remaining", "Restant"], ["resetAt", "Reset"], ["isThrottled", "Throttle"]
+    ["provider", "Provider"], ["connectorId", "Connecteur", (value: string) => connectorLabels.get(value) ?? value], ["remaining", "Restant"], ["resetAt", "Reset"], ["isThrottled", "Throttle"]
   ]} />;
 }
 
@@ -214,11 +228,12 @@ export function DataSourcePoliciesPage() {
 
 export function ConnectorCompliancePage() {
   const { data } = useObject("/compliance/connectors");
+  const connectorLabels = useMemo(() => buildConnectorLabels(data?.connectors ?? []), [data]);
   return (
     <section className="space-y-5">
       <PageTitle title="Conformité connecteurs" subtitle="Tokens masqués, scopes, environnements, consentements et responsabilités." />
-      <SimpleTable rows={data?.connectors ?? []} columns={[["provider", "Provider"], ["type", "Type"], ["status", "Statut", statusBadge], ["configuration", "Configuration", (value: any) => value?.environment ?? "n/a"], ["lastSyncAt", "Dernier sync"]]} />
-      <SimpleTable rows={data?.tokens ?? []} columns={[["provider", "Provider"], ["connectorId", "Connecteur"], ["tokenType", "Type"], ["expiresAt", "Expiration"], ["accessTokenEncrypted", "Token d'accès"], ["refreshTokenEncrypted", "Refresh token"]]} />
+      <SimpleTable rows={data?.connectors ?? []} columns={[["provider", "Provider"], ["name", "Connecteur", (_value: any, row: any) => connectorDisplayName(row)], ["type", "Type"], ["status", "Statut", statusBadge], ["configuration", "Configuration", (value: any) => value?.environment ?? "n/a"], ["lastSyncAt", "Dernier sync"]]} />
+      <SimpleTable rows={data?.tokens ?? []} columns={[["provider", "Provider"], ["connectorId", "Connecteur", (value: string) => connectorLabels.get(value) ?? value], ["tokenType", "Type"], ["expiresAt", "Expiration"], ["accessTokenEncrypted", "Token d'accès"], ["refreshTokenEncrypted", "Refresh token"]]} />
     </section>
   );
 }
