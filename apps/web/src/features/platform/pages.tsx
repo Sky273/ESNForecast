@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { API_URL, api } from "../../api";
+import { DataOriginBadge } from "../../components/DataOriginBadge";
 import { InfoPanel } from "../../components/InfoPanel";
 import { KpiCard } from "../../components/KpiCard";
 import { PageHeader, StatusBadge } from "../../components/PageHeader";
@@ -41,6 +42,21 @@ function reportPdfLink(row: any) {
       Ouvrir PDF
     </a>
   );
+}
+
+function jobOriginKind(row: any) {
+  if (row.triggeredBy === "user") return "manual";
+  if (row.triggeredBy === "webhook" || row.type === "connector_sync") return "provider";
+  if (row.type === "reforecast") return "reforecast";
+  return "calculated";
+}
+
+function jobOriginLabel(row: any) {
+  if (row.triggeredBy === "user") return "Utilisateur";
+  if (row.triggeredBy === "webhook") return "Webhook";
+  if (row.type === "connector_sync") return "Connecteur";
+  if (row.type === "reforecast") return "Reforecast";
+  return "Job";
 }
 
 function Panel({ title, children }: { title: string; children: React.ReactNode }) {
@@ -165,6 +181,7 @@ export function JobsPage({ scenarioId, horizon }: { scenarioId?: string; horizon
       {actionError ? <div className="mb-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{actionError}</div> : null}
       <Table rows={jobs ?? []} columns={[
         { key: "type", label: "Type" },
+        { key: "origin", label: "Origine", render: (row) => <DataOriginBadge kind={jobOriginKind(row)} label={jobOriginLabel(row)} details={[row.triggeredBy ? `Déclenché par ${row.triggeredBy}` : undefined, row.correlationId ? `Correlation ${row.correlationId}` : undefined]} /> },
         { key: "status", label: "Statut", render: (row) => <StatusBadge label={row.status} tone={tone(row.status)} /> },
         { key: "progressPercent", label: "Progression", render: (row) => `${row.progressPercent ?? 0}%` },
         { key: "durationMs", label: "Duree ms" },

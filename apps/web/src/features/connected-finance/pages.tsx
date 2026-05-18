@@ -6,6 +6,7 @@ import { CrudPage } from "../../components/CrudPage";
 import { Badge, money, percent } from "../../components/Format";
 import { InfoPanel } from "../../components/InfoPanel";
 import { KpiCard } from "../../components/KpiCard";
+import { DataOriginBadge } from "../../components/DataOriginBadge";
 
 type ConnectedFinanceContext = { scenarioId: string; horizon: number };
 
@@ -82,6 +83,7 @@ export function BankAccountsPage() {
       </div>
       <SimpleTable rows={rows} columns={[
         ["name", "Compte"],
+        ["provider", "Source", (value: string, row: any) => <DataOriginBadge kind={row.rawPayload?.mock ? "mock" : "provider"} provider={value ?? row.provider} details={[row.lastSyncAt ? `Dernière sync ${row.lastSyncAt}` : undefined, row.balanceDate ? `Solde au ${row.balanceDate}` : undefined]} />],
         ["bankConnectionId", "Connexion", (value: string) => connectionLabels.get(value) ?? "Connexion inconnue"],
         ["ibanMasked", "IBAN masqué"],
         ["currentBalance", "Solde", money],
@@ -140,6 +142,7 @@ export function BankTransactionsPage() {
         ["transactionDate", "Date"],
         ["label", "Libellé"],
         ["counterpartyName", "Contrepartie"],
+        ["provider", "Source", (value: string, row: any) => <DataOriginBadge kind={row.rawPayload?.mock ? "mock" : "provider"} provider={value ?? row.provider} details={[row.bookingDate ? `Comptabilisée le ${row.bookingDate}` : undefined]} />],
         ["bankAccountId", "Compte", (value: string) => accountLabels.get(value) ?? "Compte inconnu"],
         ["amount", "Montant", money],
         ["categoryId", "Catégorie", (value: string) => value ? categoryLabels.get(value) ?? value : "À catégoriser"],
@@ -309,6 +312,7 @@ export function ImportedAccountingPage() {
   const { rows } = useRows("/accounting/imports/invoices");
   return <TablePage title="Comptabilité importée" subtitle="Factures et paiements importés depuis un connecteur comptable ou un import CSV." rows={rows} columns={[
     ["invoiceNumber", "Facture"],
+    ["source", "Source", (_value: string, row: any) => <DataOriginBadge kind={row.rawPayload?.mock ? "mock" : row.source ?? row.provider ?? "provider"} provider={row.provider} details={[row.importedAt ? `Importée le ${row.importedAt}` : undefined, row.updatedAt ? `Mise à jour le ${row.updatedAt}` : undefined]} />],
     ["type", "Type"],
     ["clientOrSupplierName", "Tiers"],
     ["invoiceDate", "Date"],

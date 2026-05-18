@@ -6,6 +6,7 @@ import { CrudPage } from "../../components/CrudPage";
 import { Badge, money, percent } from "../../components/Format";
 import { InfoPanel } from "../../components/InfoPanel";
 import { KpiCard } from "../../components/KpiCard";
+import { DataOriginBadge } from "../../components/DataOriginBadge";
 
 type DeliveryContext = { scenarioId: string; horizon: number };
 
@@ -206,7 +207,7 @@ export function MonthlyClosePage() {
 export function RealInvoicesPage() {
   return <CrudPage title="Factures réelles" path="/invoices" initial={{ companyId: "", clientId: "", missionId: "", invoiceNumber: "", invoiceDate: "2026-06-30", dueDate: "2026-07-30", amountHT: 10000, vatRate: 0.2, amountTTC: 12000, status: "issued", paidAmount: 0, source: "manual" }} fields={[
     { name: "companyId", label: "Société", type: "select", optionsPath: "/companies", optionLabelKey: "name", optionValueKey: "id", placeholder: "Sélectionner une société" }, { name: "clientId", label: "Client", type: "select", optionsPath: "/clients", optionLabelKey: "name", optionValueKey: "id", placeholder: "Sélectionner un client" }, { name: "missionId", label: "Mission", type: "select", optionsPath: "/missions", optionLabelKey: "title", optionValueKey: "id", placeholder: "Sélectionner une mission" }, { name: "invoiceNumber", label: "Numéro" }, { name: "invoiceDate", label: "Date facture", type: "date" }, { name: "dueDate", label: "Échéance", type: "date" }, { name: "amountHT", label: "HT", type: "number" }, { name: "amountTTC", label: "TTC", type: "number" }, { name: "status", label: "Statut", type: "select", options: ["draft", "issued", "partially_paid", "paid", "late", "cancelled"].map((value) => ({ label: value, value })) }, { name: "paidAmount", label: "Payé", type: "number" }, { name: "source", label: "Source", type: "select", options: ["manual", "csv", "accounting", "bank_reconciliation"].map((value) => ({ label: value, value })) }
-  ]} columns={[{ key: "invoiceNumber", label: "Numéro" }, { key: "invoiceDate", label: "Date" }, { key: "clientId", label: "Client" }, { key: "missionId", label: "Mission" }, { key: "amountTTC", label: "TTC", render: (row: any) => money(row.amountTTC) }, { key: "paidAmount", label: "Payé", render: (row: any) => money(row.paidAmount) }, { key: "status", label: "Statut" }]} />;
+  ]} columns={[{ key: "invoiceNumber", label: "Numéro" }, { key: "source", label: "Source", render: (row: any) => <DataOriginBadge kind={row.source ?? "manual"} details={[row.createdAt ? `Créée le ${row.createdAt}` : undefined, row.updatedAt ? `Mise à jour le ${row.updatedAt}` : undefined]} /> }, { key: "invoiceDate", label: "Date" }, { key: "clientId", label: "Client" }, { key: "missionId", label: "Mission" }, { key: "amountTTC", label: "TTC", render: (row: any) => money(row.amountTTC) }, { key: "paidAmount", label: "Payé", render: (row: any) => money(row.paidAmount) }, { key: "status", label: "Statut" }]} />;
 }
 
 export function PaymentsPage() {
@@ -319,6 +320,7 @@ export function ReconciliationPage() {
           </div>
           <SimpleTable rows={filteredRows} columns={[
             ["forecastLabel", "Facture prévue", (value: string, row: any) => <button className="text-left font-medium text-brand" onClick={() => setSelectedId(row.id)}>{value}</button>],
+            ["origin", "Origine", (_value: string, row: any) => <DataOriginBadge kind="calculated" label="Suggestion" details={[row.bestSuggestion?.reason]} />],
             ["clientLabel", "Client"],
             ["missionLabel", "Mission"],
             ["forecastAmountTTC", "Prévu TTC", money],
@@ -781,11 +783,11 @@ function fileToBase64(file: File) {
 function ConnectorsPage() {
   const { data } = useObject("/delivery/connectors");
   const rows = [...(data?.accounting ?? []), ...(data?.hr ?? []), ...(data?.crm ?? [])];
-  return <TablePage title="Connecteurs" subtitle="Architecture de synchronisation CSV/CRM/compta/RH optionnelle." rows={rows} columns={[["provider", "Provider"], ["externalSource", "Source"], ["status", "Statut"], ["lastSyncAt", "Dernière synchro"], ["opportunityName", "Opportunité"]]} />;
+  return <TablePage title="Connecteurs" subtitle="Architecture de synchronisation CSV/CRM/compta/RH optionnelle." rows={rows} columns={[["provider", "Provider", (value: string, row: any) => <DataOriginBadge kind={row.externalSource?.includes("mock") ? "mock" : "provider"} provider={value} details={[row.lastSyncAt ? `Derni\u00e8re sync ${row.lastSyncAt}` : undefined]} />], ["externalSource", "Source", (value: string) => <DataOriginBadge kind={value} label={value} />], ["status", "Statut"], ["lastSyncAt", "Dernière synchro"], ["opportunityName", "Opportunité"]]} />;
 }
 
 const actualsColumns = [
-  { key: "year", label: "Année" }, { key: "month", label: "Mois" }, { key: "actualRevenueGenerated", label: "CA", render: (row: any) => money(row.actualRevenueGenerated) }, { key: "actualCashIn", label: "Cash-in", render: (row: any) => money(row.actualCashIn) }, { key: "actualCashOut", label: "Cash-out", render: (row: any) => money(row.actualCashOut) }, { key: "actualClosingCash", label: "Cash final", render: (row: any) => money(row.actualClosingCash) }
+  { key: "year", label: "Année" }, { key: "month", label: "Mois" }, { key: "source", label: "Source", render: (row: any) => <DataOriginBadge kind={row.source ?? "manual"} details={[row.updatedAt ? `Mis \u00e0 jour le ${row.updatedAt}` : undefined]} /> }, { key: "actualRevenueGenerated", label: "CA", render: (row: any) => money(row.actualRevenueGenerated) }, { key: "actualCashIn", label: "Cash-in", render: (row: any) => money(row.actualCashIn) }, { key: "actualCashOut", label: "Cash-out", render: (row: any) => money(row.actualCashOut) }, { key: "actualClosingCash", label: "Cash final", render: (row: any) => money(row.actualClosingCash) }
 ];
 
 function TablePage({ title, subtitle, rows, columns }: { title: string; subtitle: string; rows: any[]; columns: any[] }) {

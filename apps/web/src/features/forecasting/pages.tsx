@@ -4,6 +4,7 @@ import { Bar, BarChart, CartesianGrid, Legend, Line, LineChart, ResponsiveContai
 import { API_URL, api } from "../../api";
 import { Badge, money, percent } from "../../components/Format";
 import { InfoPanel } from "../../components/InfoPanel";
+import { DataOriginBadge } from "../../components/DataOriginBadge";
 import { KpiCard } from "../../components/KpiCard";
 import { CrudPage } from "../../components/CrudPage";
 
@@ -243,7 +244,7 @@ export function CashInPage({ scenarioId }: ForecastingContext) {
   const invoiceLabels = useLabelMap(invoiceForecastPath, invoiceForecastLabel);
   return <CrudPage title="Encaissements pr\u00e9visionnels" path={`/cash-in-forecasts?scenarioId=${encodeURIComponent(scenarioId)}`} initial={{ scenarioId, sourceType: "invoice", sourceId: "", expectedDate: "2026-07-30", amount: 10000, probability: 1, weightedAmount: 10000, status: "planned" }} fields={[
     { name: "scenarioId", label: "Scénario", type: "select", optionsPath: "/scenarios", optionLabelKey: "name", optionValueKey: "id", placeholder: "Sélectionner un scénario" }, { name: "sourceType", label: "Type de source", type: "select", options: [{ label: "Facture prévisionnelle", value: "invoice" }, { label: "Saisie manuelle", value: "manual" }, { label: "Autre", value: "other" }] }, { name: "sourceId", label: "Source", type: "select", optionsPath: invoiceForecastPath, optionLabelFields: ["invoiceDate", "amountTTC"], optionValueKey: "id", placeholder: "Sélectionner une facture prévisionnelle du scénario actif" }, { name: "expectedDate", label: "Date prévue", type: "date" }, { name: "amount", label: "Montant", type: "number" }, { name: "probability", label: "Probabilité", type: "number" }, { name: "weightedAmount", label: "Montant pondéré", type: "number" }, { name: "status", label: "Statut", type: "select", options: cashForecastStatusOptions.map((value) => ({ label: value, value })) }
-  ]} columns={[{ key: "expectedDate", label: "Date" }, { key: "scenarioId", label: "Sc\u00e9nario", render: (r: any) => scenarioLabels.get(r.scenarioId) ?? r.scenarioId }, { key: "sourceType", label: "Type de source" }, { key: "sourceId", label: "Source", render: (r: any) => r.sourceType === "invoice" ? invoiceLabels.get(r.sourceId) ?? r.sourceId : sourceFallback(r) }, { key: "amount", label: "Montant", render: (r: any) => money(r.amount) }, { key: "weightedAmount", label: "Pond\u00e9r\u00e9", render: (r: any) => money(r.weightedAmount) }, { key: "status", label: "Statut" }]} />;
+  ]} columns={[{ key: "expectedDate", label: "Date" }, { key: "scenarioId", label: "Sc\u00e9nario", render: (r: any) => scenarioLabels.get(r.scenarioId) ?? r.scenarioId }, { key: "sourceType", label: "Origine", render: (r: any) => <DataOriginBadge kind={r.sourceType === "manual" ? "manual" : "calculated"} label={r.sourceType === "invoice" ? "Facture prévisionnelle" : undefined} details={[sourceFallback(r)]} /> }, { key: "sourceId", label: "Source", render: (r: any) => r.sourceType === "invoice" ? invoiceLabels.get(r.sourceId) ?? r.sourceId : sourceFallback(r) }, { key: "amount", label: "Montant", render: (r: any) => money(r.amount) }, { key: "weightedAmount", label: "Pond\u00e9r\u00e9", render: (r: any) => money(r.weightedAmount) }, { key: "status", label: "Statut" }]} />;
 }
 
 export function CashOutPage({ scenarioId }: ForecastingContext) {
@@ -282,7 +283,7 @@ export function CashOutPage({ scenarioId }: ForecastingContext) {
       variable_cost: { path: "/variable-costs", optionLabelKey: "label" }
     }, placeholder: "S\u00e9lectionner la source" },
     { name: "expectedDate", label: "Date pr\u00e9vue", type: "date" }, { name: "amount", label: "Montant", type: "number" }, { name: "status", label: "Statut", type: "select", options: cashForecastStatusOptions.map((value) => ({ label: value, value })) }
-  ]} columns={[{ key: "expectedDate", label: "Date" }, { key: "scenarioId", label: "Sc\u00e9nario", render: (r: any) => scenarioLabels.get(r.scenarioId) ?? r.scenarioId }, { key: "sourceType", label: "Type de source" }, { key: "sourceId", label: "Source", render: sourceLabel }, { key: "amount", label: "Montant", render: (r: any) => money(r.amount) }, { key: "status", label: "Statut" }]} />;
+  ]} columns={[{ key: "expectedDate", label: "Date" }, { key: "scenarioId", label: "Sc\u00e9nario", render: (r: any) => scenarioLabels.get(r.scenarioId) ?? r.scenarioId }, { key: "sourceType", label: "Origine", render: (r: any) => <DataOriginBadge kind={r.sourceType === "manual" ? "manual" : "calculated"} label={r.sourceType} details={[sourceLabel(r)]} /> }, { key: "sourceId", label: "Source", render: sourceLabel }, { key: "amount", label: "Montant", render: (r: any) => money(r.amount) }, { key: "status", label: "Statut" }]} />;
 }
 
 export function SimulationsPage({ scenarioId }: ForecastingContext) {

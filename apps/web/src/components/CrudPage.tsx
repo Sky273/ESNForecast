@@ -3,6 +3,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { API_URL, api } from "../api";
 import type { Field } from "../types";
 import { Badge } from "./Format";
+import { DataOriginBadge, inferOriginFromRow } from "./DataOriginBadge";
 import { useApiList } from "../hooks/useApi";
 import { useI18n } from "../i18n";
 
@@ -207,6 +208,10 @@ function formatOptionLabel(row: Record<string, any>, labelKey: string, valueKey:
 
 export function formatCrudCellValue(row: Record<string, any>, key: string, labels?: Map<string, string>) {
   const value = row[key];
+  if (["source", "sourceType", "origin", "provider", "primarySource", "sourceAType", "sourceBType"].includes(key)) {
+    const origin = inferOriginFromRow(row);
+    return <DataOriginBadge kind={value ?? origin.kind} provider={origin.provider} details={origin.details} />;
+  }
   if (value === null || value === undefined) return "";
   const optionLabel = labels?.get(String(value));
   if (optionLabel) return optionLabel;

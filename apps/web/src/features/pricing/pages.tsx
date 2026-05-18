@@ -1,6 +1,7 @@
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { FormEvent, ReactNode, useEffect, useMemo, useState } from "react";
 import { api } from "../../api";
+import { DataOriginBadge } from "../../components/DataOriginBadge";
 import { InfoPanel } from "../../components/InfoPanel";
 import { KpiCard } from "../../components/KpiCard";
 import { PageHeader, StatusBadge } from "../../components/PageHeader";
@@ -208,6 +209,7 @@ export function PricingSimulatorPage() {
       <Table rows={simulations ?? []} columns={[
         { key: "name", label: "Nom" },
         { key: "missionLabel", label: "Mission", render: missionLabel },
+        { key: "source", label: "Source", render: (row) => <DataOriginBadge kind="manual" label="Simulation" details={[row.createdAt ? `Cr\u00e9\u00e9e le ${String(row.createdAt).slice(0, 10)}` : undefined]} /> },
         { key: "createdAt", label: "Créée le", render: (row) => String(row.createdAt ?? "").slice(0, 10) },
         { key: "actions", label: "Actions", render: (row) => <div className="flex gap-2"><ActionButton onClick={() => editSimulation(row)}>Éditer</ActionButton><ActionButton tone="risk" onClick={() => removeSimulation(row.id)}>Supprimer</ActionButton></div> }
       ]} />
@@ -370,6 +372,7 @@ export function PricingHistoryPage() {
       <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted">Décisions</h2>
       <Table rows={decisions ?? []} columns={[
         { key: "missionLabel", label: "Mission", render: missionLabel },
+        { key: "source", label: "Source", render: (row) => <DataOriginBadge kind="manual" label="D\u00e9cision pricing" details={[row.decidedAt ? `D\u00e9cid\u00e9e le ${String(row.decidedAt).slice(0, 10)}` : undefined]} /> },
         { key: "decisionType", label: "Décision" },
         { key: "previousDailyRate", label: "Ancien TJM", render: (row) => money(row.previousDailyRate) },
         { key: "newDailyRate", label: "Nouveau TJM", render: (row) => money(row.newDailyRate) },
@@ -391,6 +394,7 @@ export function PricingHistoryPage() {
       <h2 className="mb-2 mt-5 text-sm font-semibold uppercase tracking-wide text-muted">Exceptions de marge</h2>
       <Table rows={exceptions ?? []} columns={[
         { key: "missionLabel", label: "Mission", render: missionLabel },
+        { key: "source", label: "Source", render: (row) => <DataOriginBadge kind="manual" label="Exception" details={[row.approvedAt ? `Approuv\u00e9e le ${String(row.approvedAt).slice(0, 10)}` : undefined]} /> },
         { key: "reason", label: "Raison" },
         { key: "targetReviewDate", label: "Revue", render: (row) => String(row.targetReviewDate ?? "").slice(0, 10) },
         { key: "status", label: "Statut", render: (row) => <StatusBadge label={row.status} tone={tone(row.status)} /> },
@@ -425,6 +429,7 @@ function pricingColumns() {
   return [
     { key: "missionTitle", label: "Mission" },
     { key: "clientName", label: "Client" },
+    { key: "source", label: "Source", render: (row: any) => <DataOriginBadge kind="calculated" label="Pricing" details={[row.lastCalculatedAt ? `Calcul\u00e9 le ${String(row.lastCalculatedAt).slice(0, 10)}` : "Co\u00fbts + param\u00e8tres pricing"]} /> },
     { key: "pricingStatus", label: "Statut", render: (row: any) => <StatusBadge label={row.pricingStatus} tone={tone(row.pricingStatus)} /> },
     { key: "currentDailyRate", label: "TJM actuel", render: (row: any) => money(row.currentDailyRate) },
     { key: "calculatedFloorDailyRate", label: "TJM plancher", render: (row: any) => money(row.calculatedFloorDailyRate) },

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { API_URL, api } from "../../api";
 import { CrudPage } from "../../components/CrudPage";
+import { DataOriginBadge } from "../../components/DataOriginBadge";
 import { Badge } from "../../components/Format";
 import { InfoPanel } from "../../components/InfoPanel";
 import { KpiCard } from "../../components/KpiCard";
@@ -8,7 +9,7 @@ import { KpiCard } from "../../components/KpiCard";
 export function RealConnectorsPage() {
   const { rows } = useRows("/providers");
   return <TablePage title="Catalogue providers" subtitle="Bridge, Powens, Tink, Plaid, Pennylane, Sage et extensions." rows={rows} columns={[
-    ["provider", "Provider"],
+    ["provider", "Provider", (value: string, row: any) => <DataOriginBadge kind={row.configStatus?.ok ? "provider" : "mock"} provider={value} details={[row.configStatus?.environment ? `Environnement ${row.configStatus.environment}` : undefined]} />],
     ["configStatus", "Configuration", (_value: any, row: any) => <Badge tone={row.configStatus?.ok ? "good" : "warn"}>{row.configStatus?.ok ? "Configuré" : "Sandbox ou mock"}</Badge>],
     ["capabilities", "Données", (_value: any, row: any) => capabilityText(row.capabilities)],
     ["configStatus", "Environnement", (value: any) => value?.environment]
@@ -134,7 +135,7 @@ export function ProviderHealthPage() {
       </div>
       {message ? <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">{message}</div> : null}
       <SimpleTable rows={data?.connectors ?? []} columns={[
-        ["provider", "Provider"], ["type", "Type"], ["name", "Nom"], ["status", "Statut", statusBadge], ["lastSyncAt", "Dernier sync"], ["errorMessage", "Erreur"],
+        ["provider", "Provider", (value: string, row: any) => <DataOriginBadge kind={row.configuration?.environment === "mock" ? "mock" : "provider"} provider={value} details={[row.lastSyncAt ? `Dernière sync ${row.lastSyncAt}` : undefined]} />], ["type", "Type"], ["name", "Nom"], ["status", "Statut", statusBadge], ["lastSyncAt", "Dernier sync"], ["errorMessage", "Erreur"],
         ["id", "Actions", (_value: string, row: any) => (
           <div className="flex flex-wrap gap-2">
             <button className="rounded border border-line px-2 py-1 text-xs" onClick={() => void runConnectorAction(row.id, "incremental-sync")}>Sync</button>
@@ -164,7 +165,7 @@ export function ProviderErrorsPage() {
   const resolve = async (id: string) => { await api(`/provider-errors/${id}/resolve`, { method: "POST", body: JSON.stringify({}) }); await reload(); };
   const retry = async (id: string) => { await api(`/provider-errors/${id}/retry`, { method: "POST", body: JSON.stringify({}) }); await reload(); };
   return <TablePage title="Erreurs provider" subtitle="Erreurs normalisées avec action utilisateur, retry et diagnostic technique." rows={rows} columns={[
-    ["provider", "Provider"],
+    ["provider", "Provider", (value: string) => <DataOriginBadge kind="provider" provider={value} />],
     ["errorCategory", "Catégorie"],
     ["userMessage", "Message"],
     ["retryable", "Retry"],
@@ -183,7 +184,7 @@ export function ProviderErrorsPage() {
 export function ProviderWebhooksPage() {
   const { rows } = useRows("/connector-health/webhooks");
   return <TablePage title="Webhooks provider" subtitle="événements entrants deduplicables et validables par signature." rows={rows} columns={[
-    ["provider", "Provider"], ["eventType", "Type"], ["externalEventId", "Event ID"], ["signatureValid", "Signature"], ["status", "Statut"], ["receivedAt", "Reçu"]
+    ["provider", "Provider", (value: string) => <DataOriginBadge kind="provider" provider={value} />], ["eventType", "Type"], ["externalEventId", "Event ID"], ["signatureValid", "Signature"], ["status", "Statut"], ["receivedAt", "Reçu"]
   ]} />;
 }
 
@@ -192,7 +193,7 @@ export function ProviderRateLimitsPage() {
   const { data: health } = useObject("/connector-health");
   const connectorLabels = useMemo(() => buildConnectorLabels(health?.connectors ?? []), [health]);
   return <TablePage title="Rate limits" subtitle="état des quotas provider et throttling." rows={rows} columns={[
-    ["provider", "Provider"], ["connectorId", "Connecteur", (value: string) => connectorLabels.get(value) ?? value], ["remaining", "Restant"], ["resetAt", "Reset"], ["isThrottled", "Throttle"]
+    ["provider", "Provider", (value: string) => <DataOriginBadge kind="provider" provider={value} />], ["connectorId", "Connecteur", (value: string) => connectorLabels.get(value) ?? value], ["remaining", "Restant"], ["resetAt", "Reset"], ["isThrottled", "Throttle"]
   ]} />;
 }
 
@@ -204,8 +205,8 @@ export function DuplicatesPage() {
   };
   return <TablePage title="Doublons multi-source" subtitle="Doublons potentiels entre CSV, banque, compta et saisie manuelle." rows={rows} columns={[
     ["entityType", "Entit\u00e9"],
-    ["sourceAType", "Source A"],
-    ["sourceBType", "Source B"],
+    ["sourceAType", "Source A", (value: string, row: any) => <DataOriginBadge kind={value} label={value} details={[row.sourceAId]} />],
+    ["sourceBType", "Source B", (value: string, row: any) => <DataOriginBadge kind={value} label={value} details={[row.sourceBId]} />],
     ["confidenceScore", "Score"],
     ["reason", "Raison"],
     ["status", "Statut"],
@@ -234,8 +235,8 @@ export function ConnectorCompliancePage() {
   return (
     <section className="space-y-5">
       <PageTitle title="Conformité connecteurs" subtitle="Tokens masqués, scopes, environnements, consentements et responsabilités." />
-      <SimpleTable rows={data?.connectors ?? []} columns={[["provider", "Provider"], ["name", "Connecteur", (_value: any, row: any) => connectorDisplayName(row)], ["type", "Type"], ["status", "Statut", statusBadge], ["configuration", "Configuration", (value: any) => value?.environment ?? "n/a"], ["lastSyncAt", "Dernier sync"]]} />
-      <SimpleTable rows={data?.tokens ?? []} columns={[["provider", "Provider"], ["connectorId", "Connecteur", (value: string) => connectorLabels.get(value) ?? value], ["tokenType", "Type"], ["expiresAt", "Expiration"], ["accessTokenEncrypted", "Token d'accès"], ["refreshTokenEncrypted", "Refresh token"]]} />
+      <SimpleTable rows={data?.connectors ?? []} columns={[["provider", "Provider", (value: string, row: any) => <DataOriginBadge kind={row.configuration?.environment === "mock" ? "mock" : "provider"} provider={value} details={[row.lastSyncAt ? `Dernière sync ${row.lastSyncAt}` : undefined]} />], ["name", "Connecteur", (_value: any, row: any) => connectorDisplayName(row)], ["type", "Type"], ["status", "Statut", statusBadge], ["configuration", "Configuration", (value: any) => value?.environment ?? "n/a"], ["lastSyncAt", "Dernier sync"]]} />
+      <SimpleTable rows={data?.tokens ?? []} columns={[["provider", "Provider", (value: string) => <DataOriginBadge kind="provider" provider={value} />], ["connectorId", "Connecteur", (value: string) => connectorLabels.get(value) ?? value], ["tokenType", "Type"], ["expiresAt", "Expiration"], ["accessTokenEncrypted", "Token d'accès"], ["refreshTokenEncrypted", "Refresh token"]]} />
     </section>
   );
 }
@@ -243,7 +244,7 @@ export function ConnectorCompliancePage() {
 export function ConsentCompliancePage() {
   const { rows } = useRows("/compliance/consents");
   return <TablePage title="Consentements réels" subtitle="Suivi des consentements bancaires et révocation." rows={rows} columns={[
-    ["provider", "Provider"], ["status", "Statut", statusBadge], ["grantedBy", "Accordé par"], ["grantedAt", "Accordé le"], ["expiresAt", "Expiré le"], ["revokedAt", "Révoqué le"]
+    ["provider", "Provider", (value: string) => <DataOriginBadge kind="provider" provider={value} />], ["status", "Statut", statusBadge], ["grantedBy", "Accordé par"], ["grantedAt", "Accordé le"], ["expiresAt", "Expiré le"], ["revokedAt", "Révoqué le"]
   ]} />;
 }
 
