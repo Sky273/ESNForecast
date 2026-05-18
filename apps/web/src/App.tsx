@@ -3,7 +3,7 @@ import {
   DatabaseBackup, Euro, FileText, Gauge, Handshake, HeartPulse, HelpCircle, History, KeyRound, Landmark, LayoutDashboard, LockKeyhole, LogOut,
   Receipt, Search, Settings as SettingsIcon, Shield, Sparkles, TrendingUp, Users, WalletCards, Workflow
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState, type ComponentType } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ComponentType } from "react";
 import { api } from "./api";
 import { hasAllowedRole } from "./auth/components/RoleGuard";
 import { AuthProvider, useAuth } from "./auth/hooks/useAuth";
@@ -250,6 +250,12 @@ const navGroups: NavGroup[] = [
 ];
 
 const allItems = navGroups.flatMap((group) => group.items.map((item) => ({ ...item, groupId: group.id })));
+const scenarioContextPages = new Set([
+  "executiveView", "connectedFinance", "actuals", "treasury", "realTreasury", "reforecast", "reforecastSuggestions", "runway",
+  "scenarios", "monteCarlo", "profitabilityMissions", "profitabilityResources", "capacity", "staffingForecast", "bench",
+  "strategicRisks", "codirReport", "aiAnalysis", "alerts", "reports", "jobs", "billing", "cashIn", "cashOut", "simulations",
+  "plannedHires"
+]);
 const AUTHENTICATION_DISABLED = false;
 const AUTH_DISABLED_USER = {
   id: "auth-disabled-local-user",
@@ -283,14 +289,23 @@ function AppContent() {
   const searchRef = useRef<HTMLInputElement>(null);
   const cfg = configs[page];
   const activeItem = allItems.find((item) => item.id === page) ?? allItems[0];
+  const selectedScenario = scenarios.find((scenario) => scenario.id === scenarioId);
+  const showScenarioContext = scenarioContextPages.has(page);
+
+  const loadScenarios = useCallback(async (preferredScenarioId?: string) => {
+    const rows = await api<any[]>("/scenarios");
+    setScenarios(rows);
+    setScenarioId((current) => {
+      if (preferredScenarioId && rows.some((row) => row.id === preferredScenarioId)) return preferredScenarioId;
+      if (current && rows.some((row) => row.id === current)) return current;
+      return rows.find((row) => row.isActive)?.id ?? rows[0]?.id ?? "";
+    });
+  }, []);
 
   useEffect(() => {
     if (!currentUser) return;
-    api<any[]>("/scenarios").then((rows) => {
-      setScenarios(rows);
-      setScenarioId(rows.find((row) => row.isActive)?.id ?? rows[0]?.id ?? "");
-    }).catch(() => undefined);
-  }, [currentUser]);
+    loadScenarios().catch(() => undefined);
+  }, [currentUser, loadScenarios]);
 
   useEffect(() => {
     sessionStorage.setItem("esn-forecast-current-page", page);
@@ -344,7 +359,10 @@ function AppContent() {
     setQuery("");
   };
 
-  const content = renderPage(page, scenarioId, horizon, setHorizon, cfg);
+  const content = renderPage(page, scenarioId, horizon, setHorizon, cfg, {
+    setScenarioId,
+    refreshScenarios: loadScenarios
+  });
   const requiredRoles = getRequiredRoles(page);
 
   const goLogin = () => {
@@ -456,9 +474,21 @@ function AppContent() {
               <div className="text-lg font-semibold tracking-normal">{activeItem ? t(`nav.${activeItem.id}`, activeItem.label) : t("nav.dashboard")}</div>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <select className="rounded-md border border-line px-3 py-2 text-sm" value={scenarioId} onChange={(event) => setScenarioId(event.target.value)}>
-                {scenarios.map((scenario) => <option key={scenario.id} value={scenario.id}>{scenario.name}</option>)}
-              </select>
+              {showScenarioContext ? (
+                <div className="flex flex-col">
+                  <label className="text-[11px] font-medium text-muted" htmlFor="scenario-work-context">Scénario de travail</label>
+                  <select
+                    id="scenario-work-context"
+                    className="rounded-md border border-line px-3 py-2 text-sm"
+                    value={scenarioId}
+                    onChange={(event) => setScenarioId(event.target.value)}
+                    title="Impacte les projections, trésorerie, écarts, capacité, staffing, risques et rapports."
+                  >
+                    {scenarios.map((scenario) => <option key={scenario.id} value={scenario.id}>{scenario.name}{scenario.isActive ? " (actif par défaut)" : ""}</option>)}
+                  </select>
+                  {selectedScenario?.isActive ? <span className="mt-0.5 text-[11px] text-emerald-700">Actif par défaut</span> : <span className="mt-0.5 text-[11px] text-muted">Contexte local</span>}
+                </div>
+              ) : null}
               <select className="rounded-md border border-line px-3 py-2 text-sm" value={horizon} onChange={(event) => setHorizon(Number(event.target.value))}>
                 {[3, 6, 12, 24].map((value) => <option key={value} value={value}>{value} {t("common.months")}</option>)}
               </select>
@@ -500,7 +530,12 @@ function getRequiredRoles(page: string) {
   return [];
 }
 
-function renderPage(page: string, scenarioId: string, horizon: number, setHorizon: (horizon: number) => void, cfg: any) {
+type ScenarioPageControls = {
+  setScenarioId: (scenarioId: string) => void;
+  refreshScenarios: (preferredScenarioId?: string) => Promise<void>;
+};
+
+function renderPage(page: string, scenarioId: string, horizon: number, setHorizon: (horizon: number) => void, cfg: any, scenarioControls: ScenarioPageControls) {
   if (page === "dashboard") return <Dashboard horizon={horizon} setHorizon={setHorizon} />;
   if (page === "trajectory") return <TrajectoryDashboardPage />;
   if (page === "budgets") return <BudgetsPage />;
@@ -543,8 +578,8 @@ function renderPage(page: string, scenarioId: string, horizon: number, setHorizo
     { name: "message", label: "Message", type: "textarea" }
   ]} columns={[{ key: "month", label: "Mois" }, { key: "suggestionType", label: "Type" }, { key: "impactAmount", label: "Impact" }, { key: "confidenceScore", label: "Confiance" }, { key: "status", label: "Statut" }]} />;
   if (page === "runway") return <RunwayPage scenarioId={scenarioId} horizon={horizon} />;
-  if (page === "scenarios") return <ScenariosPage scenarioId={scenarioId} horizon={horizon} />;
-  if (page === "simulations") return <SimulationsPage />;
+  if (page === "scenarios") return <ScenariosPage scenarioId={scenarioId} horizon={horizon} onScenarioActivated={(id) => { scenarioControls.setScenarioId(id); void scenarioControls.refreshScenarios(id); }} />;
+  if (page === "simulations") return <SimulationsPage scenarioId={scenarioId} horizon={horizon} />;
   if (page === "monteCarlo") return <MonteCarloPage scenarioId={scenarioId} horizon={horizon} />;
   if (page === "offers") return <DeliveryCrudPage kind="offers" />;
   if (page === "profitabilityMissions") return <ProfitabilityMissionsPage scenarioId={scenarioId} horizon={horizon} />;
@@ -553,7 +588,7 @@ function renderPage(page: string, scenarioId: string, horizon: number, setHorizo
   if (page === "capacity") return <CapacityPage scenarioId={scenarioId} horizon={horizon} />;
   if (page === "staffingForecast") return <StaffingForecastPage scenarioId={scenarioId} horizon={horizon} />;
   if (page === "bench") return <BenchPage scenarioId={scenarioId} horizon={horizon} />;
-  if (page === "billing") return <BillingPage />;
+  if (page === "billing") return <BillingPage scenarioId={scenarioId} horizon={horizon} />;
   if (page === "realInvoices") return <RealInvoicesPage />;
   if (page === "bankAccounts") return <BankAccountsPage />;
   if (page === "bankTransactions") return <BankTransactionsPage />;
@@ -561,8 +596,8 @@ function renderPage(page: string, scenarioId: string, horizon: number, setHorizo
   if (page === "importedAccounting") return <ImportedAccountingPage />;
   if (page === "payments") return <PaymentsPage />;
   if (page === "reconciliation") return <ReconciliationPage />;
-  if (page === "cashIn") return <CashInPage />;
-  if (page === "cashOut") return <CashOutPage />;
+  if (page === "cashIn") return <CashInPage scenarioId={scenarioId} horizon={horizon} />;
+  if (page === "cashOut") return <CashOutPage scenarioId={scenarioId} horizon={horizon} />;
   if (page === "financialCategories") return <CrudPage title={"Cat\u00e9gories financi\u00e8res"} path="/financial-categories" initial={{ organizationId: "", name: "", type: "expense", parentId: "", isActive: true }} fields={[
     { name: "organizationId", label: "Organisation", type: "select", optionsPath: "/organizations", optionLabelKey: "name", optionValueKey: "id", placeholder: "S\u00e9lectionner une organisation" },
     { name: "name", label: "Nom" },
@@ -570,7 +605,7 @@ function renderPage(page: string, scenarioId: string, horizon: number, setHorizo
     { name: "parentId", label: "Cat\u00e9gorie parente", type: "select", optionsPath: "/financial-categories", optionLabelKey: "name", optionValueKey: "id", placeholder: "Aucune" },
     { name: "isActive", label: "Active", type: "checkbox" }
   ]} columns={[{ key: "name", label: "Cat\u00e9gorie" }, { key: "type", label: "Type" }, { key: "parentId", label: "Parent" }, { key: "isActive", label: "Active" }]} />;
-  if (page === "plannedHires") return <DeliveryCrudPage kind="plannedHires" />;
+  if (page === "plannedHires") return <DeliveryCrudPage kind="plannedHires" scenarioId={scenarioId} />;
   if (page === "strategicRisks") return <StrategicRisksPage scenarioId={scenarioId} horizon={horizon} />;
   if (page === "forecastReliability") return <ForecastReliabilityPage />;
   if (page === "clientPaymentProfiles") return <ClientPaymentProfilesPage />;

@@ -48,7 +48,7 @@ export function TreasuryPage({ scenarioId, horizon }: ForecastingContext) {
   );
 }
 
-export function ScenariosPage({ scenarioId, horizon }: ForecastingContext) {
+export function ScenariosPage({ scenarioId, horizon, onScenarioActivated }: ForecastingContext & { onScenarioActivated?: (scenarioId: string) => void }) {
   const [rows, setRows] = useState<any[]>([]);
   const [compare, setCompare] = useState<any>(null);
   const [editingId, setEditingId] = useState("");
@@ -78,15 +78,23 @@ export function ScenariosPage({ scenarioId, horizon }: ForecastingContext) {
   };
   const setActive = async (row: any) => {
     await api(`/scenarios/${row.id}/set-active`, { method: "POST" });
+    onScenarioActivated?.(row.id);
     await loadRows();
   };
   const archive = async (row: any) => {
     await api(`/scenarios/${row.id}`, { method: "DELETE" });
     await loadRows();
   };
+  const scenarioContextHelp = (
+    <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+      Le scénario de travail choisi dans la barre supérieure pilote les projections, écarts, trésorerie, capacité,
+      staffing, risques et rapports. Le scénario actif sert uniquement de choix par défaut au chargement.
+    </div>
+  );
   return (
     <section className="space-y-5">
       <PageTitle title="Scénarios" subtitle="Référence, pessimiste, optimiste et personnalisés." />
+      {scenarioContextHelp}
       <form onSubmit={save} className="rounded-lg border border-line bg-white p-4">
         <h2 className="mb-4 text-base font-semibold">{editingId ? "Modifier le scénario" : "Nouveau scénario"}</h2>
         <div className="grid gap-3 md:grid-cols-3">
@@ -123,7 +131,7 @@ export function ScenariosPage({ scenarioId, horizon }: ForecastingContext) {
       <SimpleTable rows={rows} columns={[
         ["name", "Nom"],
         ["type", "Type"],
-        ["isActive", "Actif", (v: boolean) => v ? "Oui" : "Non"],
+        ["isActive", "Actif par défaut", (v: boolean) => v ? "Oui" : "Non"],
         ["riskLevel", "Risque", (v: string) => <Badge tone={v === "high" || v === "critical" ? "risk" : v === "medium" ? "warn" : "good"}>{v}</Badge>],
         ["totalRevenue", "CA projeté", money],
         ["totalCosts", "Coûts", money],
@@ -219,23 +227,23 @@ export function ReportsPage({ scenarioId, horizon }: ForecastingContext) {
   );
 }
 
-export function BillingPage() {
+export function BillingPage({ scenarioId }: ForecastingContext) {
   const missionLabels = useLabelMap("/missions", (row) => row.title);
   const scenarioLabels = useLabelMap("/scenarios", (row) => row.name);
-  return <CrudPage title="Facturation prévisionnelle" path="/invoice-forecasts" initial={{ missionId: "", scenarioId: "", invoiceDate: "2026-06-30", dueDate: "2026-07-30", expectedPaymentDate: "2026-07-30", amountHT: 10000, vatRate: 0.2, amountTTC: 12000, status: "planned", probability: 1 }} fields={[
+  return <CrudPage title="Facturation prévisionnelle" path={`/invoice-forecasts?scenarioId=${encodeURIComponent(scenarioId)}`} initial={{ missionId: "", scenarioId, invoiceDate: "2026-06-30", dueDate: "2026-07-30", expectedPaymentDate: "2026-07-30", amountHT: 10000, vatRate: 0.2, amountTTC: 12000, status: "planned", probability: 1 }} fields={[
     { name: "missionId", label: "Mission", type: "select", optionsPath: "/missions", optionLabelKey: "title", optionValueKey: "id", placeholder: "S\u00e9lectionner une mission" }, { name: "scenarioId", label: "Sc\u00e9nario", type: "select", optionsPath: "/scenarios", optionLabelKey: "name", optionValueKey: "id", placeholder: "S\u00e9lectionner un sc\u00e9nario" }, { name: "invoiceDate", label: "Date facture", type: "date" }, { name: "dueDate", label: "\u00c9ch\u00e9ance", type: "date" }, { name: "expectedPaymentDate", label: "Encaissement pr\u00e9vu", type: "date" }, { name: "amountHT", label: "Montant HT", type: "number" }, { name: "vatRate", label: "TVA", type: "number" }, { name: "amountTTC", label: "Montant TTC", type: "number" }, { name: "status", label: "Statut", type: "select", options: ["planned", "issued", "cancelled", "late"].map((value) => ({ label: value, value })) }, { name: "probability", label: "Probabilit\u00e9", type: "number" }
   ]} columns={[{ key: "invoiceDate", label: "Date" }, { key: "missionId", label: "Mission", render: (r: any) => missionLabels.get(r.missionId) ?? r.mission?.title ?? r.missionId }, { key: "scenarioId", label: "Sc\u00e9nario", render: (r: any) => scenarioLabels.get(r.scenarioId) ?? r.scenario?.name ?? r.scenarioId }, { key: "amountHT", label: "HT", render: (r: any) => money(r.amountHT) }, { key: "expectedPaymentDate", label: "Encaissement" }, { key: "status", label: "Statut" }]} />;
 }
 
-export function CashInPage() {
+export function CashInPage({ scenarioId }: ForecastingContext) {
   const scenarioLabels = useLabelMap("/scenarios", (row) => row.name);
   const invoiceLabels = useLabelMap("/invoice-forecasts", invoiceForecastLabel);
-  return <CrudPage title="Encaissements pr\u00e9visionnels" path="/cash-in-forecasts" initial={{ scenarioId: "", sourceType: "invoice", sourceId: "", expectedDate: "2026-07-30", amount: 10000, probability: 1, weightedAmount: 10000, status: "planned" }} fields={[
+  return <CrudPage title="Encaissements pr\u00e9visionnels" path={`/cash-in-forecasts?scenarioId=${encodeURIComponent(scenarioId)}`} initial={{ scenarioId, sourceType: "invoice", sourceId: "", expectedDate: "2026-07-30", amount: 10000, probability: 1, weightedAmount: 10000, status: "planned" }} fields={[
     { name: "scenarioId", label: "Scénario", type: "select", optionsPath: "/scenarios", optionLabelKey: "name", optionValueKey: "id", placeholder: "Sélectionner un scénario" }, { name: "sourceType", label: "Type de source", type: "select", options: [{ label: "Facture prévisionnelle", value: "invoice" }, { label: "Saisie manuelle", value: "manual" }, { label: "Autre", value: "other" }] }, { name: "sourceId", label: "Source", type: "select", optionsPath: "/invoice-forecasts", optionLabelFields: ["invoiceDate", "amountTTC"], optionValueKey: "id", placeholder: "Sélectionner une facture prévisionnelle" }, { name: "expectedDate", label: "Date prévue", type: "date" }, { name: "amount", label: "Montant", type: "number" }, { name: "probability", label: "Probabilité", type: "number" }, { name: "weightedAmount", label: "Montant pondéré", type: "number" }, { name: "status", label: "Statut", type: "select", options: cashForecastStatusOptions.map((value) => ({ label: value, value })) }
   ]} columns={[{ key: "expectedDate", label: "Date" }, { key: "scenarioId", label: "Sc\u00e9nario", render: (r: any) => scenarioLabels.get(r.scenarioId) ?? r.scenarioId }, { key: "sourceType", label: "Type de source" }, { key: "sourceId", label: "Source", render: (r: any) => r.sourceType === "invoice" ? invoiceLabels.get(r.sourceId) ?? r.sourceId : sourceFallback(r) }, { key: "amount", label: "Montant", render: (r: any) => money(r.amount) }, { key: "weightedAmount", label: "Pond\u00e9r\u00e9", render: (r: any) => money(r.weightedAmount) }, { key: "status", label: "Statut" }]} />;
 }
 
-export function CashOutPage() {
+export function CashOutPage({ scenarioId }: ForecastingContext) {
   const scenarioLabels = useLabelMap("/scenarios", (row) => row.name);
   const employeeLabels = useLabelMap("/employees", fullNameLabel);
   const freelancerLabels = useLabelMap("/freelancers", fullNameLabel);
@@ -250,7 +258,7 @@ export function CashOutPage() {
     if (row.sourceType === "variable_cost") return variableCostLabels.get(row.sourceId) ?? row.sourceId;
     return sourceFallback(row);
   };
-  return <CrudPage title="D\u00e9caissements pr\u00e9visionnels" path="/cash-out-forecasts" initial={{ scenarioId: "", sourceType: "fixed_cost", sourceId: "", expectedDate: "2026-07-30", amount: 10000, status: "planned" }} fields={[
+  return <CrudPage title="D\u00e9caissements pr\u00e9visionnels" path={`/cash-out-forecasts?scenarioId=${encodeURIComponent(scenarioId)}`} initial={{ scenarioId, sourceType: "fixed_cost", sourceId: "", expectedDate: "2026-07-30", amount: 10000, status: "planned" }} fields={[
     { name: "scenarioId", label: "Sc\u00e9nario", type: "select", optionsPath: "/scenarios", optionLabelKey: "name", optionValueKey: "id", placeholder: "S\u00e9lectionner un sc\u00e9nario" },
     { name: "sourceType", label: "Type de source", type: "select", options: [
       { label: "Salaire", value: "salary" },
@@ -274,10 +282,10 @@ export function CashOutPage() {
   ]} columns={[{ key: "expectedDate", label: "Date" }, { key: "scenarioId", label: "Sc\u00e9nario", render: (r: any) => scenarioLabels.get(r.scenarioId) ?? r.scenarioId }, { key: "sourceType", label: "Type de source" }, { key: "sourceId", label: "Source", render: sourceLabel }, { key: "amount", label: "Montant", render: (r: any) => money(r.amount) }, { key: "status", label: "Statut" }]} />;
 }
 
-export function SimulationsPage() {
+export function SimulationsPage({ scenarioId }: ForecastingContext) {
   const scenarioLabels = useLabelMap("/scenarios", (row) => row.name);
   const missionLabels = useLabelMap("/missions", (row) => row.title);
-  return <CrudPage title="Simulations" path="/simulation-events" initial={{ scenarioId: "", type: "exceptional_cost", label: "", startDate: "2026-08-01", amount: 10000, percentage: 0, parameters: {}, isActive: true }} fields={[
+  return <CrudPage title="Simulations" path={`/simulation-events?scenarioId=${encodeURIComponent(scenarioId)}`} initial={{ scenarioId, type: "exceptional_cost", label: "", startDate: "2026-08-01", amount: 10000, percentage: 0, parameters: {}, isActive: true }} fields={[
     { name: "scenarioId", label: "Sc\u00e9nario", type: "select", optionsPath: "/scenarios", optionLabelKey: "name", optionValueKey: "id", placeholder: "S\u00e9lectionner un sc\u00e9nario" },
     { name: "type", label: "Type", type: "select", options: ["exceptional_cost", "revenue_boost", "revenue_drop", "cost_reduction", "cost_increase", "delay", "custom"].map((value) => ({ label: value, value })) },
     { name: "label", label: "Libell\u00e9" }, { name: "startDate", label: "D\u00e9but", type: "date" }, { name: "endDate", label: "Fin", type: "date" }, { name: "amount", label: "Montant", type: "number" }, { name: "percentage", label: "Pourcentage", type: "number" }, { name: "relatedMissionId", label: "Mission li\u00e9e", type: "select", optionsPath: "/missions", optionLabelKey: "title", optionValueKey: "id", placeholder: "Aucune mission li\u00e9e" }, { name: "isActive", label: "Active", type: "checkbox" }, { name: "notes", label: "Notes", type: "textarea" }

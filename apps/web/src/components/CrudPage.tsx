@@ -22,6 +22,8 @@ export function CrudPage<T extends Record<string, any>>({
   const { t } = useI18n();
   const { data, loading, error, reload } = useApiList<T>(path);
   const [draft, setDraft] = useState<Record<string, any>>(initial);
+  const initialKey = useMemo(() => JSON.stringify(initial), [initial]);
+  const mutationPath = useMemo(() => path.split("?")[0], [path]);
   const optionSources = useCrudOptionSources(fields, draft);
   const optionLabelsByField = useMemo(() => {
     return Object.fromEntries(
@@ -34,6 +36,10 @@ export function CrudPage<T extends Record<string, any>>({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
 
+  useEffect(() => {
+    if (!editingId) setDraft(initial);
+  }, [initialKey, editingId]);
+
   const visibleRows = useMemo(() => {
     const needle = query.toLowerCase();
     return data.filter((row) => JSON.stringify(row).toLowerCase().includes(needle));
@@ -42,8 +48,8 @@ export function CrudPage<T extends Record<string, any>>({
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     const payload = pickEditableFields(fields, draft);
-    if (editingId) await api(`${path}/${editingId}`, { method: "PUT", body: JSON.stringify(payload) });
-    else await api(path, { method: "POST", body: JSON.stringify(payload) });
+    if (editingId) await api(`${mutationPath}/${editingId}`, { method: "PUT", body: JSON.stringify(payload) });
+    else await api(mutationPath, { method: "POST", body: JSON.stringify(payload) });
     setDraft(initial);
     setEditingId(null);
     await reload();
@@ -109,7 +115,7 @@ export function CrudPage<T extends Record<string, any>>({
                     {columns.map((column) => <td key={column.key} className="px-3 py-3">{column.render ? column.render(row) : formatCrudCellValue(row, column.key, optionLabelsByField[column.key])}</td>)}
                     <td className="flex gap-2 px-3 py-3">
                       <button className="rounded-md border border-line px-2 py-1" onClick={() => { setEditingId(row.id); setDraft({ ...initial, ...pickEditableFields(fields, row) }); }}>{t("common.edit")}</button>
-                      <button className="rounded-md border border-line p-1 text-risk" title={t("common.delete")} onClick={async () => { await api(`${path}/${row.id}`, { method: "DELETE" }); await reload(); }}><Trash2 size={16} /></button>
+                      <button className="rounded-md border border-line p-1 text-risk" title={t("common.delete")} onClick={async () => { await api(`${mutationPath}/${row.id}`, { method: "DELETE" }); await reload(); }}><Trash2 size={16} /></button>
                     </td>
                   </tr>
                 ))}
