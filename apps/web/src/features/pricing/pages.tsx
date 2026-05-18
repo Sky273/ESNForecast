@@ -1,6 +1,7 @@
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { FormEvent, ReactNode, useEffect, useMemo, useState } from "react";
 import { api } from "../../api";
+import { InfoPanel } from "../../components/InfoPanel";
 import { KpiCard } from "../../components/KpiCard";
 import { PageHeader, StatusBadge } from "../../components/PageHeader";
 import { useApi } from "../../hooks/useApi";
@@ -79,6 +80,7 @@ export function PricingDashboardPage() {
   return (
     <>
       <PageHeader title="Dashboard pricing" description="Pilotage des TJM, marges mission, gains potentiels et priorités de renégociation." actions={<button className="rounded-md bg-brand px-3 py-2 text-sm font-medium text-white" onClick={recalculate}>Recalculer</button>} />
+      <InfoPanel title="Lecture des indicateurs">Les TJM plancher et recommandés sont calculés à partir des coûts complets, des paramètres pricing et des affectations connues sur chaque mission. Les gains représentent le potentiel de correction si les missions passent au TJM cible.</InfoPanel>
       <div className="mb-5 grid gap-3 md:grid-cols-6">
         <KpiCard label="Missions analysées" value={data?.missionsAnalyzed ?? 0} />
         <KpiCard label="Missions saines" value={data?.healthyMissions ?? 0} tone="good" />
@@ -89,13 +91,13 @@ export function PricingDashboardPage() {
       </div>
       <div className="mb-5 grid gap-4 xl:grid-cols-[0.8fr_1.2fr]">
         <div className="rounded-lg border border-line bg-white p-4">
-          <h2 className="mb-4 font-semibold">Repartition pricing</h2>
+          <h2 className="mb-4 font-semibold">Répartition pricing</h2>
           <div className="h-64">
             <ResponsiveContainer><BarChart data={chart}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="label" /><YAxis allowDecimals={false} /><Tooltip /><Bar dataKey="value" fill="#0f766e" /></BarChart></ResponsiveContainer>
           </div>
         </div>
         <div>
-          <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted">Top priorites</h2>
+          <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted">Top priorités</h2>
           <Table rows={data?.topCandidates ?? []} columns={[
             { key: "missionLabel", label: "Mission", render: missionLabel },
             { key: "priorityScore", label: "Score" },
@@ -186,26 +188,27 @@ export function PricingSimulatorPage() {
   return (
     <>
       <PageHeader title="Simulateur pricing" description="Simuler un TJM, une remise et mesurer l'impact sur marge, TJM plancher et TJM recommandé." actions={<div className="flex gap-2"><button className="rounded-md border border-line px-3 py-2 text-sm" onClick={resetDraft}>Nouvelle simulation</button><button className="rounded-md border border-line px-3 py-2 text-sm" onClick={previewSimulation}>Simuler</button><button className="rounded-md bg-brand px-3 py-2 text-sm font-medium text-white" onClick={createSimulation}>Créer la simulation</button>{editingSimulationId ? <button className="rounded-md border border-line px-3 py-2 text-sm" onClick={updateSimulation}>Renommer</button> : null}</div>} />
+      <InfoPanel title="Simulation ou création">Le bouton Simuler recalcule uniquement le résultat affiché. Créer la simulation enregistre une nouvelle ligne dans l'historique pour la comparer ou la reprendre plus tard.</InfoPanel>
       <div className="mb-5 grid gap-3 rounded-lg border border-line bg-white p-4 md:grid-cols-6">
         <label className="text-sm">Nom simulation<input className="mt-1 w-full rounded-md border border-line px-3 py-2" value={simulationName} onChange={(event) => setSimulationName(event.target.value)} /></label>
         <label className="text-sm">Mission<select className="mt-1 w-full rounded-md border border-line px-3 py-2" value={missionId || firstMission} onChange={(event) => { setMissionId(event.target.value); setResult(null); }}>{(missions ?? []).map((mission) => <option key={mission.id} value={mission.id}>{mission.title}</option>)}</select></label>
-        <label className="text-sm">TJM simule<input className="mt-1 w-full rounded-md border border-line px-3 py-2" type="number" value={dailyRate} onChange={(event) => setDailyRate(Number(event.target.value))} /></label>
+        <label className="text-sm">TJM simulé<input className="mt-1 w-full rounded-md border border-line px-3 py-2" type="number" value={dailyRate} onChange={(event) => setDailyRate(Number(event.target.value))} /></label>
         <label className="text-sm">Jours facturables<input className="mt-1 w-full rounded-md border border-line px-3 py-2" type="number" min="1" step="0.5" value={billableDays} onChange={(event) => setBillableDays(Number(event.target.value))} /></label>
         <label className="text-sm">Coût direct / jour<input className="mt-1 w-full rounded-md border border-line px-3 py-2" type="number" min="0" step="10" value={directDailyCost} onChange={(event) => setDirectDailyCost(Number(event.target.value))} /></label>
         <label className="text-sm">Remise<input className="mt-1 w-full rounded-md border border-line px-3 py-2" type="number" step="0.01" value={discountRate} onChange={(event) => setDiscountRate(Number(event.target.value))} /></label>
       </div>
       {result ? <div className="grid gap-3 md:grid-cols-5">
         <KpiCard label="TJM après remise" value={money(result.output?.simulatedDailyRate)} />
-        <KpiCard label="CA simule" value={money(result.output?.revenue)} />
+        <KpiCard label="CA simulé" value={money(result.output?.revenue)} />
         <KpiCard label="Marge" value={percent(result.output?.currentMarginRate)} tone={kpiTone(result.output?.status)} />
         <KpiCard label="TJM plancher" value={money(result.output?.floorDailyRate)} />
         <KpiCard label="TJM recommandé" value={money(result.output?.recommendedDailyRate)} />
       </div> : null}
-      <h2 className="mb-2 mt-5 text-sm font-semibold uppercase tracking-wide text-muted">Simulations enregistrees</h2>
+      <h2 className="mb-2 mt-5 text-sm font-semibold uppercase tracking-wide text-muted">Simulations enregistrées</h2>
       <Table rows={simulations ?? []} columns={[
         { key: "name", label: "Nom" },
         { key: "missionLabel", label: "Mission", render: missionLabel },
-        { key: "createdAt", label: "Creee le", render: (row) => String(row.createdAt ?? "").slice(0, 10) },
+        { key: "createdAt", label: "Créée le", render: (row) => String(row.createdAt ?? "").slice(0, 10) },
         { key: "actions", label: "Actions", render: (row) => <div className="flex gap-2"><ActionButton onClick={() => editSimulation(row)}>Éditer</ActionButton><ActionButton tone="risk" onClick={() => removeSimulation(row.id)}>Supprimer</ActionButton></div> }
       ]} />
     </>
@@ -226,10 +229,11 @@ export function MissionPricingProfilePage() {
   return (
     <>
       <PageHeader title="Profil pricing mission" description="Lecture détaillée du coût complet, TJM plancher, TJM recommandé et écart de marge." />
+      <InfoPanel title="Données nécessaires">Un profil pertinent nécessite une mission, des affectations avec coûts journaliers ou coûts estimables, des jours facturables et des paramètres pricing. Si les données sont insuffisantes, le statut le signale au lieu d'inventer un prix.</InfoPanel>
       <div className="mb-5 rounded-lg border border-line bg-white p-4">
         <div className="flex flex-wrap items-end gap-3">
           <label className="min-w-[320px] flex-1 text-sm">
-            <span className="mb-1 block text-xs font-medium text-muted">Mission analysee</span>
+            <span className="mb-1 block text-xs font-medium text-muted">Mission analysée</span>
             <select className="w-full rounded-md border border-line px-3 py-2" value={missionId} onChange={(event) => { setSelectedMissionId(event.target.value); setRecalculated(null); }}>
               {(missions ?? []).map((mission) => <option key={mission.id} value={mission.id}>{mission.client?.name ? `${mission.title} - ${mission.client.name}` : mission.title}</option>)}
             </select>
@@ -276,7 +280,7 @@ export function RenegotiationCandidatesPage() {
         { key: "missionLabel", label: "Mission", render: missionLabel },
         { key: "reason", label: "Raison" },
         { key: "priorityScore", label: "Score" },
-        { key: "severity", label: "Severite", render: (row) => <StatusBadge label={row.severity} tone={tone(row.severity)} /> },
+        { key: "severity", label: "Sévérité", render: (row) => <StatusBadge label={row.severity} tone={tone(row.severity)} /> },
         { key: "currentDailyRate", label: "TJM actuel", render: (row) => money(row.currentDailyRate) },
         { key: "targetDailyRate", label: "TJM cible", render: (row) => money(row.targetDailyRate) },
         { key: "annualizedImpactAmount", label: "Gain annuel", render: (row) => money(row.annualizedImpactAmount) },

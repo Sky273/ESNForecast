@@ -2,13 +2,14 @@ import { useEffect, useMemo, useState } from "react";
 import { API_URL, api } from "../../api";
 import { CrudPage } from "../../components/CrudPage";
 import { Badge } from "../../components/Format";
+import { InfoPanel } from "../../components/InfoPanel";
 import { KpiCard } from "../../components/KpiCard";
 
 export function RealConnectorsPage() {
   const { rows } = useRows("/providers");
   return <TablePage title="Catalogue providers" subtitle="Bridge, Powens, Tink, Plaid, Pennylane, Sage et extensions." rows={rows} columns={[
     ["provider", "Provider"],
-    ["configStatus", "Configuration", (_value: any, row: any) => <Badge tone={row.configStatus?.ok ? "good" : "warn"}>{row.configStatus?.ok ? "configuré" : "mock/sandbox"}</Badge>],
+    ["configStatus", "Configuration", (_value: any, row: any) => <Badge tone={row.configStatus?.ok ? "good" : "warn"}>{row.configStatus?.ok ? "Configuré" : "Sandbox ou mock"}</Badge>],
     ["capabilities", "Données", (_value: any, row: any) => capabilityText(row.capabilities)],
     ["configStatus", "Environnement", (value: any) => value?.environment]
   ]} />;
@@ -46,7 +47,8 @@ export function ProviderConnectionPage() {
 
   return (
     <section className="space-y-5">
-      <PageTitle title="Assistant de connexion provider" subtitle="Démarre le flux OAuth provider, puis affiché le résultat au retour." />
+      <PageTitle title="Assistant de connexion provider" subtitle="Démarre le flux OAuth provider, puis affiche le résultat au retour." />
+      <InfoPanel title="Fonctionnement">Cet écran démarre le flux OAuth du provider choisi. Bridge utilise l'URL publique configurée par le script HTTPS pour revenir dans ESN Forecast, puis la synchronisation bancaire met à jour les comptes et transactions.</InfoPanel>
       {callbackResult ? (
         <div className={`rounded-lg border p-4 text-sm ${callbackResult.connectionStatus === "success" ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-red-200 bg-red-50 text-red-900"}`}>
           <div className="font-semibold">{callbackResult.connectionStatus === "success" ? "Connexion provider terminée" : "Connexion provider en erreur"}</div>

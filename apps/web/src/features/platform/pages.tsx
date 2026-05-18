@@ -1,8 +1,10 @@
 import { useMemo, useState } from "react";
 import { API_URL, api } from "../../api";
+import { InfoPanel } from "../../components/InfoPanel";
 import { KpiCard } from "../../components/KpiCard";
 import { PageHeader, StatusBadge } from "../../components/PageHeader";
 import { useApi } from "../../hooks/useApi";
+import userGuideMarkdown from "../../content/user-guide.md?raw";
 
 function tone(status: string) {
   if (["success", "operational", "active", "stable", "completed"].includes(status)) return "good" as const;
@@ -70,9 +72,10 @@ export function ObservabilityPage() {
 
   return (
     <>
-      <PageHeader title="Observabilite" description="Vue opérationnelle des logs, erreurs, latences, jobs et connecteurs." />
+      <PageHeader title="Observabilité" description="Vue opérationnelle des logs, erreurs, latences, jobs et connecteurs." />
+      <InfoPanel title="Lecture opérationnelle">Cet écran aide à diagnostiquer rapidement un incident. Utilise le correlationId, la route et la durée pour relier une erreur utilisateur aux logs applicatifs.</InfoPanel>
       <div className="mb-5 grid gap-3 md:grid-cols-4">
-        <KpiCard label="Logs collectes" value={String(summary?.logs ?? "-")} />
+        <KpiCard label="Logs collectés" value={String(summary?.logs ?? "-")} />
         <KpiCard label="Erreurs ouvertes" value={String(summary?.openErrors ?? "-")} tone={(summary?.openErrors ?? 0) ? "risk" : "good"} />
         <KpiCard label="Erreurs connecteurs" value={String(summary?.connectorErrors ?? "-")} />
         <KpiCard label="Snapshots lenteur" value={String(summary?.slowRequests?.length ?? "-")} />
@@ -85,21 +88,21 @@ export function ObservabilityPage() {
           { key: "correlationId", label: "Correlation" }
         ]} />
       </Panel>
-      <Panel title="Logs recents">
+      <Panel title="Logs récents">
         <Table rows={logs ?? []} columns={[
           { key: "level", label: "Niveau", render: (row) => <StatusBadge label={row.level} tone={tone(row.level)} /> },
           { key: "service", label: "Service" },
           { key: "route", label: "Route" },
-          { key: "durationMs", label: "Duree ms" },
+          { key: "durationMs", label: "Durée ms" },
           { key: "message", label: "Message" }
         ]} />
       </Panel>
-      <Panel title="Requetes lentes">
+      <Panel title="Requêtes lentes">
         <Table rows={slow ?? []} columns={[
           { key: "route", label: "Route" },
-          { key: "metric", label: "Metrique" },
+          { key: "metric", label: "Métrique" },
           { key: "value", label: "Valeur" },
-          { key: "unit", label: "Unite" }
+          { key: "unit", label: "Unité" }
         ]} />
       </Panel>
     </>
@@ -109,10 +112,13 @@ export function ObservabilityPage() {
 export function JobsPage({ scenarioId, horizon }: { scenarioId?: string; horizon?: number } = {}) {
   const { data: jobs, refetch } = useApi<any[]>("/jobs");
   const [actionError, setActionError] = useState("");
+  const [actionMessage, setActionMessage] = useState("");
   const launchReforecast = async () => {
     setActionError("");
+    setActionMessage("");
     try {
       await api("/reforecast/recalculate", { method: "POST", body: JSON.stringify({}) });
+      setActionMessage("Job reforecast lancé. La ligne sera mise à jour lorsque l'exécution sera terminée.");
       await refetch();
     } catch (caught) {
       setActionError(caught instanceof Error ? caught.message : "Le reforecast n'a pas pu être lancé.");
@@ -120,8 +126,10 @@ export function JobsPage({ scenarioId, horizon }: { scenarioId?: string; horizon
   };
   const launchReportPdf = async () => {
     setActionError("");
+    setActionMessage("");
     try {
       await api("/jobs/report-pdf", { method: "POST", body: JSON.stringify({ report: "codir", scenarioId, horizon }) });
+      setActionMessage("Job rapport PDF lancé. Le lien PDF apparaîtra dans la colonne Sortie lorsque la génération sera terminée.");
       await refetch();
     } catch (caught) {
       setActionError(caught instanceof Error ? caught.message : "Le rapport PDF n'a pas pu être lancé.");
@@ -129,8 +137,10 @@ export function JobsPage({ scenarioId, horizon }: { scenarioId?: string; horizon
   };
   const launchConnectorSync = async () => {
     setActionError("");
+    setActionMessage("");
     try {
       await api("/jobs/connector-sync", { method: "POST", body: JSON.stringify({ mode: "incremental" }) });
+      setActionMessage("Job de synchronisation connecteurs lancé. Les imports et mises à jour seront visibles dans les runs.");
       await refetch();
     } catch (caught) {
       setActionError(caught instanceof Error ? caught.message : "La synchronisation connecteurs n'a pas pu être lancée.");
@@ -138,6 +148,7 @@ export function JobsPage({ scenarioId, horizon }: { scenarioId?: string; horizon
   };
   const retry = async (row: any) => {
     setActionError("");
+    setActionMessage("");
     try {
       await api(`/jobs/${row.id}/${["connector_sync", "reforecast", "report_pdf"].includes(row.type) ? "run" : "retry"}`, { method: "POST" });
       await refetch();
@@ -150,6 +161,7 @@ export function JobsPage({ scenarioId, horizon }: { scenarioId?: string; horizon
   return (
     <>
       <PageHeader title="Supervision jobs" description="Suivi des synchronisations, imports, projections, reforecast et rapports." actions={<><button className="rounded-md bg-brand px-3 py-2 text-sm font-medium text-white" onClick={launchReforecast}>Lancer un reforecast</button><button className="rounded-md border border-line bg-white px-3 py-2 text-sm font-medium" onClick={launchConnectorSync}>Lancer sync connecteurs</button><button className="rounded-md border border-line bg-white px-3 py-2 text-sm font-medium" onClick={launchReportPdf}>Générer rapport CODIR PDF</button></>} />
+      {actionMessage ? <div className="mb-3 rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-800">{actionMessage}</div> : null}
       {actionError ? <div className="mb-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{actionError}</div> : null}
       <Table rows={jobs ?? []} columns={[
         { key: "type", label: "Type" },
@@ -173,7 +185,7 @@ export function SystemStatusPage() {
   const { data } = useApi<any>("/system/status");
   return (
     <>
-      <PageHeader title="Statut systeme" description="état applicatif, base, workers, connecteurs et erreurs récentes." />
+      <PageHeader title="Statut système" description="État applicatif, base, workers, connecteurs et erreurs récentes." />
       <div className="mb-5 grid gap-3 md:grid-cols-4">
         <KpiCard label="État global" value={data?.status ?? "-"} tone={data?.status === "operational" ? "good" : "risk"} />
         <KpiCard label="API" value={data?.api ?? "-"} />
@@ -220,7 +232,7 @@ export function BackupsPage() {
 
   return (
     <>
-      <PageHeader title="Sauvegardes et exports" description="Sauvegarde JSON, restauration dry-run, exports complets et retention." actions={
+      <PageHeader title="Sauvegardes et exports" description="Sauvegarde JSON, restauration dry-run, exports complets et rétention." actions={
         <>
           <button className="rounded-md bg-brand px-3 py-2 text-sm font-medium text-white" onClick={createBackup}>Générer sauvegarde</button>
           <button className="rounded-md border border-line px-3 py-2 text-sm" onClick={createExport}>Créer export complet</button>
@@ -284,7 +296,7 @@ export function FeatureFlagsPage() {
     <>
       <PageHeader title="Feature flags" description="Activation progressive des modules stables, beta et expérimentaux." actions={<button className="rounded-md bg-brand px-3 py-2 text-sm font-medium text-white" onClick={save}>{editingId ? "Enregistrer" : "Créer"}</button>} />
       <div className="mb-5 grid gap-3 rounded-lg border border-line bg-white p-4 md:grid-cols-3">
-        <label className="text-sm">Cle<input className="mt-1 w-full rounded-md border border-line px-3 py-2" value={draft.key} onChange={(event) => update("key", event.target.value)} /></label>
+        <label className="text-sm">Clé<input className="mt-1 w-full rounded-md border border-line px-3 py-2" value={draft.key} onChange={(event) => update("key", event.target.value)} /></label>
         <label className="text-sm">Nom<input className="mt-1 w-full rounded-md border border-line px-3 py-2" value={draft.name} onChange={(event) => update("name", event.target.value)} /></label>
         <label className="text-sm">Statut<select className="mt-1 w-full rounded-md border border-line px-3 py-2" value={draft.status} onChange={(event) => update("status", event.target.value)}>{["experimental", "beta", "stable", "deprecated"].map((value) => <option key={value} value={value}>{value}</option>)}</select></label>
         <label className="text-sm">Rollout %<input className="mt-1 w-full rounded-md border border-line px-3 py-2" type="number" value={draft.rolloutPercent} onChange={(event) => update("rolloutPercent", Number(event.target.value))} /></label>
@@ -292,7 +304,7 @@ export function FeatureFlagsPage() {
         <label className="text-sm md:col-span-3">Description<textarea className="mt-1 w-full rounded-md border border-line px-3 py-2" value={draft.description} onChange={(event) => update("description", event.target.value)} /></label>
       </div>
       <Table rows={flags ?? []} columns={[
-        { key: "key", label: "Cle" },
+        { key: "key", label: "Clé" },
         { key: "name", label: "Nom" },
         { key: "status", label: "Statut", render: (row) => <StatusBadge label={row.status} tone={tone(row.status)} /> },
         { key: "enabledGlobally", label: "Global", render: (row) => row.enabledGlobally ? "Oui" : "Non" },
@@ -338,12 +350,153 @@ export function HelpPage({ pageKey = "dashboard" }: { pageKey?: string }) {
   );
 }
 
+type GuideSection = {
+  id: string;
+  title: string;
+  level: number;
+  lines: string[];
+};
+
+export function UserGuidePage() {
+  const sections = useMemo(() => parseGuide(userGuideMarkdown), []);
+  const [activeId, setActiveId] = useState(sections[0]?.id ?? "");
+  const activeSection = sections.find((section) => section.id === activeId) ?? sections[0];
+
+  return (
+    <>
+      <PageHeader title="Guide utilisateur" description="Mode d'emploi détaillé du fonctionnement d'ESN Forecast et des principaux parcours métier." />
+      <div className="grid gap-5 xl:grid-cols-[320px_1fr]">
+        <aside className="rounded-lg border border-line bg-white p-3 xl:sticky xl:top-4 xl:self-start">
+          <div className="mb-3 px-2 text-xs font-semibold uppercase tracking-wide text-muted">Sections</div>
+          <nav className="max-h-[70vh] space-y-1 overflow-y-auto">
+            {sections.map((section) => (
+              <button
+                key={section.id}
+                type="button"
+                className={`w-full rounded-md px-3 py-2 text-left text-sm ${activeSection?.id === section.id ? "bg-emerald-50 font-medium text-brand" : "text-slate-700 hover:bg-surface"}`}
+                onClick={() => setActiveId(section.id)}
+              >
+                {section.title}
+              </button>
+            ))}
+          </nav>
+        </aside>
+        <article className="rounded-lg border border-line bg-white p-5">
+          {activeSection ? <GuideSectionView section={activeSection} /> : <p className="text-sm text-muted">Guide indisponible.</p>}
+        </article>
+      </div>
+    </>
+  );
+}
+
 export function PerformancePage() {
   const { data } = useApi<any[]>("/observability/slow-requests");
   return (
     <>
       <PageHeader title="Performance" description="Routes et calculs les plus lents pour prioriser les optimisations." />
-      <Table rows={data ?? []} columns={[{ key: "route", label: "Route" }, { key: "metric", label: "Metrique" }, { key: "value", label: "Valeur" }, { key: "unit", label: "Unite" }, { key: "capturedAt", label: "Mesure" }]} />
+      <Table rows={data ?? []} columns={[{ key: "route", label: "Route" }, { key: "metric", label: "Métrique" }, { key: "value", label: "Valeur" }, { key: "unit", label: "Unité" }, { key: "capturedAt", label: "Mesure" }]} />
     </>
   );
+}
+
+function parseGuide(markdown: string): GuideSection[] {
+  const sections: GuideSection[] = [];
+  let current: GuideSection | null = null;
+  for (const line of markdown.split(/\r?\n/)) {
+    const heading = /^(#{1,2})\s+(.+)$/.exec(line);
+    if (heading) {
+      if (current) sections.push(current);
+      const title = heading[2].trim();
+      current = { id: slugify(title), title, level: heading[1].length, lines: [] };
+      continue;
+    }
+    if (!current) continue;
+    current.lines.push(line);
+  }
+  if (current) sections.push(current);
+  return sections;
+}
+
+function GuideSectionView({ section }: { section: GuideSection }) {
+  const blocks = toBlocks(section.lines);
+  return (
+    <div className="max-w-4xl">
+      <h1 className="text-2xl font-semibold tracking-normal text-slate-950">{section.title}</h1>
+      <div className="mt-5 space-y-4 text-sm leading-6 text-slate-700">
+        {blocks.map((block, index) => renderGuideBlock(block, index))}
+      </div>
+    </div>
+  );
+}
+
+type GuideBlock = { type: "paragraph" | "list" | "ordered" | "heading"; content: string[] };
+
+function toBlocks(lines: string[]): GuideBlock[] {
+  const blocks: GuideBlock[] = [];
+  let paragraph: string[] = [];
+  let list: string[] = [];
+  let ordered: string[] = [];
+
+  const flushParagraph = () => {
+    if (paragraph.length) blocks.push({ type: "paragraph", content: [paragraph.join(" ")] });
+    paragraph = [];
+  };
+  const flushList = () => {
+    if (list.length) blocks.push({ type: "list", content: list });
+    list = [];
+  };
+  const flushOrdered = () => {
+    if (ordered.length) blocks.push({ type: "ordered", content: ordered });
+    ordered = [];
+  };
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line) {
+      flushParagraph();
+      flushList();
+      flushOrdered();
+      continue;
+    }
+    const subHeading = /^###\s+(.+)$/.exec(line);
+    if (subHeading) {
+      flushParagraph();
+      flushList();
+      flushOrdered();
+      blocks.push({ type: "heading", content: [subHeading[1]] });
+      continue;
+    }
+    const bullet = /^-\s+(.+)$/.exec(line);
+    if (bullet) {
+      flushParagraph();
+      flushOrdered();
+      list.push(bullet[1]);
+      continue;
+    }
+    const numbered = /^\d+\.\s+(.+)$/.exec(line);
+    if (numbered) {
+      flushParagraph();
+      flushList();
+      ordered.push(numbered[1]);
+      continue;
+    }
+    flushList();
+    flushOrdered();
+    paragraph.push(line);
+  }
+  flushParagraph();
+  flushList();
+  flushOrdered();
+  return blocks;
+}
+
+function renderGuideBlock(block: GuideBlock, index: number) {
+  if (block.type === "heading") return <h2 key={index} className="pt-2 text-lg font-semibold text-slate-950">{block.content[0]}</h2>;
+  if (block.type === "list") return <ul key={index} className="list-disc space-y-1 pl-5">{block.content.map((item) => <li key={item}>{item}</li>)}</ul>;
+  if (block.type === "ordered") return <ol key={index} className="list-decimal space-y-1 pl-5">{block.content.map((item) => <li key={item}>{item}</li>)}</ol>;
+  return <p key={index}>{block.content[0]}</p>;
+}
+
+function slugify(value: string) {
+  return value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 }

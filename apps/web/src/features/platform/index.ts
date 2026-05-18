@@ -8,5 +8,6 @@ export {
   OnboardingPage,
   PerformancePage,
   SecurityPage,
-  SystemStatusPage
+  SystemStatusPage,
+  UserGuidePage
 } from "./pages";

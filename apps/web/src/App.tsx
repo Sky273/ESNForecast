@@ -38,7 +38,7 @@ import {
 import { Dashboard } from "./features/pilotage";
 import {
   BackofficeSupportPage, BackupsPage, FeatureFlagsPage, HelpPage, JobsPage, ObservabilityPage, OnboardingPage, PerformancePage,
-  SecurityPage, SystemStatusPage
+  SecurityPage, SystemStatusPage, UserGuidePage
 } from "./features/platform";
 import {
   MissionPricingProfilePage, PricingDashboardPage, PricingHistoryPage, PricingReportPage, PricingSettingsPage, PricingSimulatorPage,
@@ -112,7 +112,7 @@ const navGroups: NavGroup[] = [
       { id: "profitabilityMissions", label: "Rentabilité missions", icon: BarChart3 },
       { id: "assignments", label: "Affectations", icon: Users },
       { id: "timesheets", label: "CRA", icon: BookOpenCheck, badge: "2" },
-      { id: "monthlyClose", label: "Cloture mensuelle", icon: LockKeyhole }
+      { id: "monthlyClose", label: "Clôture mensuelle", icon: LockKeyhole }
     ]
   },
   {
@@ -207,6 +207,7 @@ const navGroups: NavGroup[] = [
     items: [
       { id: "documents", label: "Documents", icon: FileText },
       { id: "reports", label: "Centre de rapports", icon: FileText },
+      { id: "userGuide", label: "Guide utilisateur", icon: BookOpenCheck },
       { id: "workflows", label: "Workflows", icon: Workflow },
       { id: "backups", label: "Exports & sauvegardes", icon: DatabaseBackup }
     ]
@@ -636,6 +637,7 @@ function renderPage(page: string, scenarioId: string, horizon: number, setHorizo
   if (page === "connectors") return <DeliveryCrudPage kind="connectors" />;
   if (page === "alerts") return <AlertsPage scenarioId={scenarioId} horizon={horizon} />;
   if (page === "reports") return <ReportsPage scenarioId={scenarioId} horizon={horizon} />;
+  if (page === "userGuide") return <UserGuidePage />;
   if (page === "settings") return <Settings />;
   if (page === "audit") return <AuditPage />;
   if (page === "admin") return <AdminPage />;
@@ -650,5 +652,5 @@ function renderPage(page: string, scenarioId: string, horizon: number, setHorizo
   if (page === "help") return <HelpPage pageKey="dashboard" />;
   if (page === "performance") return <PerformancePage />;
   if (page === "skills") return <SkillsPage />;
-  return cfg ? <CrudPage title={cfg.title} path={cfg.path} fields={cfg.fields} columns={cfg.columns} initial={cfg.initial} /> : <Dashboard horizon={horizon} setHorizon={setHorizon} />;
+  return cfg ? <CrudPage title={cfg.title} description={cfg.description} path={cfg.path} fields={cfg.fields} columns={cfg.columns} initial={cfg.initial} /> : <Dashboard horizon={horizon} setHorizon={setHorizon} />;
 }

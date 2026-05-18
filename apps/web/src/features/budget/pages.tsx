@@ -1,5 +1,6 @@
 import { Bar, BarChart, CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { FormEvent, ReactNode, useMemo, useState } from "react";
+import { InfoPanel } from "../../components/InfoPanel";
 import { api } from "../../api";
 import { KpiCard } from "../../components/KpiCard";
 import { PageHeader, StatusBadge } from "../../components/PageHeader";
@@ -69,15 +70,6 @@ function FormPanel({ title, children, onSubmit, submitLabel = "Enregistrer" }: {
   );
 }
 
-function InfoPanel({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <div className="mb-5 rounded-lg border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-950">
-      <div className="font-semibold">{title}</div>
-      <div className="mt-1 text-sky-900">{children}</div>
-    </div>
-  );
-}
-
 function TextInput({ label, value, onChange, type = "text" }: { label: string; value: any; onChange: (value: any) => void; type?: string }) {
   return <label><span className="mb-1 block text-xs font-medium text-muted">{label}</span><input className="w-full rounded-md border border-line px-3 py-2" type={type} step={type === "number" ? "any" : undefined} value={value ?? ""} onChange={(event) => onChange(type === "number" ? Number(event.target.value) : event.target.value)} /></label>;
 }
@@ -109,6 +101,7 @@ export function TrajectoryDashboardPage() {
   return (
     <>
       <PageHeader title="Trajectoire" description="Budget, réel, forecast, atterrissage probable, Écarts et actions correctives." />
+      <InfoPanel title="Données calculées">Cet écran consolide budget, réel, forecast, atterrissage probable, pipeline, staffing et plans d'action. Il sert à piloter la trajectoire, pas à saisir les données sources.</InfoPanel>
       <div className="mb-5 grid gap-3 md:grid-cols-6">
         <KpiCard label="Budget CA" value={money(landing?.budgetRevenue)} />
         <KpiCard label="Réalisé à date" value={money(landing?.actualRevenueToDate)} />
@@ -265,7 +258,7 @@ export function ObjectivesPage() {
         <TextInput label="Nom" value={draft.name} onChange={(value) => setDraft({ ...draft, name: value })} />
         <SelectInput label="Type" value={draft.type} onChange={(value) => setDraft({ ...draft, type: value })} options={objectiveTypes} />
         <TextInput label="Cible" type="number" value={draft.targetValue} onChange={(value) => setDraft({ ...draft, targetValue: value })} />
-        <SelectInput label="Unite" value={draft.unit} onChange={(value) => setDraft({ ...draft, unit: value })} options={objectiveUnits} />
+        <SelectInput label="Unité" value={draft.unit} onChange={(value) => setDraft({ ...draft, unit: value })} options={objectiveUnits} />
         <SelectInput label="Période" value={draft.period} onChange={(value) => setDraft({ ...draft, period: value })} options={objectivePeriods} />
         <SelectInput label="Statut" value={draft.status} onChange={(value) => setDraft({ ...draft, status: value })} options={["draft", "active", "achieved", "at_risk", "missed", "archived"]} />
       </FormPanel>
@@ -333,11 +326,11 @@ export function RollingForecastPage() {
   };
   return (
     <>
-      <PageHeader title="Rolling Forecast" description="Generation, archivage et ajustement des lignes du rolling forecast." actions={<div className="flex gap-2"><button className="rounded-md border border-line px-3 py-2 text-sm" onClick={archive}>Archiver le forecast actif</button><button className="rounded-md bg-brand px-3 py-2 text-sm font-medium text-white" onClick={() => activeId && setLine({ month: 1, year: YEAR, category: "revenue", amount: 0, source: "manual_override", confidenceScore: 0.7, comment: "" })}>Ajouter une ligne</button></div>} />
+      <PageHeader title="Rolling Forecast" description="Génération, archivage et ajustement des lignes du rolling forecast." actions={<div className="flex gap-2"><button className="rounded-md border border-line px-3 py-2 text-sm" onClick={archive}>Archiver le forecast actif</button><button className="rounded-md bg-brand px-3 py-2 text-sm font-medium text-white" onClick={() => activeId && setLine({ month: 1, year: YEAR, category: "revenue", amount: 0, source: "manual_override", confidenceScore: 0.7, comment: "" })}>Ajouter une ligne</button></div>} />
       <InfoPanel title="Provenance des données">Les mois passés proviennent du réel disponible, le mois courant mélange réel partiel et forecast, et les mois futurs sont issus du forecast ou du reforecast. Les lignes peuvent être ajustées manuellement après génération.</InfoPanel>
-      <FormPanel title="Generer un rolling forecast" onSubmit={generate} submitLabel="Generer">
+      <FormPanel title="Générer un rolling forecast" onSubmit={generate} submitLabel="Générer">
         <TextInput label="Nom" value={draft.name} onChange={(value) => setDraft({ ...draft, name: value })} />
-        <TextInput label="Annee" type="number" value={draft.fiscalYear} onChange={(value) => setDraft({ ...draft, fiscalYear: value })} />
+        <TextInput label="Année" type="number" value={draft.fiscalYear} onChange={(value) => setDraft({ ...draft, fiscalYear: value })} />
         <TextInput label="Mois de base" value={draft.baseMonth} onChange={(value) => setDraft({ ...draft, baseMonth: value })} />
         <TextInput label="Horizon mois" type="number" value={draft.horizonMonths} onChange={(value) => setDraft({ ...draft, horizonMonths: value })} />
         <SelectInput label="Budget source" value={draft.sourceBudgetId || budgets?.[0]?.id || ""} onChange={(value) => setDraft({ ...draft, sourceBudgetId: value })} options={(budgets ?? []).map((budget) => ({ label: budget.name, value: budget.id }))} />
@@ -355,6 +348,7 @@ export function AnnualLandingPage() {
   return (
     <>
       <PageHeader title="Atterrissage annuel" description="Estimation de fin d'année à partir du réel à date et du forecast restant." />
+      <InfoPanel title="Données calculées">Cet écran est calculé à partir du budget actif, du réel mensuel, du rolling forecast et du scénario actif. Il ne remplace pas les écrans de saisie.</InfoPanel>
       <InfoPanel title="Méthode de calcul">L'atterrissage combine le budget annuel, le réalisé à date et le forecast restant. Les écarts affichés sont des écarts probables par rapport au budget de référence.</InfoPanel>
       <div className="mb-5 grid gap-3 md:grid-cols-4"><KpiCard label="CA budget" value={money(data?.budgetRevenue)} /><KpiCard label="CA probable" value={money(data?.projectedAnnualRevenue)} tone={(data?.revenueGap ?? 0) < 0 ? "risk" : "good"} /><KpiCard label="Marge probable" value={money(data?.projectedGrossMargin)} /><KpiCard label="Cash probable" value={money(data?.projectedClosingCash)} tone={(data?.cashGap ?? 0) < 0 ? "risk" : "good"} /></div>
       <div className="grid gap-4 md:grid-cols-3">{["lowCase", "medianCase", "highCase"].map((key) => <div key={key} className="rounded-lg border border-line bg-white p-4"><div className="text-sm text-muted">{key}</div><div className="mt-2 text-xl font-semibold">{money(data?.[key]?.revenue)}</div><div className="text-sm text-muted">Cash {money(data?.[key]?.cash)}</div></div>)}</div>
@@ -370,6 +364,7 @@ export function BudgetForecastActualPage() {
     <>
       <PageHeader title="Budget / Forecast / Actual" description="Comparaison mensuelle budget, rolling forecast, reforecast et réel." actions={<button className="rounded-md bg-brand px-3 py-2 text-sm font-medium text-white" onClick={recalculate}>Recalculer</button>} />
       <InfoPanel title="Source des chiffres">Le tableau consolide les lignes budgétaires, le réel mensuel, les rolling forecasts et les recalculs de reforecast. Le bouton Recalculer régénère les écarts à partir des données applicatives disponibles.</InfoPanel>
+      <InfoPanel title="Données calculées">Cet écran est calculé à partir du budget actif, du réel mensuel, du rolling forecast et du scénario actif. Il ne remplace pas les écrans de saisie.</InfoPanel>
       <Table rows={calculated ?? report?.variances ?? []} columns={[{ key: "month", label: "Mois" }, { key: "category", label: "Catégorie" }, { key: "budgetValue", label: "Budget", render: (row) => money(row.budgetValue) }, { key: "actualValue", label: "Réel", render: (row) => money(row.actualValue) }, { key: "varianceAmount", label: "Écart", render: (row) => money(row.varianceAmount ?? row.varianceBudgetActual) }, { key: "severity", label: "Statut", render: (row) => <StatusBadge label={row.severity ?? row.status} tone={tone(row.severity ?? row.status)} /> }]} />
     </>
   );
@@ -399,7 +394,7 @@ export function VarianceAnalysesPage() {
       <PageHeader title="Écarts commentés" description="Recalcul, qualification, commentaires et causes des Écarts budgétaires." actions={<button className="rounded-md bg-brand px-3 py-2 text-sm font-medium text-white" onClick={recalculate}>Recalculer</button>} />
       <InfoPanel title="Lecture fonctionnelle">Les écarts sont générés par comparaison budget / réel / forecast. Une fois détectés, ils peuvent être qualifiés, commentés, reliés à des causes et transformés en actions correctives.</InfoPanel>
       {selected ? <div className="grid gap-5 xl:grid-cols-2"><FormPanel title="Qualifier l'écart" onSubmit={saveStatus}><SelectInput label="Statut" value={selected.status} onChange={(value) => setSelected({ ...selected, status: value })} options={["new", "under_review", "explained", "action_required", "resolved", "ignored"]} /><SelectInput label="Sévérité" value={selected.severity} onChange={(value) => setSelected({ ...selected, severity: value })} options={["info", "warning", "critical"]} /><TextInput label="Responsable" value={selected.ownerUserId ?? ""} onChange={(value) => setSelected({ ...selected, ownerUserId: value })} /></FormPanel><FormPanel title="Ajouter une cause" onSubmit={addCause}><TextInput label="Type" value={cause.causeType} onChange={(value) => setCause({ ...cause, causeType: value })} /><TextInput label="Impact" type="number" value={cause.amountImpact} onChange={(value) => setCause({ ...cause, amountImpact: value })} /><TextInput label="Confiance" type="number" value={cause.confidenceScore} onChange={(value) => setCause({ ...cause, confidenceScore: value })} /><TextArea label="Description" value={cause.description} onChange={(value) => setCause({ ...cause, description: value })} /></FormPanel><FormPanel title="Ajouter un commentaire" onSubmit={addComment}><TextArea label="Commentaire direction/finance" value={comment} onChange={setComment} /></FormPanel></div> : null}
-      <Table rows={data ?? []} onSelect={setSelected} selectedId={selected?.id} columns={[{ key: "month", label: "Mois" }, { key: "category", label: "Catégorie" }, { key: "varianceAmount", label: "Ecart", render: (row) => money(row.varianceAmount) }, { key: "variancePercent", label: "Ecart %", render: (row) => percent(row.variancePercent) }, { key: "severity", label: "Severite", render: (row) => <StatusBadge label={row.severity} tone={tone(row.severity)} /> }, { key: "status", label: "Statut", render: (row) => <StatusBadge label={row.status} tone={tone(row.status)} /> }, { key: "actions", label: "Actions", render: (row) => <ActionButton tone="risk" onClick={() => removeVariance(row.id)}>Supprimer</ActionButton> }]} />
+      <Table rows={data ?? []} onSelect={setSelected} selectedId={selected?.id} columns={[{ key: "month", label: "Mois" }, { key: "category", label: "Catégorie" }, { key: "varianceAmount", label: "Écart", render: (row) => money(row.varianceAmount) }, { key: "variancePercent", label: "Écart %", render: (row) => percent(row.variancePercent) }, { key: "severity", label: "Sévérité", render: (row) => <StatusBadge label={row.severity} tone={tone(row.severity)} /> }, { key: "status", label: "Statut", render: (row) => <StatusBadge label={row.status} tone={tone(row.status)} /> }, { key: "actions", label: "Actions", render: (row) => <ActionButton tone="risk" onClick={() => removeVariance(row.id)}>Supprimer</ActionButton> }]} />
     </>
   );
 }
@@ -410,6 +405,8 @@ export function ActionPlansPage() {
   const plan = plans?.find((item) => item.id === selectedId) ?? plans?.[0];
   const { data: detail, refetch: refetchDetail } = useApi<any>(plan ? `/action-plans/${plan.id}` : "");
   const { data: suggestions, refetch: refetchSuggestions } = useApi<any[]>("/action-suggestions");
+  const { data: users } = useApi<any[]>("/users");
+  const userLabels = useMemo(() => new Map((users ?? []).map((user) => [user.id, user.name || user.email || user.id])), [users]);
   const [draftPlan, setDraftPlan] = useState({ title: "", description: "", fiscalYear: YEAR, status: "active", ownerUserId: "" });
   const [editingPlanId, setEditingPlanId] = useState("");
   const [draftItem, setDraftItem] = useState({ title: "", description: "", actionType: "custom", ownerUserId: "", dueDate: "", status: "todo", priority: "medium", expectedImpactAmount: 0, expectedImpactMonth: "" });
@@ -433,9 +430,9 @@ export function ActionPlansPage() {
     <>
       <PageHeader title="Plans d'action" description="Création de plans, ajout d'actions, conversion des suggestions et suivi d'avancement." />
       <FormPanel title={editingPlanId ? "Modifier le plan" : "Nouveau plan"} onSubmit={savePlan}><TextInput label="Titre" value={draftPlan.title} onChange={(value) => setDraftPlan({ ...draftPlan, title: value })} /><SelectInput label="Statut" value={draftPlan.status} onChange={(value) => setDraftPlan({ ...draftPlan, status: value })} options={["draft", "active", "completed", "cancelled", "archived"]} /><TextInput label="Responsable" value={draftPlan.ownerUserId} onChange={(value) => setDraftPlan({ ...draftPlan, ownerUserId: value })} /><TextArea label="Description" value={draftPlan.description} onChange={(value) => setDraftPlan({ ...draftPlan, description: value })} /></FormPanel>
-      <Panel title="Plans"><Table rows={plans ?? []} onSelect={(row) => { setSelectedId(row.id); setEditingPlanId(row.id); setDraftPlan({ title: row.title, description: row.description ?? "", fiscalYear: row.fiscalYear, status: row.status, ownerUserId: row.ownerUserId ?? "" }); }} selectedId={plan?.id} columns={[{ key: "title", label: "Plan" }, { key: "status", label: "Statut", render: (row) => <StatusBadge label={row.status} tone={tone(row.status)} /> }, { key: "ownerUserId", label: "Responsable" }, { key: "actions", label: "Actions", render: (row) => <ActionButton tone="risk" onClick={() => removePlan(row.id)}>Supprimer</ActionButton> }]} /></Panel>
+      <Panel title="Plans"><Table rows={plans ?? []} onSelect={(row) => { setSelectedId(row.id); setEditingPlanId(row.id); setDraftPlan({ title: row.title, description: row.description ?? "", fiscalYear: row.fiscalYear, status: row.status, ownerUserId: row.ownerUserId ?? "" }); }} selectedId={plan?.id} columns={[{ key: "title", label: "Plan" }, { key: "status", label: "Statut", render: (row) => <StatusBadge label={row.status} tone={tone(row.status)} /> }, { key: "ownerUserId", label: "Responsable", render: (row) => userLabels.get(row.ownerUserId) ?? row.ownerUserId ?? "-" }, { key: "actions", label: "Actions", render: (row) => <ActionButton tone="risk" onClick={() => removePlan(row.id)}>Supprimer</ActionButton> }]} /></Panel>
       <FormPanel title={`${editingItemId ? "Modifier" : "Nouvelle"} action${plan ? ` - ${plan.title}` : ""}`} onSubmit={saveItem}><TextInput label="Titre" value={draftItem.title} onChange={(value) => setDraftItem({ ...draftItem, title: value })} /><TextInput label="Type" value={draftItem.actionType} onChange={(value) => setDraftItem({ ...draftItem, actionType: value })} /><TextInput label="Responsable" value={draftItem.ownerUserId} onChange={(value) => setDraftItem({ ...draftItem, ownerUserId: value })} /><TextInput label="Échéance" type="date" value={draftItem.dueDate} onChange={(value) => setDraftItem({ ...draftItem, dueDate: value })} /><SelectInput label="Statut" value={draftItem.status} onChange={(value) => setDraftItem({ ...draftItem, status: value })} options={["todo", "in_progress", "blocked", "done", "cancelled"]} /><SelectInput label="Priorité" value={draftItem.priority} onChange={(value) => setDraftItem({ ...draftItem, priority: value })} options={["low", "medium", "high", "critical"]} /><TextInput label="Impact attendu" type="number" value={draftItem.expectedImpactAmount} onChange={(value) => setDraftItem({ ...draftItem, expectedImpactAmount: value })} /><TextInput label="Mois impact attendu" value={draftItem.expectedImpactMonth} onChange={(value) => setDraftItem({ ...draftItem, expectedImpactMonth: value })} /><TextArea label="Description" value={draftItem.description} onChange={(value) => setDraftItem({ ...draftItem, description: value })} /></FormPanel>
-      <Panel title="Actions"><Table rows={detail?.items ?? []} onSelect={(row) => { setEditingItemId(row.id); setDraftItem({ title: row.title, description: row.description ?? "", actionType: row.actionType, ownerUserId: row.ownerUserId ?? "", dueDate: dateInputValue(row.dueDate), status: row.status, priority: row.priority, expectedImpactAmount: row.expectedImpactAmount ?? 0, expectedImpactMonth: row.expectedImpactMonth ?? "" }); }} selectedId={editingItemId} columns={[{ key: "title", label: "Action" }, { key: "priority", label: "Priorité", render: (row) => <StatusBadge label={row.priority} tone={tone(row.priority)} /> }, { key: "status", label: "Statut", render: (row) => <StatusBadge label={row.status} tone={tone(row.status)} /> }, { key: "expectedImpactAmount", label: "Impact attendu", render: (row) => money(row.expectedImpactAmount) }, { key: "dueDate", label: "Échéance", render: (row) => dateInputValue(row.dueDate) }, { key: "actions", label: "Actions", render: (row) => <div className="flex gap-2"><ActionButton onClick={() => updateItem(row.id, "complete")}>Terminer</ActionButton><ActionButton onClick={() => updateItem(row.id, "cancel")}>Annuler</ActionButton><ActionButton tone="risk" onClick={() => removeItem(row.id)}>Supprimer</ActionButton></div> }]} /></Panel>
+      <Panel title="Actions"><Table rows={detail?.items ?? []} onSelect={(row) => { setEditingItemId(row.id); setDraftItem({ title: row.title, description: row.description ?? "", actionType: row.actionType, ownerUserId: row.ownerUserId ?? "", dueDate: dateInputValue(row.dueDate), status: row.status, priority: row.priority, expectedImpactAmount: row.expectedImpactAmount ?? 0, expectedImpactMonth: row.expectedImpactMonth ?? "" }); }} selectedId={editingItemId} columns={[{ key: "title", label: "Action" }, { key: "ownerUserId", label: "Responsable", render: (row) => userLabels.get(row.ownerUserId) ?? row.ownerUserId ?? "-" }, { key: "priority", label: "Priorité", render: (row) => <StatusBadge label={row.priority} tone={tone(row.priority)} /> }, { key: "status", label: "Statut", render: (row) => <StatusBadge label={row.status} tone={tone(row.status)} /> }, { key: "expectedImpactAmount", label: "Impact attendu", render: (row) => money(row.expectedImpactAmount) }, { key: "dueDate", label: "Échéance", render: (row) => dateInputValue(row.dueDate) }, { key: "actions", label: "Actions", render: (row) => <div className="flex gap-2"><ActionButton onClick={() => updateItem(row.id, "complete")}>Terminer</ActionButton><ActionButton onClick={() => updateItem(row.id, "cancel")}>Annuler</ActionButton><ActionButton tone="risk" onClick={() => removeItem(row.id)}>Supprimer</ActionButton></div> }]} /></Panel>
       <Panel title="Suggestions"><Table rows={suggestions ?? []} columns={[{ key: "title", label: "Suggestion" }, { key: "priority", label: "Priorité" }, { key: "expectedImpactAmount", label: "Impact", render: (row) => money(row.expectedImpactAmount) }, { key: "confidenceScore", label: "Confiance", render: (row) => percent(row.confidenceScore) }, { key: "actions", label: "Actions", render: (row) => <ActionButton onClick={() => convertSuggestion(row.id)}>Convertir</ActionButton> }]} /></Panel>
     </>
   );
@@ -462,6 +459,7 @@ export function RequiredPipelinePage() {
     <>
       <PageHeader title="Pipeline nécessaire" description="Paramètres commerciaux et pipeline brut nécessaire pour atteindre le budget." actions={<button type="button" className="rounded-md bg-brand px-3 py-2 text-sm font-medium text-white disabled:opacity-60" onClick={recalculate} disabled={recalculating}>{recalculating ? "Recalcul..." : "Recalculer"}</button>} />
       <InfoPanel title="Hypothèses utilisées">Le calcul part de l'objectif de chiffre d'affaires, retranche le réalisé, le signé restant et le pipeline pondéré, puis applique le taux de conversion pour estimer le pipeline brut à générer.</InfoPanel>
+      <InfoPanel title="Données calculées">Cet écran est calculé à partir du budget actif, du réel mensuel, du rolling forecast et du scénario actif. Il ne remplace pas les écrans de saisie.</InfoPanel>
       <FormPanel title="Hypothèses commerciales" onSubmit={(event) => { event.preventDefault(); void recalculate(); }} submitLabel={recalculating ? "Recalcul..." : "Recalculer"}>
         <TextInput label="CA signé restant" type="number" value={params.signedRemainingRevenue} onChange={(value) => setParams({ ...params, signedRemainingRevenue: value })} />
         <TextInput label="Pipeline pondéré" type="number" value={params.weightedPipelineRevenue} onChange={(value) => setParams({ ...params, weightedPipelineRevenue: value })} />
@@ -485,6 +483,7 @@ export function BudgetStaffingPage() {
     <>
       <PageHeader title="Staffing budgétaire" description="Hypothèses de capacité et calcul des jours/ETP nécessaires pour atteindre la trajectoire budgétaire." actions={<button className="rounded-md bg-brand px-3 py-2 text-sm font-medium text-white" onClick={refetch}>Recalculer</button>} />
       <InfoPanel title="Différence avec le capacity planning">Le staffing budgétaire part du budget de chiffre d'affaires et estime les jours facturables et ETP nécessaires. Le capacity planning compare ensuite ces besoins aux compétences et capacités disponibles.</InfoPanel>
+      <InfoPanel title="Données calculées">Cet écran est calculé à partir du budget actif, du réel mensuel, du rolling forecast et du scénario actif. Il ne remplace pas les écrans de saisie.</InfoPanel>
       <FormPanel title="Hypothèses staffing" onSubmit={(event) => { event.preventDefault(); refetch(); }} submitLabel="Recalculer">
         <TextInput label="TJM moyen" type="number" value={params.averageDailyRate} onChange={(value) => setParams({ ...params, averageDailyRate: value })} />
         <TextInput label="Capacité interne avant sept." type="number" value={params.internalCapacityBeforeSeptember} onChange={(value) => setParams({ ...params, internalCapacityBeforeSeptember: value })} />
@@ -520,6 +519,7 @@ export function WhatMustBeTruePage() {
     <>
       <PageHeader title="Conditions de réussite" description="Création, qualification et suivi des conditions nécessaires pour atteindre le budget." />
       <InfoPanel title="Rôle de cet écran">Ces conditions traduisent les prérequis concrets pour atteindre l'objectif : pipeline à signer, marge à maintenir, cash à préserver, staffing à couvrir ou coûts à contenir.</InfoPanel>
+      <InfoPanel title="Données calculées et pilotables">Les conditions peuvent être générées depuis les écarts ou saisies manuellement. Elles doivent rester reliées à des objectifs, des risques et des actions concrètes.</InfoPanel>
       <FormPanel title={selectedId ? "Modifier une condition" : "Nouvelle condition"} onSubmit={save}>
         <SelectInput label="Type" value={draft.conditionType} onChange={(value) => setDraft({ ...draft, conditionType: value })} options={["revenue_condition", "margin_condition", "cash_condition", "sales_condition", "staffing_condition", "payment_condition", "cost_condition", "client_condition"]} />
         <TextInput label="Cible" type="number" value={draft.targetValue} onChange={(value) => setDraft({ ...draft, targetValue: value })} />

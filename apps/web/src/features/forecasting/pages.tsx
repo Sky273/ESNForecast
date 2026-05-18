@@ -3,6 +3,7 @@ import type React from "react";
 import { Bar, BarChart, CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { API_URL, api } from "../../api";
 import { Badge, money, percent } from "../../components/Format";
+import { InfoPanel } from "../../components/InfoPanel";
 import { KpiCard } from "../../components/KpiCard";
 import { CrudPage } from "../../components/CrudPage";
 
@@ -214,10 +215,11 @@ export function ReportsPage({ scenarioId, horizon }: ForecastingContext) {
   return (
     <section className="space-y-5">
       <PageTitle title="Centre de rapports" subtitle="Exports PDF, JSON et CSV regroup\u00e9s par usage de direction, budget, pricing et exploitation." />
+      <InfoPanel title="Sources des rapports">Les rapports utilisent le scénario actif, l'horizon sélectionné et les données réelles ou importées disponibles au moment de l'ouverture.</InfoPanel>
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-        <ReportLink title="Rapport direction" description="Synth\u00e8se ex\u00e9cutive sc\u00e9nario, projection, cash et risques." href={`${API_URL}/reports/executive.pdf?scenarioId=${scenarioId}&horizon=${horizon}`} />
-        <ReportLink title="Rapport direction JSON" description="Donn\u00e9es structur\u00e9es du rapport ex\u00e9cutif." href={`${API_URL}/reports/executive.json?scenarioId=${scenarioId}&horizon=${horizon}`} />
-        <ReportLink title="Rapport CODIR connect\u00e9" description="Synth\u00e8se mensuelle bas\u00e9e sur donn\u00e9es bancaires, \u00e9carts et anomalies." href={`${API_URL}/reports/codir.pdf?month=${month}&scenarioId=${scenarioId}&horizon=${horizon}`} />
+        <ReportLink title="Rapport direction" description={`PDF direction basé sur le scénario actif et ${horizon} mois.`} href={`${API_URL}/reports/executive.pdf?scenarioId=${scenarioId}&horizon=${horizon}`} />
+        <ReportLink title="Rapport direction JSON" description={`Données structurées du rapport exécutif, scénario actif, horizon ${horizon} mois.`} href={`${API_URL}/reports/executive.json?scenarioId=${scenarioId}&horizon=${horizon}`} />
+        <ReportLink title="Rapport CODIR connect\u00e9" description={`PDF mensuel basé sur données bancaires, écarts, anomalies et horizon ${horizon} mois.`} href={`${API_URL}/reports/codir.pdf?month=${month}&scenarioId=${scenarioId}&horizon=${horizon}`} />
         <ReportLink title="Budget / Forecast / Actual" description="Comparaison budg\u00e9taire et \u00e9carts commentables." href={`${API_URL}/reports/budget-forecast-actual.json?fiscalYear=2026`} />
         <ReportLink title="Pricing / marge mission" description="Missions sous-marg\u00e9es, ren\u00e9gociations et impact potentiel." href={`${API_URL}/reports/pricing-margin.pdf`} />
         <ReportLink title="Projection CSV" description="Export tabulaire des projections." href={`${API_URL}/export/projection.csv`} />
@@ -295,7 +297,7 @@ export function SimulationsPage({ scenarioId }: ForecastingContext) {
 
 export function AuditPage() {
   const { rows } = useEndpoint("/audit-logs");
-  return <ProfitabilityTable title="Historique" rows={rows} columns={[["createdAt", "Date"], ["entityType", "Entité"], ["entityId", "ID"], ["action", "Action"]]} />;
+  return <ProfitabilityTable title="Historique" rows={rows} columns={[["createdAt", "Date"], ["entityType", "Entité"], ["entityId", "Objet", (_value: string, row: any) => row.entityLabel ?? row.entityId], ["action", "Action"]]} />;
 }
 
 export function AdminPage() {

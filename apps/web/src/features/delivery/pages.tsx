@@ -4,6 +4,7 @@ import { Bar, BarChart, CartesianGrid, Legend, Line, LineChart, ResponsiveContai
 import { API_URL, api } from "../../api";
 import { CrudPage } from "../../components/CrudPage";
 import { Badge, money, percent } from "../../components/Format";
+import { InfoPanel } from "../../components/InfoPanel";
 import { KpiCard } from "../../components/KpiCard";
 
 type DeliveryContext = { scenarioId: string; horizon: number };
@@ -139,20 +140,78 @@ export function ActualsVariancesPage({ scenarioId, horizon }: DeliveryContext) {
 }
 
 export function MonthlyClosePage() {
-  return <CrudPage title="Cloture mensuelle" path="/monthly-closes" initial={{ companyId: "", month: 6, year: 2026, status: "open", notes: "" }} fields={[
-    { name: "companyId", label: "Société", type: "select", optionsPath: "/companies", optionLabelKey: "name", optionValueKey: "id", placeholder: "Sélectionner une société" }, { name: "month", label: "Mois", type: "number" }, { name: "year", label: "Année", type: "number" }, { name: "status", label: "Statut", type: "select", options: ["open", "closed", "reopened", "validated"].map((value) => ({ label: value, value })) }, { name: "notes", label: "Notes", type: "textarea" }
-  ]} columns={[{ key: "year", label: "Année" }, { key: "month", label: "Mois" }, { key: "status", label: "Statut" }, { key: "closedAt", label: "Cloture le" }, { key: "reopenedAt", label: "Rouverte le" }]} />;
+  const { rows, reload } = useRows("/monthly-closes");
+  const { rows: companies } = useRows("/companies");
+  const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
+  const [companyId, setCompanyId] = useState("");
+  const [notes, setNotes] = useState("");
+  const [checks, setChecks] = useState({ actuals: false, invoices: false, cash: false, anomalies: false });
+  const close = rows.find((row: any) => `${row.year}-${String(row.month).padStart(2, "0")}` === selectedMonth);
+  const currentCompanyId = companyId || close?.companyId || companies[0]?.id || "";
+  const ready = Object.values(checks).every(Boolean);
+
+  useEffect(() => {
+    if (!close) return;
+    setCompanyId(close.companyId ?? "");
+    setNotes(close.notes ?? "");
+  }, [close?.id]);
+
+  const saveDraft = async (event: React.FormEvent) => {
+    event.preventDefault();
+    const [year, month] = selectedMonth.split("-").map(Number);
+    const payload = { companyId: currentCompanyId, year, month, status: close?.status ?? "open", notes };
+    await api(close ? `/monthly-closes/${close.id}` : "/monthly-closes", { method: close ? "PUT" : "POST", body: JSON.stringify(payload) });
+    await reload();
+  };
+  const runAction = async (action: "close" | "reopen") => {
+    await api(`/monthly-closes/${selectedMonth}/${action}`, { method: "POST", body: JSON.stringify({ companyId: currentCompanyId, notes }) });
+    await reload();
+  };
+
+  return (
+    <section className="space-y-5">
+      <PageTitle title="Clôture mensuelle" subtitle="Workflow de validation du réel, des factures, des paiements et des écarts avant gel du mois." />
+      <InfoPanel title="À quoi sert cet écran ?">La clôture mensuelle marque un mois comme contrôlé. Elle sert de repère pour les rapports de direction, le reforecast et les analyses d'écarts.</InfoPanel>
+      <form className="rounded-lg border border-line bg-white p-4" onSubmit={saveDraft}>
+        <div className="grid gap-3 md:grid-cols-3">
+          <label className="text-sm">Mois<input className="mt-1 w-full rounded-md border border-line px-3 py-2" type="month" value={selectedMonth} onChange={(event) => setSelectedMonth(event.target.value)} /></label>
+          <label className="text-sm">Société<select className="mt-1 w-full rounded-md border border-line px-3 py-2" value={currentCompanyId} onChange={(event) => setCompanyId(event.target.value)}>{companies.map((company: any) => <option key={company.id} value={company.id}>{company.name}</option>)}</select></label>
+          <label className="text-sm">Statut<input className="mt-1 w-full rounded-md border border-line bg-surface px-3 py-2" readOnly value={close?.status ?? "open"} /></label>
+        </div>
+        <div className="mt-4 grid gap-2 md:grid-cols-2">
+          {[
+            ["actuals", "Réel mensuel saisi et contrôlé"],
+            ["invoices", "Factures et paiements vérifiés"],
+            ["cash", "Trésorerie bancaire rapprochée"],
+            ["anomalies", "Anomalies documentées ou traitées"]
+          ].map(([key, label]) => (
+            <label key={key} className="flex items-center gap-2 rounded-md border border-line px-3 py-2 text-sm">
+              <input type="checkbox" checked={(checks as any)[key]} onChange={(event) => setChecks({ ...checks, [key]: event.target.checked })} />
+              <span>{label}</span>
+            </label>
+          ))}
+        </div>
+        <label className="mt-4 block text-sm">Notes de clôture<textarea className="mt-1 min-h-24 w-full rounded-md border border-line px-3 py-2" value={notes} onChange={(event) => setNotes(event.target.value)} /></label>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <button className="rounded-md border border-line px-3 py-2 text-sm" type="submit">Enregistrer la préparation</button>
+          <button className="rounded-md bg-brand px-3 py-2 text-sm font-medium text-white disabled:opacity-50" type="button" disabled={!ready || !currentCompanyId} onClick={() => void runAction("close")}>Clôturer le mois</button>
+          <button className="rounded-md border border-line px-3 py-2 text-sm" type="button" onClick={() => void runAction("reopen")}>Rouvrir</button>
+        </div>
+      </form>
+      <SimpleTable rows={rows} columns={[["year", "Année"], ["month", "Mois"], ["status", "Statut"], ["closedAt", "Clôturé le"], ["reopenedAt", "Rouvert le"], ["notes", "Notes"]]} />
+    </section>
+  );
 }
 
 export function RealInvoicesPage() {
   return <CrudPage title="Factures réelles" path="/invoices" initial={{ companyId: "", clientId: "", missionId: "", invoiceNumber: "", invoiceDate: "2026-06-30", dueDate: "2026-07-30", amountHT: 10000, vatRate: 0.2, amountTTC: 12000, status: "issued", paidAmount: 0, source: "manual" }} fields={[
-    { name: "companyId", label: "Société", type: "select", optionsPath: "/companies", optionLabelKey: "name", optionValueKey: "id", placeholder: "Sélectionner une société" }, { name: "clientId", label: "Client", type: "select", optionsPath: "/clients", optionLabelKey: "name", optionValueKey: "id", placeholder: "Sélectionner un client" }, { name: "missionId", label: "Mission", type: "select", optionsPath: "/missions", optionLabelKey: "title", optionValueKey: "id", placeholder: "Sélectionner une mission" }, { name: "invoiceNumber", label: "Numero" }, { name: "invoiceDate", label: "Date facture", type: "date" }, { name: "dueDate", label: "Échéance", type: "date" }, { name: "amountHT", label: "HT", type: "number" }, { name: "amountTTC", label: "TTC", type: "number" }, { name: "status", label: "Statut", type: "select", options: ["draft", "issued", "partially_paid", "paid", "late", "cancelled"].map((value) => ({ label: value, value })) }, { name: "paidAmount", label: "Paye", type: "number" }, { name: "source", label: "Source", type: "select", options: ["manual", "csv", "accounting", "bank_reconciliation"].map((value) => ({ label: value, value })) }
-  ]} columns={[{ key: "invoiceNumber", label: "Numero" }, { key: "invoiceDate", label: "Date" }, { key: "clientId", label: "Client" }, { key: "missionId", label: "Mission" }, { key: "amountTTC", label: "TTC", render: (row: any) => money(row.amountTTC) }, { key: "paidAmount", label: "Paye", render: (row: any) => money(row.paidAmount) }, { key: "status", label: "Statut" }]} />;
+    { name: "companyId", label: "Société", type: "select", optionsPath: "/companies", optionLabelKey: "name", optionValueKey: "id", placeholder: "Sélectionner une société" }, { name: "clientId", label: "Client", type: "select", optionsPath: "/clients", optionLabelKey: "name", optionValueKey: "id", placeholder: "Sélectionner un client" }, { name: "missionId", label: "Mission", type: "select", optionsPath: "/missions", optionLabelKey: "title", optionValueKey: "id", placeholder: "Sélectionner une mission" }, { name: "invoiceNumber", label: "Numéro" }, { name: "invoiceDate", label: "Date facture", type: "date" }, { name: "dueDate", label: "Échéance", type: "date" }, { name: "amountHT", label: "HT", type: "number" }, { name: "amountTTC", label: "TTC", type: "number" }, { name: "status", label: "Statut", type: "select", options: ["draft", "issued", "partially_paid", "paid", "late", "cancelled"].map((value) => ({ label: value, value })) }, { name: "paidAmount", label: "Payé", type: "number" }, { name: "source", label: "Source", type: "select", options: ["manual", "csv", "accounting", "bank_reconciliation"].map((value) => ({ label: value, value })) }
+  ]} columns={[{ key: "invoiceNumber", label: "Numéro" }, { key: "invoiceDate", label: "Date" }, { key: "clientId", label: "Client" }, { key: "missionId", label: "Mission" }, { key: "amountTTC", label: "TTC", render: (row: any) => money(row.amountTTC) }, { key: "paidAmount", label: "Payé", render: (row: any) => money(row.paidAmount) }, { key: "status", label: "Statut" }]} />;
 }
 
 export function PaymentsPage() {
   return <CrudPage title="Paiements" path="/payments" initial={{ invoiceId: "", clientId: "", paymentDate: "2026-07-30", amount: 10000, paymentMethod: "wire", status: "received" }} fields={[
-    { name: "invoiceId", label: "Facture", type: "select", optionsPath: "/invoices", optionLabelKey: "invoiceNumber", optionValueKey: "id", placeholder: "Sélectionner une facture" }, { name: "clientId", label: "Client", type: "select", optionsPath: "/clients", optionLabelKey: "name", optionValueKey: "id", placeholder: "Sélectionner un client" }, { name: "paymentDate", label: "Date paiement", type: "date" }, { name: "amount", label: "Montant", type: "number" }, { name: "paymentMethod", label: "Methode", type: "select", options: ["wire", "card", "check", "cash", "direct_debit", "other"].map((value) => ({ label: value, value })) }, { name: "status", label: "Statut", type: "select", options: ["pending", "received", "reconciled", "cancelled"].map((value) => ({ label: value, value })) }
+    { name: "invoiceId", label: "Facture", type: "select", optionsPath: "/invoices", optionLabelKey: "invoiceNumber", optionValueKey: "id", placeholder: "Sélectionner une facture" }, { name: "clientId", label: "Client", type: "select", optionsPath: "/clients", optionLabelKey: "name", optionValueKey: "id", placeholder: "Sélectionner un client" }, { name: "paymentDate", label: "Date paiement", type: "date" }, { name: "amount", label: "Montant", type: "number" }, { name: "paymentMethod", label: "Méthode", type: "select", options: ["wire", "card", "check", "cash", "direct_debit", "other"].map((value) => ({ label: value, value })) }, { name: "status", label: "Statut", type: "select", options: ["pending", "received", "reconciled", "cancelled"].map((value) => ({ label: value, value })) }
   ]} columns={[{ key: "paymentDate", label: "Date" }, { key: "invoiceId", label: "Facture" }, { key: "clientId", label: "Client" }, { key: "amount", label: "Montant", render: (row: any) => money(row.amount) }, { key: "status", label: "Statut" }]} />;
 }
 
@@ -462,8 +521,9 @@ export function AiAnalysisPage({ scenarioId, horizon }: DeliveryContext) {
   return (
     <section className="space-y-5">
       <PageTitle title="Analyse IA encadrée" subtitle="Synthèse basée uniquement sur les données calculées par ESN Forecast." />
+      <InfoPanel title="Périmètre de l'IA">L'assistant ne calcule pas seul les chiffres et ne modifie aucune donnée. Il résume les faits fournis par les services internes et liste les sources utilisées.</InfoPanel>
       <div className="rounded-lg border border-line bg-white p-4">
-        <h2 className="text-base font-semibold">Resume executif</h2>
+        <h2 className="text-base font-semibold">Résumé exécutif</h2>
         <p className="mt-2 text-sm text-slate-700">{data?.executiveSummary ?? "Analyse non disponible."}</p>
       </div>
       <SimpleTable rows={(data?.sourceFacts ?? []).map((fact: string, index: number) => ({ id: index, fact }))} columns={[["fact", "Chiffre source"]]} />
@@ -477,12 +537,12 @@ export function DeliveryCrudPage({ kind, scenarioId = "" }: { kind: "plannedHire
     { name: "scenarioId", label: "Scénario", type: "select", optionsPath: "/scenarios", optionLabelKey: "name", optionValueKey: "id", placeholder: "Sélectionner un scenario" }, { name: "title", label: "Titre" }, { name: "targetRole", label: "Rôle" }, { name: "expectedStartDate", label: "Début", type: "date" }, { name: "expectedFullCost", label: "Coût complet", type: "number" }, { name: "expectedTJM", label: "TJM attendu", type: "number" }, { name: "expectedUtilizationRate", label: "Occupation", type: "number" }, { name: "status", label: "Statut", type: "select", options: ["planned", "approved", "cancelled", "hired", "delayed"].map((value) => ({ label: value, value })) }
   ]} columns={[{ key: "title", label: "Recrutement" }, { key: "expectedStartDate", label: "Début" }, { key: "expectedFullCost", label: "Coût", render: (row: any) => money(row.expectedFullCost) }, { key: "expectedTJM", label: "TJM", render: (row: any) => money(row.expectedTJM) }, { key: "status", label: "Statut" }]} />;
   if (kind === "rules") return <CrudPage title="Règles métier" path="/business-rules" initial={{ name: "", triggerType: "monthly_projection", condition: { metric: "closingCash", operator: "lt", value: 50000 }, action: { type: "alert", message: "Alerte" }, severity: "warning", isActive: true }} fields={[
-    { name: "name", label: "Nom" }, { name: "triggerType", label: "Declencheur", type: "select", options: ["monthly_projection", "cash_threshold", "margin_threshold", "connector_error", "manual"].map((value) => ({ label: value, value })) }, { name: "severity", label: "Sévérité", type: "select", options: ["info", "warning", "critical"].map((value) => ({ label: value, value })) }, { name: "isActive", label: "Active", type: "checkbox" }
-  ]} columns={[{ key: "name", label: "Regle" }, { key: "triggerType", label: "Declencheur" }, { key: "severity", label: "Sévérité" }, { key: "isActive", label: "Active", render: (row: any) => row.isActive ? "Oui" : "Non" }]} />;
+    { name: "name", label: "Nom" }, { name: "triggerType", label: "Déclencheur", type: "select", options: ["monthly_projection", "cash_threshold", "margin_threshold", "connector_error", "manual"].map((value) => ({ label: value, value })) }, { name: "severity", label: "Sévérité", type: "select", options: ["info", "warning", "critical"].map((value) => ({ label: value, value })) }, { name: "isActive", label: "Active", type: "checkbox" }
+  ]} columns={[{ key: "name", label: "Règle" }, { key: "triggerType", label: "Déclencheur" }, { key: "severity", label: "Sévérité" }, { key: "isActive", label: "Active", render: (row: any) => row.isActive ? "Oui" : "Non" }]} />;
   if (kind === "notifications") return <CrudPage title="Notifications" path="/notifications" initial={{ type: "manual", severity: "info", title: "", message: "", status: "unread" }} fields={[{ name: "type", label: "Type", type: "select", options: ["manual", "alert", "workflow", "system"].map((value) => ({ label: value, value })) }, { name: "severity", label: "Sévérité", type: "select", options: ["info", "warning", "critical"].map((value) => ({ label: value, value })) }, { name: "title", label: "Titre" }, { name: "message", label: "Message", type: "textarea" }, { name: "status", label: "Statut", type: "select", options: ["unread", "read", "archived"].map((value) => ({ label: value, value })) }]} columns={[{ key: "createdAt", label: "Date" }, { key: "severity", label: "Sévérité" }, { key: "title", label: "Titre" }, { key: "status", label: "Statut" }]} />;
   if (kind === "workflows") return <CrudPage title="Workflows d'approbation" path="/workflows" initial={{ entityType: "invoice", entityId: "", requestedBy: "", status: "pending", comment: "" }} fields={[
     { name: "entityType", label: "Entit\u00e9", type: "select", options: ["invoice", "payment", "budget", "pricing", "other"].map((value) => ({ label: value, value })) },
-    { name: "entityId", label: "Objet li\u00e9" },
+    { name: "entityId", label: "Objet lié", type: "select", optionDependsOn: "entityType", optionSourcesByValue: { invoice: { path: "/invoices", optionLabelKey: "invoiceNumber" }, payment: { path: "/payments", optionLabelFields: ["paymentDate", "amount"] }, budget: { path: "/budgets", optionLabelKey: "name" }, pricing: { path: "/pricing/simulations", optionLabelKey: "name" } }, placeholder: "Sélectionner l'objet concerné" },
     { name: "requestedBy", label: "Demand\u00e9 par" },
     { name: "status", label: "Statut", type: "select", options: ["pending", "approved", "rejected", "cancelled"].map((value) => ({ label: value, value })) },
     { name: "comment", label: "Commentaire", type: "textarea" }
@@ -496,7 +556,7 @@ export function DeliveryCrudPage({ kind, scenarioId = "" }: { kind: "plannedHire
   if (kind === "apiKeys") return <ApiKeysPage />;
   if (kind === "crmOpportunities") return <CrmOpportunitiesPage />;
   if (kind === "hrAbsences") return <HrAbsencesPage />;
-  if (kind === "documents") return <CrudPage title="Documents" path="/documents" initial={{ companyId: "", entityType: "mission", entityId: "", fileName: "", mimeType: "application/pdf", size: 0, storagePath: "", category: "contract" }} fields={[{ name: "companyId", label: "Société", type: "select", optionsPath: "/companies", optionLabelKey: "name", optionValueKey: "id", placeholder: "Sélectionner une société" }, { name: "entityType", label: "Entité", type: "select", options: [{ label: "Mission", value: "mission" }, { label: "Facture", value: "invoice" }, { label: "Client", value: "client" }, { label: "Paiement", value: "payment" }, { label: "Autre", value: "other" }] }, { name: "entityId", label: "Entité liée", type: "select", optionDependsOn: "entityType", optionSourcesByValue: { mission: { path: "/missions", optionLabelKey: "title" }, invoice: { path: "/invoices", optionLabelKey: "invoiceNumber" }, client: { path: "/clients", optionLabelKey: "name" }, payment: { path: "/payments", optionLabelFields: ["paymentDate", "amount"] } }, placeholder: "Sélectionner une entite" }, { name: "fileName", label: "Fichier" }, { name: "mimeType", label: "MIME" }, { name: "size", label: "Taille", type: "number" }, { name: "storagePath", label: "Chemin" }, { name: "category", label: "Catégorie", type: "select", options: ["contract", "invoice", "report", "support", "other"].map((value) => ({ label: value, value })) }]} columns={[{ key: "fileName", label: "Fichier" }, { key: "entityType", label: "Entité" }, { key: "entityId", label: "Entité liée" }, { key: "category", label: "Catégorie" }, { key: "uploadedAt", label: "Ajoute le" }]} />;
+  if (kind === "documents") return <CrudPage title="Documents" path="/documents" initial={{ companyId: "", entityType: "mission", entityId: "", fileName: "", mimeType: "application/pdf", size: 0, storagePath: "", category: "contract" }} fields={[{ name: "companyId", label: "Société", type: "select", optionsPath: "/companies", optionLabelKey: "name", optionValueKey: "id", placeholder: "Sélectionner une société" }, { name: "entityType", label: "Entité", type: "select", options: [{ label: "Mission", value: "mission" }, { label: "Facture", value: "invoice" }, { label: "Client", value: "client" }, { label: "Paiement", value: "payment" }, { label: "Autre", value: "other" }] }, { name: "entityId", label: "Entité liée", type: "select", optionDependsOn: "entityType", optionSourcesByValue: { mission: { path: "/missions", optionLabelKey: "title" }, invoice: { path: "/invoices", optionLabelKey: "invoiceNumber" }, client: { path: "/clients", optionLabelKey: "name" }, payment: { path: "/payments", optionLabelFields: ["paymentDate", "amount"] } }, placeholder: "Sélectionner une entité" }, { name: "fileName", label: "Fichier" }, { name: "mimeType", label: "MIME" }, { name: "size", label: "Taille", type: "number" }, { name: "storagePath", label: "Chemin" }, { name: "category", label: "Catégorie", type: "select", options: ["contract", "invoice", "report", "support", "other"].map((value) => ({ label: value, value })) }]} columns={[{ key: "fileName", label: "Fichier" }, { key: "entityType", label: "Entité" }, { key: "entityId", label: "Entité liée" }, { key: "category", label: "Catégorie" }, { key: "uploadedAt", label: "Ajouté le" }]} />;
   if (kind === "offers") return <CrudPage title="Offres et devis" path="/offers" initial={{ clientId: "", title: "", status: "draft", pricingMode: "daily_rate", totalAmount: 100000, expectedMargin: 30000, probability: 0.5 }} fields={[{ name: "clientId", label: "Client", type: "select", optionsPath: "/clients", optionLabelKey: "name", optionValueKey: "id", placeholder: "Sélectionner un client" }, { name: "title", label: "Titre" }, { name: "status", label: "Statut", type: "select", options: ["draft", "sent", "won", "lost", "cancelled"].map((value) => ({ label: value, value })) }, { name: "pricingMode", label: "Prix", type: "select", options: ["daily_rate", "fixed_price", "mixed"].map((value) => ({ label: value, value })) }, { name: "totalAmount", label: "Montant", type: "number" }, { name: "expectedMargin", label: "Marge", type: "number" }, { name: "probability", label: "Probabilité", type: "number" }]} columns={[{ key: "title", label: "Offre" }, { key: "status", label: "Statut" }, { key: "totalAmount", label: "Montant", render: (row: any) => money(row.totalAmount) }, { key: "expectedMargin", label: "Marge", render: (row: any) => money(row.expectedMargin) }]} />;
   return <ConnectorsPage />;
 }

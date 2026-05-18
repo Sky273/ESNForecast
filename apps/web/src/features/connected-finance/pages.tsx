@@ -4,6 +4,7 @@ import { Bar, BarChart, CartesianGrid, Legend, Line, LineChart, ResponsiveContai
 import { API_URL, api } from "../../api";
 import { CrudPage } from "../../components/CrudPage";
 import { Badge, money, percent } from "../../components/Format";
+import { InfoPanel } from "../../components/InfoPanel";
 import { KpiCard } from "../../components/KpiCard";
 
 type ConnectedFinanceContext = { scenarioId: string; horizon: number };
@@ -73,6 +74,7 @@ export function BankAccountsPage() {
         <PageTitle title="Comptes bancaires" subtitle="Comptes synchronisés depuis les connecteurs bancaires. Ces données sont gérées par le provider et ne se modifient pas manuellement." />
         <button className="rounded-md border border-line bg-white px-3 py-2 text-sm" onClick={() => void reload()}>Rafraîchir</button>
       </div>
+      <InfoPanel title="Données provider">Les comptes sont créés et mis à jour par les synchronisations bancaires. Pour corriger un compte, il faut relancer la synchronisation ou reconnecter le provider, pas modifier la ligne à la main.</InfoPanel>
       <div className="grid gap-3 md:grid-cols-3">
         <KpiCard label="Comptes actifs" value={String(activeAccounts.length)} />
         <KpiCard label="Solde courant" value={money(totalCash)} />
@@ -522,6 +524,7 @@ export function CodirReportPage({ scenarioId, horizon }: ConnectedFinanceContext
           <a className="rounded-md bg-brand px-3 py-2 text-sm font-medium text-white" href={`${API_URL}/reports/codir.pdf?${query}`} target="_blank" rel="noreferrer">Exporter PDF</a>
         </div>
       </div>
+      <InfoPanel title="Sources du rapport">Le rapport CODIR utilise le scénario actif, l'horizon sélectionné, les données bancaires synchronisées et les écarts calculés sur le mois courant.</InfoPanel>
       <div className="grid gap-3 md:grid-cols-3">
         <KpiCard label="Cash" value={money(data?.payload?.bankSummary?.currentCash ?? 0)} />
         <KpiCard label="Anomalies" value={String(data?.payload?.anomalies?.length ?? 0)} />

@@ -11,13 +11,15 @@ export function CrudPage<T extends Record<string, any>>({
   path,
   fields,
   columns,
-  initial
+  initial,
+  description
 }: {
   title: string;
   path: string;
   fields: Field[];
   columns: Array<{ key: string; label: string; render?: (row: T) => React.ReactNode }>;
   initial: Record<string, any>;
+  description?: string;
 }) {
   const { t } = useI18n();
   const { data, loading, error, reload } = useApiList<T>(path);
@@ -60,7 +62,7 @@ export function CrudPage<T extends Record<string, any>>({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold tracking-normal">{title}</h1>
-          <p className="text-sm text-muted">{data.length} {t("common.records")}</p>
+          <p className="text-sm text-muted">{description ?? `${data.length} ${t("common.records")}`}</p>
         </div>
         <a className="inline-flex items-center gap-2 rounded-md border border-line bg-white px-3 py-2 text-sm" href={`${API_URL}/export/resources.csv`}>
           <Download size={16} /> CSV
