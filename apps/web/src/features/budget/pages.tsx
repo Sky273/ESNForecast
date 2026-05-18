@@ -102,20 +102,20 @@ export function TrajectoryDashboardPage() {
   return (
     <>
       <PageHeader title="Trajectoire" description="Budget, réel, forecast, atterrissage probable, Écarts et actions correctives." />
-      <DataOriginLegend items={[{ kind: "manual", label: "Budget" }, { kind: "provider", label: "R?el" }, { kind: "calculated", label: "Forecast" }, { kind: "reforecast", label: "Atterrissage" }]} />
+      <DataOriginLegend items={[{ kind: "manual", label: "Budget" }, { kind: "provider", label: "Réel" }, { kind: "calculated", label: "Forecast" }, { kind: "reforecast", label: "Atterrissage" }]} />
       <InfoPanel title="Données calculées">Cet écran consolide budget, réel, forecast, atterrissage probable, pipeline, staffing et plans d'action. Il sert à piloter la trajectoire, pas à saisir les données sources.</InfoPanel>
       <div className="mb-5 grid gap-3 md:grid-cols-6">
         <KpiCard label="Budget CA" value={money(landing?.budgetRevenue)} origin={{ kind: "manual", label: "Budget" }} />
-        <KpiCard label="R?alis? ? date" value={money(landing?.actualRevenueToDate)} origin={{ kind: "provider", label: "R?el" }} />
+        <KpiCard label="Réalisé à date" value={money(landing?.actualRevenueToDate)} origin={{ kind: "provider", label: "Réel" }} />
         <KpiCard label="Forecast restant" value={money(landing?.forecastRevenueRemaining)} origin={{ kind: "calculated", label: "Forecast" }} />
         <KpiCard label="Atterrissage CA" value={money(landing?.projectedAnnualRevenue)} tone={(landing?.revenueGap ?? 0) < 0 ? "risk" : "good"} origin={{ kind: "reforecast", label: "Atterrissage" }} />
-        <KpiCard label="?cart probable" value={money(landing?.revenueGap)} tone={(landing?.revenueGap ?? 0) < 0 ? "risk" : "good"} origin={{ kind: "calculated", label: "?cart" }} />
-        <KpiCard label="Probabilit?" value={percent(landing?.achievementProbability)} origin={{ kind: "calculated", label: "Probabilit?" }} />
+        <KpiCard label="Écart probable" value={money(landing?.revenueGap)} tone={(landing?.revenueGap ?? 0) < 0 ? "risk" : "good"} origin={{ kind: "calculated", label: "Écart" }} />
+        <KpiCard label="Probabilité" value={percent(landing?.achievementProbability)} origin={{ kind: "calculated", label: "Probabilité" }} />
       </div>
       <div className="mb-5 grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
         <div className="rounded-lg border border-line bg-white p-4">
           <h2 className="mb-4 font-semibold">Budget vs atterrissage</h2>
-          <div className="h-72"><ResponsiveContainer><BarChart data={chart}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="label" /><YAxis /><Tooltip formatter={(value, name) => [money(Number(value)), `${String(name)} - Calcul?`]} /><Legend /><Bar dataKey="revenue" name="CA" fill="#0f766e" /><Bar dataKey="margin" name="Marge" fill="#2563eb" /><Bar dataKey="cash" name="Cash" fill="#f59e0b" /></BarChart></ResponsiveContainer></div>
+          <div className="h-72"><ResponsiveContainer><BarChart data={chart}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="label" /><YAxis /><Tooltip formatter={(value, name) => [money(Number(value)), `${String(name)} - Calculé`]} /><Legend /><Bar dataKey="revenue" name="CA" fill="#0f766e" /><Bar dataKey="margin" name="Marge" fill="#2563eb" /><Bar dataKey="cash" name="Cash" fill="#f59e0b" /></BarChart></ResponsiveContainer></div>
         </div>
         <div className="rounded-lg border border-line bg-white p-4">
           <h2 className="mb-3 font-semibold">Pipeline nécessaire</h2>
@@ -213,7 +213,7 @@ export function BudgetDetailPage() {
       <div className="mb-5 rounded-lg border border-line bg-white p-4">
         <SelectInput label="Budget" value={activeBudgetId} onChange={setBudgetId} options={(budgets ?? []).map((budget) => ({ label: `${budget.name} v${budget.versionNumber}`, value: budget.id }))} />
         <h2 className="mb-4 mt-4 font-semibold">{data?.name ?? "Budget"}</h2>
-        <div className="h-64"><ResponsiveContainer><LineChart data={monthlyRevenue}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="month" /><YAxis /><Tooltip formatter={(value, name) => [money(Number(value)), `${String(name)} - Calcul?`]} /><Line type="monotone" dataKey="revenue" stroke="#0f766e" strokeWidth={2} /></LineChart></ResponsiveContainer></div>
+        <div className="h-64"><ResponsiveContainer><LineChart data={monthlyRevenue}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="month" /><YAxis /><Tooltip formatter={(value, name) => [money(Number(value)), `${String(name)} - Calculé`]} /><Line type="monotone" dataKey="revenue" stroke="#0f766e" strokeWidth={2} /></LineChart></ResponsiveContainer></div>
       </div>
       <FormPanel title={editingLineId ? "Modifier une ligne" : "Ajouter une ligne"} onSubmit={saveLine}>
         <TextInput label="Mois" type="number" value={line.month} onChange={(value) => setLine({ ...line, month: value })} />
@@ -351,10 +351,10 @@ export function AnnualLandingPage() {
   const { data } = useApi<any>(`/annual-landing?fiscalYear=${YEAR}`);
   return (
     <>
-      <PageHeader title="Atterrissage annuel" description="Estimation de fin d'ann?e ? partir du r?el ? date et du forecast restant." />
-      <DataOriginLegend items={[{ kind: "manual", label: "Budget" }, { kind: "provider", label: "R?el" }, { kind: "reforecast", label: "Projection" }]} />
-      <InfoPanel title="Donn?es calcul?es">Cet ?cran est calcul? ? partir du budget actif, du r?el mensuel, du rolling forecast et du sc?nario actif. Il ne remplace pas les ?crans de saisie.</InfoPanel>
-      <InfoPanel title="M?thode de calcul">L'atterrissage combine le budget annuel, le r?alis? ? date et le forecast restant. Les ?carts affich?s sont des ?carts probables par rapport au budget de r?f?rence.</InfoPanel>
+      <PageHeader title="Atterrissage annuel" description="Estimation de fin d'année à partir du réel à date et du forecast restant." />
+      <DataOriginLegend items={[{ kind: "manual", label: "Budget" }, { kind: "provider", label: "Réel" }, { kind: "reforecast", label: "Projection" }]} />
+      <InfoPanel title="Données calculées">Cet écran est calculé à partir du budget actif, du réel mensuel, du rolling forecast et du scénario actif. Il ne remplace pas les écrans de saisie.</InfoPanel>
+      <InfoPanel title="Méthode de calcul">L'atterrissage combine le budget annuel, le réalisé à date et le forecast restant. Les écarts affichés sont des écarts probables par rapport au budget de référence.</InfoPanel>
       <div className="mb-5 grid gap-3 md:grid-cols-4">
         <KpiCard label="CA budget" value={money(data?.budgetRevenue)} origin={{ kind: "manual", label: "Budget" }} />
         <KpiCard label="CA probable" value={money(data?.projectedAnnualRevenue)} tone={(data?.revenueGap ?? 0) < 0 ? "risk" : "good"} origin={{ kind: "reforecast", label: "Atterrissage" }} />
@@ -373,9 +373,10 @@ export function BudgetForecastActualPage() {
   return (
     <>
       <PageHeader title="Budget / Forecast / Actual" description="Comparaison mensuelle budget, rolling forecast, reforecast et réel." actions={<button className="rounded-md bg-brand px-3 py-2 text-sm font-medium text-white" onClick={recalculate}>Recalculer</button>} />
+      <DataOriginLegend items={[{ kind: "manual", label: "Budget" }, { kind: "provider", label: "Réel" }, { kind: "reforecast", label: "Forecast" }, { kind: "calculated", label: "Écart" }]} />
       <InfoPanel title="Source des chiffres">Le tableau consolide les lignes budgétaires, le réel mensuel, les rolling forecasts et les recalculs de reforecast. Le bouton Recalculer régénère les écarts à partir des données applicatives disponibles.</InfoPanel>
       <InfoPanel title="Données calculées">Cet écran est calculé à partir du budget actif, du réel mensuel, du rolling forecast et du scénario actif. Il ne remplace pas les écrans de saisie.</InfoPanel>
-      <Table rows={calculated ?? report?.variances ?? []} columns={[{ key: "month", label: "Mois" }, { key: "category", label: "Catégorie" }, { key: "source", label: "Source", render: (row) => <DataOriginBadge kind="calculated" details={[`Budget ${money(row.budgetValue)}`, `Réel ${money(row.actualValue)}`]} /> }, { key: "budgetValue", label: "Budget", render: (row) => money(row.budgetValue) }, { key: "actualValue", label: "Réel", render: (row) => money(row.actualValue) }, { key: "varianceAmount", label: "Écart", render: (row) => money(row.varianceAmount ?? row.varianceBudgetActual) }, { key: "severity", label: "Statut", render: (row) => <StatusBadge label={row.severity ?? row.status} tone={tone(row.severity ?? row.status)} /> }]} />
+      <Table rows={calculated ?? report?.variances ?? []} columns={[{ key: "month", label: "Mois" }, { key: "category", label: "Catégorie" }, { key: "source", label: "Source", render: (row) => <DataOriginBadge kind="calculated" label="Écart" details={[`Budget ${money(row.budgetValue)}`, `Réel ${money(row.actualValue)}`, row.forecastValue !== undefined ? `Forecast ${money(row.forecastValue)}` : undefined]} method="Écart calculé par comparaison du budget, du réel mensuel et du forecast disponible." /> }, { key: "budgetValue", label: "Budget", render: (row) => money(row.budgetValue) }, { key: "actualValue", label: "Réel", render: (row) => money(row.actualValue) }, { key: "varianceAmount", label: "Écart", render: (row) => money(row.varianceAmount ?? row.varianceBudgetActual) }, { key: "severity", label: "Statut", render: (row) => <StatusBadge label={row.severity ?? row.status} tone={tone(row.severity ?? row.status)} /> }]} />
     </>
   );
 }
@@ -480,10 +481,10 @@ export function RequiredPipelinePage() {
       {loading || recalculating ? <div className="mb-4 text-sm text-muted">Calcul du pipeline nécessaire...</div> : null}
       <div className="mb-5 grid gap-3 md:grid-cols-5">
         <KpiCard label="Objectif CA" value={money(data?.targetRevenue)} origin={{ kind: "manual", label: "Objectif" }} />
-        <KpiCard label="CA r?alis?" value={money(data?.actualRevenue)} origin={{ kind: "provider", label: "R?el" }} />
-        <KpiCard label="Gap CA" value={money(data?.revenueGap)} tone={(data?.revenueGap ?? 0) > 0 ? "risk" : "good"} origin={{ kind: "calculated", label: "?cart" }} />
+        <KpiCard label="CA réalisé" value={money(data?.actualRevenue)} origin={{ kind: "provider", label: "Réel" }} />
+        <KpiCard label="Gap CA" value={money(data?.revenueGap)} tone={(data?.revenueGap ?? 0) > 0 ? "risk" : "good"} origin={{ kind: "calculated", label: "Écart" }} />
         <KpiCard label="Pipeline requis" value={money(data?.requiredGrossPipeline)} origin={{ kind: "calculated", label: "Pipeline" }} />
-        <KpiCard label="Opportunit?s" value={String(data?.opportunitiesNeeded ?? "-")} origin={{ kind: "calculated", label: "Pipeline" }} />
+        <KpiCard label="Opportunités" value={String(data?.opportunitiesNeeded ?? "-")} origin={{ kind: "calculated", label: "Pipeline" }} />
       </div>
       {data?.calculatedAt ? <p className="mb-3 text-xs text-muted">Dernier recalcul : {new Date(data.calculatedAt).toLocaleString("fr-FR")}</p> : null}
       <Table rows={(data?.recommendations ?? []).map((label: string) => ({ label }))} columns={[{ key: "label", label: "Recommandation" }]} />

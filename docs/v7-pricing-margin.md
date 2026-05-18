@@ -10,7 +10,7 @@ Le module reste volontairement cible sur la mission. Il ne remplace pas un CRM, 
 
 - Coût direct : coût salarié prorate, partenaire, freelance et frais directement rattachés à la mission.
 - Coût indirect imputé : overhead ajouté selon la règle de pricing.
-- Coût complet journalier : coût complet divis? par les jours facturables.
+- Coût complet journalier : coût complet divisé par les jours facturables.
 - TJM plancher : `coût complet journalier / (1 - marge minimum)`.
 - TJM recommandé : `coût complet journalier / (1 - marge cible)`.
 - Mission sous-margee : mission dont le TJM ou la marge ne couvre pas les seuils.

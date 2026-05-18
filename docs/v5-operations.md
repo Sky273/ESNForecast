@@ -19,7 +19,7 @@ Chaque requête API reçoit un `x-correlation-id`. Ce même identifiant est renv
 
 Endpoints principaux :
 
-- `GET /api/health` : disponibilit? minimale ;
+- `GET /api/health` : disponibilité minimale ;
 - `GET /api/ready` : API et base de données ;
 - `GET /api/system/status` : statut opérationnel agrégé ;
 - `GET /api/observability/summary` : logs, erreurs, jobs et lenteurs ;
@@ -69,4 +69,3 @@ Flags de démonstration :
 - `new_sidebar_v5` ;
 - `command_palette` ;
 - `ai_assistant`.
-

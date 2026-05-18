@@ -24,12 +24,12 @@ export function ConnectedFinanceDashboard({ scenarioId, horizon }: ConnectedFina
       <PageTitle title="Dashboard finance connectée" subtitle="Trésorerie bancaire, Écarts, rapprochement, fiabilité, runway et qualité des données." />
       <DataOriginLegend items={[{ kind: "provider", provider: "Bridge", label: "Banque" }, { kind: "calculated", label: "Rapprochement" }, { kind: "reforecast", label: "Recalibrage" }]} />
       <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
-                <KpiCard label="Cash bancaire" value={money(data?.bankSummary?.currentCash ?? 0)} origin={{ kind: "provider", label: "Banque", details: ["Comptes synchronis?s"] }} />
+                <KpiCard label="Cash bancaire" value={money(data?.bankSummary?.currentCash ?? 0)} origin={{ kind: "provider", label: "Banque", details: ["Comptes synchronisés"] }} />
                 <KpiCard label="Comptes actifs" value={String(data?.bankSummary?.accounts ?? 0)} origin={{ kind: "provider", label: "Banque" }} />
                 <KpiCard label="Connecteurs actifs" value={String(data?.connectorHealth?.active ?? 0)} tone={(data?.connectorHealth?.active ?? 0) > 0 ? "good" : "risk"} origin={{ kind: "provider", label: "Provider" }} />
-                <KpiCard label="Connecteurs expir?s" value={String(data?.connectorHealth?.expired ?? 0)} tone={(data?.connectorHealth?.expired ?? 0) > 0 ? "risk" : "good"} origin={{ kind: "provider", label: "Provider" }} />
+                <KpiCard label="Connecteurs expirés" value={String(data?.connectorHealth?.expired ?? 0)} tone={(data?.connectorHealth?.expired ?? 0) > 0 ? "risk" : "good"} origin={{ kind: "provider", label: "Provider" }} />
                 <KpiCard label="Suggestions" value={String(data?.reconciliationSuggestions?.length ?? 0)} origin={{ kind: "calculated", label: "Rapprochement" }} />
-                <KpiCard label="Anomalies" value={String(data?.anomalies?.length ?? 0)} tone={(data?.anomalies?.length ?? 0) > 0 ? "risk" : "good"} origin={{ kind: "calculated", label: "Contr?le" }} />
+                <KpiCard label="Anomalies" value={String(data?.anomalies?.length ?? 0)} tone={(data?.anomalies?.length ?? 0) > 0 ? "risk" : "good"} origin={{ kind: "calculated", label: "Contrôle" }} />
       </div>
       <div className="grid gap-4 xl:grid-cols-2">
         <ChartCard title="Trésorerie prévue / réelle / recalibrée">
@@ -78,9 +78,9 @@ export function BankAccountsPage() {
       </div>
       <InfoPanel title="Données provider">Les comptes sont créés et mis à jour par les synchronisations bancaires. Pour corriger un compte, il faut relancer la synchronisation ou reconnecter le provider, pas modifier la ligne à la main.</InfoPanel>
       <div className="grid gap-3 md:grid-cols-3">
-        <KpiCard label="Comptes actifs" value={String(activeAccounts.length)} />
-        <KpiCard label="Solde courant" value={money(totalCash)} />
-        <KpiCard label="Connexions bancaires" value={String(connections.length)} />
+        <KpiCard label="Comptes actifs" value={String(activeAccounts.length)} origin={{ kind: "provider", label: "Banque", details: ["Comptes synchronisés actifs"] }} />
+        <KpiCard label="Solde courant" value={money(totalCash)} origin={{ kind: "calculated", label: "Solde consolidé", details: ["Somme des soldes des comptes actifs"] }} />
+        <KpiCard label="Connexions bancaires" value={String(connections.length)} origin={{ kind: "provider", label: "Consentements bancaires" }} />
       </div>
       <SimpleTable rows={rows} columns={[
         ["name", "Compte"],
@@ -123,10 +123,10 @@ export function BankTransactionsPage() {
         </div>
       </div>
       <div className="grid gap-3 md:grid-cols-4">
-        <KpiCard label="Transactions" value={String(rows.length)} />
-        <KpiCard label="À rapprocher" value={String(unreconciled.length)} tone={unreconciled.length ? "risk" : "good"} />
-        <KpiCard label="Crédits" value={money(rows.filter((row: any) => row.direction === "credit").reduce((total: number, row: any) => total + Number(row.amount ?? 0), 0))} />
-        <KpiCard label="Débits" value={money(rows.filter((row: any) => row.direction === "debit").reduce((total: number, row: any) => total + Number(row.amount ?? 0), 0))} />
+        <KpiCard label="Transactions" value={String(rows.length)} origin={{ kind: "provider", label: "Banque", details: ["Transactions synchronisées"] }} />
+        <KpiCard label="À rapprocher" value={String(unreconciled.length)} tone={unreconciled.length ? "risk" : "good"} origin={{ kind: "calculated", label: "Rapprochement", details: ["Transactions non rapprochées et non ignorées"] }} />
+        <KpiCard label="Crédits" value={money(rows.filter((row: any) => row.direction === "credit").reduce((total: number, row: any) => total + Number(row.amount ?? 0), 0))} origin={{ kind: "calculated", label: "Crédits", details: ["Somme des transactions crédit"] }} />
+        <KpiCard label="Débits" value={money(rows.filter((row: any) => row.direction === "debit").reduce((total: number, row: any) => total + Number(row.amount ?? 0), 0))} origin={{ kind: "calculated", label: "Débits", details: ["Somme des transactions débit"] }} />
       </div>
       <div className="flex flex-wrap gap-2 rounded-lg border border-line bg-white p-3">
         <input className="min-w-64 flex-1 rounded-md border border-line px-3 py-2 text-sm" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Rechercher libellé, contrepartie, compte, catégorie..." />
@@ -217,11 +217,11 @@ export function BankReconciliationPage() {
         </div>
       </div>
       <div className="grid gap-3 md:grid-cols-5">
-        <KpiCard label="À traiter" value={String(data?.summary?.total ?? 0)} />
-        <KpiCard label="Avec suggestion" value={String(data?.summary?.suggested ?? 0)} tone={(data?.summary?.suggested ?? 0) > 0 ? "good" : "default"} />
-        <KpiCard label="Revue manuelle" value={String(data?.summary?.manualReview ?? 0)} tone={(data?.summary?.manualReview ?? 0) > 0 ? "risk" : "good"} />
-        <KpiCard label="Priorité haute" value={String(data?.summary?.highPriority ?? 0)} tone={(data?.summary?.highPriority ?? 0) > 0 ? "risk" : "good"} />
-        <KpiCard label="Montant à traiter" value={money(data?.summary?.amountToProcess ?? 0)} />
+        <KpiCard label="À traiter" value={String(data?.summary?.total ?? 0)} origin={{ kind: "calculated", label: "File rapprochement", details: ["Transactions à rapprocher"] }} />
+        <KpiCard label="Avec suggestion" value={String(data?.summary?.suggested ?? 0)} tone={(data?.summary?.suggested ?? 0) > 0 ? "good" : "default"} origin={{ kind: "calculated", label: "Suggestion", details: ["Matching montant, tiers et dates"] }} />
+        <KpiCard label="Revue manuelle" value={String(data?.summary?.manualReview ?? 0)} tone={(data?.summary?.manualReview ?? 0) > 0 ? "risk" : "good"} origin={{ kind: "calculated", label: "Contrôle", details: ["Suggestions sous seuil de confiance"] }} />
+        <KpiCard label="Priorité haute" value={String(data?.summary?.highPriority ?? 0)} tone={(data?.summary?.highPriority ?? 0) > 0 ? "risk" : "good"} origin={{ kind: "calculated", label: "Priorité", details: ["Montant ou risque élevé"] }} />
+        <KpiCard label="Montant à traiter" value={money(data?.summary?.amountToProcess ?? 0)} origin={{ kind: "calculated", label: "Montant", details: ["Somme des transactions de la file"] }} />
       </div>
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(420px,0.75fr)]">
         <div className="space-y-3">
@@ -254,8 +254,8 @@ export function BankReconciliationPage() {
                 <Badge tone={selected.priority === "high" ? "risk" : selected.priority === "medium" ? "warn" : "neutral"}>{selected.priority === "high" ? "Priorité haute" : selected.priority === "medium" ? "Priorité moyenne" : "Priorité normale"}</Badge>
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
-                <KpiCard label="Montant" value={money(selected.transactionAmount ?? 0)} />
-                <KpiCard label="Compte" value={selected.transactionAccountName ?? "-"} />
+                <KpiCard label="Montant" value={money(selected.transactionAmount ?? 0)} origin={{ kind: "provider", label: "Transaction bancaire" }} />
+                <KpiCard label="Compte" value={selected.transactionAccountName ?? "-"} origin={{ kind: "provider", label: "Compte bancaire" }} />
               </div>
               <div className="rounded-md border border-line bg-surface p-3 text-sm">
                 <div className="font-medium">Meilleure suggestion</div>
@@ -327,6 +327,7 @@ export function RealTreasuryPage({ scenarioId, horizon }: ConnectedFinanceContex
   const { rows } = useRows(`/treasury/actual-vs-forecast?scenarioId=${scenarioId}&horizon=${horizon}`);
   return <TablePage title="Trésorerie réelle vs prévisionnelle" subtitle="Solde bancaire, solde prévu, Écart et projection recalibrée." rows={rows} columns={[
     ["month", "Mois"],
+    ["origin", "Origine", (_value: string, row: any) => <DataOriginBadge kind="reforecast" label="Trésorerie" details={[`Prévu ${money(row.forecastClosingCash)}`, `Réel ${money(row.actualClosingCash)}`]} />],
     ["forecastClosingCash", "Prévu", money],
     ["actualClosingCash", "Réel bancaire", money],
     ["recalibratedClosingCash", "Recalibr\u00e9", money],
@@ -363,6 +364,7 @@ export function ReforecastPage({ scenarioId, horizon }: ConnectedFinanceContext)
       {jobResult ? <div className="rounded-lg border border-line bg-white p-4 text-sm"><div className="font-medium">Job {jobResult.job?.status ?? "termine"}</div><div className="mt-1 text-muted">{jobResult.suggestions?.length ?? 0} suggestion(s) generee(s). Impact total : {money(jobResult.job?.resultSummary?.totalImpactAmount ?? 0)}.</div></div> : null}
       <SimpleTable rows={rows} columns={[
         ["month", "Mois"],
+        ["origin", "Origine", (_value: string, row: any) => <DataOriginBadge kind="reforecast" label="Reforecast" details={[`Écart ${money(row.variance)}`, `Fiabilité ${row.reliabilityScore ?? 0}/100`]} />],
         ["forecastClosingCash", "Prevu", money],
         ["actualClosingCash", "Reel bancaire", money],
         ["recalibratedClosingCash", "Recalibre", money],
@@ -378,7 +380,7 @@ export function RunwayPage({ scenarioId, horizon }: ConnectedFinanceContext) {
   return (
     <section className="space-y-5">
       <PageTitle title="Cash runway" subtitle="Runway basé sur cash bancaire réel, burn et cash-in pondéré." />
-      <DataOriginLegend items={[{ kind: "provider", label: "Cash r?el" }, { kind: "calculated", label: "Burn" }, { kind: "calculated", label: "Runway" }]} />
+      <DataOriginLegend items={[{ kind: "provider", label: "Cash réel" }, { kind: "calculated", label: "Burn" }, { kind: "calculated", label: "Runway" }]} />
       <div className="grid gap-3 md:grid-cols-4">
                 <KpiCard label="Cash actuel" value={money(data?.currentCash ?? 0)} origin={{ kind: "provider", label: "Banque" }} />
                 <KpiCard label="Burn moyen" value={money(data?.averageMonthlyBurn ?? 0)} origin={{ kind: "calculated", label: "Burn" }} />
@@ -440,7 +442,7 @@ export function DataQualityPage() {
         <PageTitle title={"Sant\u00e9 des donn\u00e9es"} subtitle={"Qualit\u00e9 des donn\u00e9es banque, compta, factures et rapprochements."} />
         <button className="rounded-md bg-brand px-3 py-2 text-sm font-medium text-white" onClick={() => void recalculate()}>Recalculer</button>
       </div>
-            <KpiCard label={"Score qualit?"} value={String(data?.score ?? 0) + "/100"} tone={(data?.score ?? 0) < 70 ? "risk" : "good"} origin={{ kind: "calculated", label: "Qualit?" }} />
+            <KpiCard label={"Score qualité"} value={String(data?.score ?? 0) + "/100"} tone={(data?.score ?? 0) < 70 ? "risk" : "good"} origin={{ kind: "calculated", label: "Qualité" }} />
       <SimpleTable rows={data?.issues ?? []} columns={[
         ["severity", "S\u00e9v\u00e9rit\u00e9", severityBadge], ["type", "Type"], ["message", "Message"], ["suggestedFix", "Correction"], ["status", "Statut"],
         ["id", "Traitement", (_value: string, row: any) => ["fixed", "ignored"].includes(row.status) ? "" : (
@@ -486,10 +488,10 @@ export function ConnectorSupervisionPage() {
       <PageTitle title="Supervision connecteurs" subtitle={"Pilotage op\u00e9rationnel des connecteurs, synchronisations et erreurs."} />
       {message ? <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">{message}</div> : null}
       <div className="grid gap-3 md:grid-cols-4">
-                <KpiCard label={"Connect?s"} value={String(data?.summary?.connected ?? 0)} tone="good" origin={{ kind: "provider", label: "Provider" }} />
+                <KpiCard label={"Connectés"} value={String(data?.summary?.connected ?? 0)} tone="good" origin={{ kind: "provider", label: "Provider" }} />
                 <KpiCard label="En erreur" value={String(data?.summary?.errors ?? 0)} tone={(data?.summary?.errors ?? 0) > 0 ? "risk" : "good"} origin={{ kind: "calculated", label: "Supervision" }} />
-                <KpiCard label={"Expir?s"} value={String(data?.summary?.expired ?? 0)} tone={(data?.summary?.expired ?? 0) > 0 ? "risk" : "good"} origin={{ kind: "calculated", label: "Supervision" }} />
-                <KpiCard label={"D?connect?s"} value={String(data?.summary?.disconnected ?? 0)} origin={{ kind: "calculated", label: "Supervision" }} />
+                <KpiCard label={"Expirés"} value={String(data?.summary?.expired ?? 0)} tone={(data?.summary?.expired ?? 0) > 0 ? "risk" : "good"} origin={{ kind: "calculated", label: "Supervision" }} />
+                <KpiCard label={"Déconnectés"} value={String(data?.summary?.disconnected ?? 0)} origin={{ kind: "calculated", label: "Supervision" }} />
       </div>
       <SimpleTable rows={visibleConnectors} columns={[
         ["provider", "Provider"], ["type", "Type"], ["name", "Nom"], ["status", "Statut"], ["lastSyncAt", "Dernier sync"], ["errorMessage", "Erreur"],
@@ -531,10 +533,11 @@ export function CodirReportPage({ scenarioId, horizon }: ConnectedFinanceContext
         </div>
       </div>
       <InfoPanel title="Sources du rapport">Le rapport CODIR utilise le scénario actif, l'horizon sélectionné, les données bancaires synchronisées et les écarts calculés sur le mois courant.</InfoPanel>
+      <DataOriginLegend items={[{ kind: "provider", label: "Banque" }, { kind: "calculated", label: "Anomalies" }, { kind: "calculated", label: "Runway" }]} />
       <div className="grid gap-3 md:grid-cols-3">
-        <KpiCard label="Cash" value={money(data?.payload?.bankSummary?.currentCash ?? 0)} />
-        <KpiCard label="Anomalies" value={String(data?.payload?.anomalies?.length ?? 0)} />
-        <KpiCard label="Runway" value={`${data?.payload?.runway?.runwayWeightedMonths ?? 0} mois`} />
+        <KpiCard label="Cash" value={money(data?.payload?.bankSummary?.currentCash ?? 0)} origin={{ kind: "provider", label: "Banque", details: ["Solde bancaire synchronisé"] }} />
+        <KpiCard label="Anomalies" value={String(data?.payload?.anomalies?.length ?? 0)} origin={{ kind: "calculated", label: "Anomalies", details: ["Contrôles financiers du mois"] }} />
+        <KpiCard label="Runway" value={`${data?.payload?.runway?.runwayWeightedMonths ?? 0} mois`} origin={{ kind: "calculated", label: "Runway", details: ["Cash réel, burn moyen et cash-in pondéré"] }} />
       </div>
       <SimpleTable rows={(data?.payload?.recommendations ?? []).map((recommendation: string, id: number) => ({ id, recommendation }))} columns={[["recommendation", "Décision / action"]]} />
     </section>

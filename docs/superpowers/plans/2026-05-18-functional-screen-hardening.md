@@ -34,7 +34,7 @@
    - `JobsPage`, `ReportsPage`, `CodirReportPage`, `BackupsPage`, and `PerformancePage` need consistent "generated at", "source scenario", "open/download", and "what this action did" feedback.
 
 6. **French copy and enum labels remain inconsistent in some places.**
-   - Examples found: `Observabilite`, `Statut systeme`, `Metrique`, `Unite`, `Cle`, `Generer`, `Ecart`, `Severite`, `Prenom`, `Specialite`, `Disponibilit?`.
+   - Examples found: `Observabilite`, `Statut systeme`, `Metrique`, `Unite`, `Cle`, `Generer`, `Ecart`, `Severite`, `Prenom`, `Specialite`, `Disponibilité`.
    - Some labels use English enums without user-facing translations.
 
 ---
@@ -433,7 +433,7 @@ Replace:
 - `Date fin estimee` -> `Date fin estimée`
 - `Role` -> `Rôle`
 - `Specialite` -> `Spécialité`
-- `Disponibilit?` -> `Disponibilité`
+- `Disponibilité` -> `Disponibilité`
 - `Annuel projete` -> `Annuel projeté`
 
 - [ ] **Step 2: Add `description` support to `CrudPage`**
@@ -528,7 +528,7 @@ Expected: both pass.
 Run:
 
 ```powershell
-rg -n "Ã|Â|Disponibilit\\?|Observabilite|systeme|Metrique|Unite|Severite|Ecart|Generer|Prenom|Specialite|Cle" apps/web/src apps/api/src
+rg -n "mojibake|Disponibilit\\?|Observabilite|systeme|Metrique|Unite|Severite|Ecart|Generer|Prenom|Specialite|Cle" apps/web/src apps/api/src
 ```
 
 Expected: no user-facing occurrences remain.

@@ -243,7 +243,7 @@ Capacités livrées :
 - détection de doublons multi-source ;
 - politiques de source de verite ;
 - supervision provider, errors, syncs, webhooks, rate limits ;
-- page conformit? connectéurs avec tokens masqués.
+- page conformité connectéurs avec tokens masqués.
 
 ## API V4 principale
 

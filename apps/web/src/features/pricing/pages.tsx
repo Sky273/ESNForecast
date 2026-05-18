@@ -81,13 +81,13 @@ export function PricingDashboardPage() {
   return (
     <>
       <PageHeader title="Dashboard pricing" description="Pilotage des TJM, marges mission, gains potentiels et priorités de renégociation." actions={<button className="rounded-md bg-brand px-3 py-2 text-sm font-medium text-white" onClick={recalculate}>Recalculer</button>} />
-      <DataOriginLegend items={[{ kind: "calculated", label: "Pricing" }, { kind: "manual", label: "Param?tres" }, { kind: "manual", label: "D?cisions" }]} />
+      <DataOriginLegend items={[{ kind: "calculated", label: "Pricing" }, { kind: "manual", label: "Paramètres" }, { kind: "manual", label: "Décisions" }]} />
       <InfoPanel title="Lecture des indicateurs">Les TJM plancher et recommandés sont calculés à partir des coûts complets, des paramètres pricing et des affectations connues sur chaque mission. Les gains représentent le potentiel de correction si les missions passent au TJM cible.</InfoPanel>
       <div className="mb-5 grid gap-3 md:grid-cols-6">
-        <KpiCard label="Missions analysées" value={data?.missionsAnalyzed ?? 0} />
+        <KpiCard label="Missions analysées" value={data?.missionsAnalyzed ?? 0} origin={{ kind: "calculated", label: "Pricing" }} />
                 <KpiCard label="Missions saines" value={data?.healthyMissions ?? 0} tone="good" origin={{ kind: "calculated", label: "Pricing" }} />
-        <KpiCard label="Sous-margées" value={data?.underpricedMissions ?? 0} tone={(data?.underpricedMissions ?? 0) ? "risk" : "good"} />
-        <KpiCard label="à renégocier" value={data?.renegotiationCandidates ?? 0} tone={(data?.renegotiationCandidates ?? 0) ? "default" : "good"} />
+        <KpiCard label="Sous-margées" value={data?.underpricedMissions ?? 0} tone={(data?.underpricedMissions ?? 0) ? "risk" : "good"} origin={{ kind: "calculated", label: "Marge", details: ["TJM actuel comparé au TJM plancher"] }} />
+        <KpiCard label="à renégocier" value={data?.renegotiationCandidates ?? 0} tone={(data?.renegotiationCandidates ?? 0) ? "default" : "good"} origin={{ kind: "calculated", label: "Renégociation", details: ["Missions sous seuil ou à potentiel de gain"] }} />
                 <KpiCard label="Gain mensuel" value={money(data?.potentialMonthlyGain)} origin={{ kind: "calculated", label: "Pricing" }} />
                 <KpiCard label="Gain annuel" value={money(data?.potentialAnnualGain)} origin={{ kind: "calculated", label: "Pricing" }} />
       </div>
@@ -95,7 +95,7 @@ export function PricingDashboardPage() {
         <div className="rounded-lg border border-line bg-white p-4">
           <h2 className="mb-4 font-semibold">Répartition pricing</h2>
           <div className="h-64">
-            <ResponsiveContainer><BarChart data={chart}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="label" /><YAxis allowDecimals={false} /><Tooltip formatter={(value, name) => [String(value), `${String(name)} - Calcul?`]} /><Bar dataKey="value" fill="#0f766e" /></BarChart></ResponsiveContainer>
+            <ResponsiveContainer><BarChart data={chart}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="label" /><YAxis allowDecimals={false} /><Tooltip formatter={(value, name) => [String(value), `${String(name)} - Calculé`]} /><Bar dataKey="value" fill="#0f766e" /></BarChart></ResponsiveContainer>
           </div>
         </div>
         <div>
@@ -200,11 +200,11 @@ export function PricingSimulatorPage() {
         <label className="text-sm">Remise<input className="mt-1 w-full rounded-md border border-line px-3 py-2" type="number" step="0.01" value={discountRate} onChange={(event) => setDiscountRate(Number(event.target.value))} /></label>
       </div>
       {result ? <div className="grid gap-3 md:grid-cols-5">
-        <KpiCard label="TJM après remise" value={money(result.output?.simulatedDailyRate)} />
-        <KpiCard label="CA simulé" value={money(result.output?.revenue)} />
-        <KpiCard label="Marge" value={percent(result.output?.currentMarginRate)} tone={kpiTone(result.output?.status)} />
-        <KpiCard label="TJM plancher" value={money(result.output?.floorDailyRate)} />
-        <KpiCard label="TJM recommandé" value={money(result.output?.recommendedDailyRate)} />
+        <KpiCard label="TJM après remise" value={money(result.output?.simulatedDailyRate)} origin={{ kind: "calculated", label: "Simulation", details: ["TJM simulé après remise commerciale"] }} />
+        <KpiCard label="CA simulé" value={money(result.output?.revenue)} origin={{ kind: "calculated", label: "Simulation", details: ["TJM simulé x jours facturables"] }} />
+        <KpiCard label="Marge" value={percent(result.output?.currentMarginRate)} tone={kpiTone(result.output?.status)} origin={{ kind: "calculated", label: "Marge", details: ["CA simulé - coût complet"] }} />
+        <KpiCard label="TJM plancher" value={money(result.output?.floorDailyRate)} origin={{ kind: "calculated", label: "TJM plancher" }} />
+        <KpiCard label="TJM recommandé" value={money(result.output?.recommendedDailyRate)} origin={{ kind: "calculated", label: "TJM recommandé" }} />
       </div> : null}
       <h2 className="mb-2 mt-5 text-sm font-semibold uppercase tracking-wide text-muted">Simulations enregistrées</h2>
       <Table rows={simulations ?? []} columns={[
@@ -245,14 +245,14 @@ export function MissionPricingProfilePage() {
         </div>
       </div>
       <div className="grid gap-3 md:grid-cols-4">
-        <KpiCard label="Mission" value={profile?.missionTitle ?? "-"} />
-        <KpiCard label="TJM actuel" value={money(profile?.currentDailyRate)} />
-        <KpiCard label="TJM plancher" value={money(profile?.calculatedFloorDailyRate)} tone={(profile?.currentDailyRate ?? 0) < (profile?.calculatedFloorDailyRate ?? 0) ? "risk" : "default"} />
-        <KpiCard label="TJM recommandé" value={money(profile?.recommendedDailyRate)} />
-        <KpiCard label="Coût complet / jour" value={money(profile?.fullDailyCost)} />
-        <KpiCard label="Marge actuelle" value={percent(profile?.currentMarginRate)} tone={kpiTone(profile?.pricingStatus ?? "")} />
-        <KpiCard label="Impact mensuel" value={money(profile?.monthlyImpactAmount)} />
-        <KpiCard label="Statut" value={profile?.pricingStatus ?? "-"} tone={kpiTone(profile?.pricingStatus ?? "")} />
+        <KpiCard label="Mission" value={profile?.missionTitle ?? "-"} origin={{ kind: "manual", label: "Mission" }} />
+        <KpiCard label="TJM actuel" value={money(profile?.currentDailyRate)} origin={{ kind: "manual", label: "Mission" }} />
+        <KpiCard label="TJM plancher" value={money(profile?.calculatedFloorDailyRate)} tone={(profile?.currentDailyRate ?? 0) < (profile?.calculatedFloorDailyRate ?? 0) ? "risk" : "default"} origin={{ kind: "calculated", label: "TJM plancher" }} />
+        <KpiCard label="TJM recommandé" value={money(profile?.recommendedDailyRate)} origin={{ kind: "calculated", label: "TJM recommandé" }} />
+        <KpiCard label="Coût complet / jour" value={money(profile?.fullDailyCost)} origin={{ kind: "calculated", label: "Coût complet", details: ["Coûts directs + overhead imputé"] }} />
+        <KpiCard label="Marge actuelle" value={percent(profile?.currentMarginRate)} tone={kpiTone(profile?.pricingStatus ?? "")} origin={{ kind: "calculated", label: "Marge" }} />
+        <KpiCard label="Impact mensuel" value={money(profile?.monthlyImpactAmount)} origin={{ kind: "calculated", label: "Impact", details: ["Gain potentiel mensuel"] }} />
+        <KpiCard label="Statut" value={profile?.pricingStatus ?? "-"} tone={kpiTone(profile?.pricingStatus ?? "")} origin={{ kind: "calculated", label: "Statut pricing" }} />
       </div>
       {profile?.pricingStatus === "insufficient_data" ? (
         <div className="mt-5 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
@@ -319,12 +319,12 @@ export function PricingSettingsPage() {
         <label className="text-sm">Période revue (mois)<input className="mt-1 w-full rounded-md border border-line px-3 py-2" type="number" value={current.renegotiationReviewPeriodMonths ?? 0} onChange={(event) => update("renegotiationReviewPeriodMonths", Number(event.target.value))} /></label>
       </div>
       <div className="grid gap-3 md:grid-cols-3">
-        <KpiCard label="Marge cible" value={percent(current.defaultTargetMarginRate)} />
-        <KpiCard label="Marge minimum" value={percent(current.minimumMarginRate)} />
-        <KpiCard label="Mode overhead" value={current.defaultOverheadAllocationMode ?? "-"} />
-        <KpiCard label="Taux overhead" value={percent(current.defaultOverheadRate)} />
-        <KpiCard label="Arrondi TJM" value={current.roundingMode ?? "-"} />
-        <KpiCard label="Seuil remise" value={percent(current.defaultCommercialDiscountWarningRate)} />
+        <KpiCard label="Marge cible" value={percent(current.defaultTargetMarginRate)} origin={{ kind: "manual", label: "Paramètres pricing" }} />
+        <KpiCard label="Marge minimum" value={percent(current.minimumMarginRate)} origin={{ kind: "manual", label: "Paramètres pricing" }} />
+        <KpiCard label="Mode overhead" value={current.defaultOverheadAllocationMode ?? "-"} origin={{ kind: "manual", label: "Paramètres pricing" }} />
+        <KpiCard label="Taux overhead" value={percent(current.defaultOverheadRate)} origin={{ kind: "manual", label: "Paramètres pricing" }} />
+        <KpiCard label="Arrondi TJM" value={current.roundingMode ?? "-"} origin={{ kind: "manual", label: "Paramètres pricing" }} />
+        <KpiCard label="Seuil remise" value={percent(current.defaultCommercialDiscountWarningRate)} origin={{ kind: "manual", label: "Paramètres pricing" }} />
       </div>
     </>
   );
@@ -411,10 +411,10 @@ export function PricingReportPage() {
     <>
       <PageHeader title="Rapport pricing" description="Synthèse pricing, missions à risque, exceptions, actions et gains attendus." />
       <div className="mb-5 grid gap-3 md:grid-cols-4">
-        <KpiCard label="Missions analysées" value={data?.dashboard?.missionsAnalyzed ?? 0} />
-        <KpiCard label="à renégocier" value={data?.dashboard?.renegotiationCandidates ?? 0} />
-        <KpiCard label="Gain mensuel" value={money(data?.dashboard?.potentialMonthlyGain)} />
-        <KpiCard label="Gain annuel" value={money(data?.dashboard?.potentialAnnualGain)} />
+        <KpiCard label="Missions analysées" value={data?.dashboard?.missionsAnalyzed ?? 0} origin={{ kind: "calculated", label: "Pricing" }} />
+        <KpiCard label="à renégocier" value={data?.dashboard?.renegotiationCandidates ?? 0} origin={{ kind: "calculated", label: "Renégociation", details: ["Missions sous seuil ou à potentiel de gain"] }} />
+        <KpiCard label="Gain mensuel" value={money(data?.dashboard?.potentialMonthlyGain)} origin={{ kind: "calculated", label: "Gain potentiel" }} />
+        <KpiCard label="Gain annuel" value={money(data?.dashboard?.potentialAnnualGain)} origin={{ kind: "calculated", label: "Gain potentiel" }} />
       </div>
       <Table rows={data?.candidates ?? []} columns={[
         { key: "missionLabel", label: "Mission", render: missionLabel },

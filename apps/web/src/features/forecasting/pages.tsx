@@ -19,19 +19,19 @@ export function TreasuryPage({ scenarioId, horizon }: ForecastingContext) {
   return (
     <section className="space-y-5">
       <PageTitle title="Trésorerie prévisionnelle" subtitle="Encaissements, décaissements et solde final pondéré." />
-      <DataOriginLegend items={[{ kind: "calculated", label: "Forecast" }, { kind: "manual", label: "Hypoth?ses" }, { kind: "provider", label: "R?el" }]} />
+      <DataOriginLegend items={[{ kind: "calculated", label: "Forecast" }, { kind: "manual", label: "Hypothèses" }, { kind: "provider", label: "Réel" }]} />
       <div className="grid gap-3 md:grid-cols-4">
                 <KpiCard label="Cash-in" value={money(data.summary.totalCashIn)} origin={{ kind: "calculated", label: "Forecast" }} />
                 <KpiCard label="Cash-out" value={money(data.summary.totalCashOut)} origin={{ kind: "calculated", label: "Forecast" }} />
-                <KpiCard label="Tr?sorerie finale" value={money(data.summary.finalClosingCash)} tone={data.summary.finalClosingCash < 0 ? "risk" : "good"} origin={{ kind: "calculated", label: "Forecast" }} />
-                <KpiCard label="Mois ? risque" value={String(data.summary.riskMonths.length)} origin={{ kind: "calculated", label: "Contr?le" }} />
+                <KpiCard label="Trésorerie finale" value={money(data.summary.finalClosingCash)} tone={data.summary.finalClosingCash < 0 ? "risk" : "good"} origin={{ kind: "calculated", label: "Forecast" }} />
+                <KpiCard label="Mois à risque" value={String(data.summary.riskMonths.length)} origin={{ kind: "calculated", label: "Contrôle" }} />
       </div>
       <ChartCard title="Courbe de trésorerie">
         <LineChart data={data.cashflow}>
           <CartesianGrid stroke="#e5e7eb" />
           <XAxis dataKey="month" />
           <YAxis tickFormatter={(value) => `${Math.round(Number(value) / 1000)}k`} />
-          <Tooltip formatter={(value, name) => [money(Number(value)), `${String(name)} - Calcul?`]} />
+          <Tooltip formatter={(value, name) => [money(Number(value)), `${String(name)} - Calculé`]} />
           <Legend />
           <Line dataKey="closingCash" name="Solde final" stroke="#2563eb" strokeWidth={2} />
           <Line dataKey="cashIn" name="Cash-in" stroke="#0f766e" strokeWidth={2} />
@@ -149,7 +149,7 @@ export function ScenariosPage({ scenarioId, horizon, onScenarioActivated }: Fore
             <CartesianGrid stroke="#e5e7eb" />
             <XAxis dataKey="month" />
             <YAxis tickFormatter={(value) => `${Math.round(Number(value) / 1000)}k`} />
-            <Tooltip formatter={(value, name) => [money(Number(value)), `${String(name)} - Calcul?`]} />
+            <Tooltip formatter={(value, name) => [money(Number(value)), `${String(name)} - Calculé`]} />
             <Legend />
             <Bar dataKey="revenueDelta" name="Écart CA" fill="#0f766e" />
             <Bar dataKey="costDelta" name="Écart coûts" fill="#b42318" />

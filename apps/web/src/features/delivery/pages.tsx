@@ -16,13 +16,14 @@ export function ExecutiveCockpitPage({ scenarioId, horizon }: DeliveryContext) {
   return (
     <section className="space-y-5">
       <PageTitle title="Cockpit direction" subtitle="Synthèse prévisionnel, réel, Écarts, risques et capacité." />
+      <DataOriginLegend items={[{ kind: "calculated", label: "Prévisionnel" }, { kind: "provider", label: "Réel" }, { kind: "calculated", label: "Écarts" }, { kind: "reforecast", label: "Trésorerie" }]} />
       <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
-        <KpiCard label="CA prévisionnel" value={money(data?.summary?.forecastRevenue ?? 0)} />
-        <KpiCard label="CA réel" value={money(data?.summary?.actualRevenue ?? 0)} />
-        <KpiCard label="Écart CA" value={money(data?.summary?.revenueVariance ?? 0)} tone={(data?.summary?.revenueVariance ?? 0) < 0 ? "risk" : "good"} />
-        <KpiCard label="Trésorerie finale" value={money(data?.summary?.finalClosingCash ?? 0)} />
+        <KpiCard label="CA prévisionnel" value={money(data?.summary?.forecastRevenue ?? 0)} origin={{ kind: "calculated", label: "Prévisionnel", details: ["Scénario actif et horizon sélectionné"] }} />
+        <KpiCard label="CA réel" value={money(data?.summary?.actualRevenue ?? 0)} origin={{ kind: "provider", label: "Réel", details: ["Réel mensuel et facturation rapprochée"] }} />
+        <KpiCard label="Écart CA" value={money(data?.summary?.revenueVariance ?? 0)} tone={(data?.summary?.revenueVariance ?? 0) < 0 ? "risk" : "good"} origin={{ kind: "calculated", label: "Écart", details: ["CA réel - CA prévisionnel"] }} />
+        <KpiCard label="Trésorerie finale" value={money(data?.summary?.finalClosingCash ?? 0)} origin={{ kind: "reforecast", label: "Trésorerie", details: ["Projection de cash recalculée"] }} />
                 <KpiCard label="Alertes critiques" value={String(data?.summary?.criticalAlerts ?? 0)} tone={(data?.summary?.criticalAlerts ?? 0) > 0 ? "risk" : "good"} origin={{ kind: "calculated", label: "Alertes" }} />
-        <KpiCard label="Gaps capacité" value={String(data?.summary?.capacityShortages ?? 0)} tone={(data?.summary?.capacityShortages ?? 0) > 0 ? "risk" : "good"} />
+        <KpiCard label="Gaps capacité" value={String(data?.summary?.capacityShortages ?? 0)} tone={(data?.summary?.capacityShortages ?? 0) > 0 ? "risk" : "good"} origin={{ kind: "calculated", label: "Capacité", details: ["Besoins staffing - capacité disponible"] }} />
       </div>
       <div className="grid gap-4 xl:grid-cols-2">
         <ChartCard title="CA, coûts et cash">
@@ -30,7 +31,7 @@ export function ExecutiveCockpitPage({ scenarioId, horizon }: DeliveryContext) {
             <CartesianGrid stroke="#e5e7eb" />
             <XAxis dataKey="month" />
             <YAxis tickFormatter={(value) => `${Math.round(Number(value) / 1000)}k`} />
-            <Tooltip formatter={(value, name) => [money(Number(value)), `${String(name)} - Calcul?`]} />
+            <Tooltip formatter={(value, name) => [money(Number(value)), `${String(name)} - Calculé`]} />
             <Legend />
             <Line dataKey="revenueGenerated" name="CA généré" stroke="#0f766e" strokeWidth={2} />
             <Line dataKey="totalCosts" name="Coûts" stroke="#b42318" strokeWidth={2} />
@@ -42,7 +43,7 @@ export function ExecutiveCockpitPage({ scenarioId, horizon }: DeliveryContext) {
             <CartesianGrid stroke="#e5e7eb" />
             <XAxis dataKey="month" />
             <YAxis tickFormatter={(value) => `${Math.round(Number(value) / 1000)}k`} />
-            <Tooltip formatter={(value, name) => [money(Number(value)), `${String(name)} - Calcul?`]} />
+            <Tooltip formatter={(value, name) => [money(Number(value)), `${String(name)} - Calculé`]} />
             <Legend />
             <Bar dataKey="revenueVariance" name="Écart CA" fill="#0f766e" />
             <Bar dataKey="costsVariance" name="Écart coûts" fill="#b42318" />
@@ -297,12 +298,12 @@ export function ReconciliationPage() {
         </div>
       </div>
       <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
-        <KpiCard label="À traiter" value={String(data?.summary?.total ?? 0)} />
-        <KpiCard label="Avec suggestion" value={String(data?.summary?.suggested ?? 0)} tone={(data?.summary?.suggested ?? 0) > 0 ? "good" : "default"} />
-        <KpiCard label="Revue manuelle" value={String(data?.summary?.manualReview ?? 0)} tone={(data?.summary?.manualReview ?? 0) > 0 ? "risk" : "good"} />
-        <KpiCard label="Rapprochées" value={String(data?.summary?.matched ?? 0)} tone="good" />
-        <KpiCard label="Paiement à suivre" value={String(data?.summary?.paymentPending ?? 0)} tone={(data?.summary?.paymentPending ?? 0) > 0 ? "risk" : "good"} />
-        <KpiCard label="Montant prévu restant" value={money(data?.summary?.amountToInvoice ?? 0)} />
+        <KpiCard label="À traiter" value={String(data?.summary?.total ?? 0)} origin={{ kind: "calculated", label: "File rapprochement", details: ["Factures prévues non finalisées"] }} />
+        <KpiCard label="Avec suggestion" value={String(data?.summary?.suggested ?? 0)} tone={(data?.summary?.suggested ?? 0) > 0 ? "good" : "default"} origin={{ kind: "calculated", label: "Suggestion", details: ["Matching montant, client et dates"] }} />
+        <KpiCard label="Revue manuelle" value={String(data?.summary?.manualReview ?? 0)} tone={(data?.summary?.manualReview ?? 0) > 0 ? "risk" : "good"} origin={{ kind: "calculated", label: "Contrôle", details: ["Suggestions sous seuil de confiance"] }} />
+        <KpiCard label="Rapprochées" value={String(data?.summary?.matched ?? 0)} tone="good" origin={{ kind: "manual", label: "Rapprochement validé" }} />
+        <KpiCard label="Paiement à suivre" value={String(data?.summary?.paymentPending ?? 0)} tone={(data?.summary?.paymentPending ?? 0) > 0 ? "risk" : "good"} origin={{ kind: "calculated", label: "Paiement", details: ["Factures rapprochées sans paiement complet"] }} />
+        <KpiCard label="Montant prévu restant" value={money(data?.summary?.amountToInvoice ?? 0)} origin={{ kind: "calculated", label: "Prévision facturation", details: ["Montant TTC prévu - facturé/encaissé"] }} />
       </div>
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(430px,0.75fr)]">
         <div className="space-y-3">
@@ -341,8 +342,8 @@ export function ReconciliationPage() {
                 <Badge tone={selected.priority === "high" ? "risk" : selected.priority === "medium" ? "warn" : "neutral"}>{priorityLabel(selected.priority)}</Badge>
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
-                <KpiCard label="Prévu TTC" value={money(selected.forecastAmountTTC ?? 0)} />
-                <KpiCard label="Restant à encaisser" value={money(selected.remainingAmount ?? 0)} tone={(selected.remainingAmount ?? 0) > 0 ? "risk" : "good"} />
+                <KpiCard label="Prévu TTC" value={money(selected.forecastAmountTTC ?? 0)} origin={{ kind: "calculated", label: "Facture prévue" }} />
+                <KpiCard label="Restant à encaisser" value={money(selected.remainingAmount ?? 0)} tone={(selected.remainingAmount ?? 0) > 0 ? "risk" : "good"} origin={{ kind: "calculated", label: "Reste à encaisser", details: ["Prévu TTC - paiements rapprochés"] }} />
               </div>
               <div className="rounded-md border border-line bg-surface p-3 text-sm">
                 <div className="font-medium">Meilleure suggestion</div>
@@ -408,13 +409,14 @@ export function StaffingForecastPage({ scenarioId, horizon }: DeliveryContext) {
   return (
     <section className="space-y-5">
       <PageTitle title="Staffing prévisionnel" subtitle="Vue par mission des besoins, affectations prévues et trous de staffing à traiter." />
+      <DataOriginLegend items={[{ kind: "calculated", label: "Besoins" }, { kind: "manual", label: "Affectations" }, { kind: "calculated", label: "Gap" }]} />
       <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
-        <KpiCard label="Besoins" value={String(summary.totalNeeds ?? 0)} />
-        <KpiCard label="Couverts" value={String(summary.staffedNeeds ?? 0)} tone="good" />
-        <KpiCard label="Partiels" value={String(summary.partialNeeds ?? 0)} tone={(summary.partialNeeds ?? 0) > 0 ? "risk" : "good"} />
-        <KpiCard label="Non couverts" value={String(summary.uncoveredNeeds ?? 0)} tone={(summary.uncoveredNeeds ?? 0) > 0 ? "risk" : "good"} />
-        <KpiCard label="ETP requis" value={String(summary.totalRequiredFTE ?? 0)} />
-        <KpiCard label="Gap ETP" value={String(summary.totalGapFTE ?? 0)} tone={(summary.totalGapFTE ?? 0) < 0 ? "risk" : "good"} />
+        <KpiCard label="Besoins" value={String(summary.totalNeeds ?? 0)} origin={{ kind: "calculated", label: "Besoins", details: ["Missions, compétences et horizon"] }} />
+        <KpiCard label="Couverts" value={String(summary.staffedNeeds ?? 0)} tone="good" origin={{ kind: "calculated", label: "Couverture", details: ["Besoins avec affectation suffisante"] }} />
+        <KpiCard label="Partiels" value={String(summary.partialNeeds ?? 0)} tone={(summary.partialNeeds ?? 0) > 0 ? "risk" : "good"} origin={{ kind: "calculated", label: "Couverture partielle" }} />
+        <KpiCard label="Non couverts" value={String(summary.uncoveredNeeds ?? 0)} tone={(summary.uncoveredNeeds ?? 0) > 0 ? "risk" : "good"} origin={{ kind: "calculated", label: "Gap staffing" }} />
+        <KpiCard label="ETP requis" value={String(summary.totalRequiredFTE ?? 0)} origin={{ kind: "calculated", label: "ETP requis", details: ["Somme des besoins FTE"] }} />
+        <KpiCard label="Gap ETP" value={String(summary.totalGapFTE ?? 0)} tone={(summary.totalGapFTE ?? 0) < 0 ? "risk" : "good"} origin={{ kind: "calculated", label: "Gap ETP", details: ["ETP affectés - ETP requis"] }} />
       </div>
       <SimpleTable rows={rows} columns={[
         ["month", "Mois"],

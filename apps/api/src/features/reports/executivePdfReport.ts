@@ -482,7 +482,7 @@ function alertsPage(pdf: Pdf, projection: Projection) {
 
 function missionsPage(pdf: Pdf, topMissions: any[], bottomMissions: any[]) {
   pdf.addPage();
-  pageHeader(pdf, "Rentabilite missions", "Identification des contributeurs de marge et des missions ? arbitrer.");
+  pageHeader(pdf, "Rentabilite missions", "Identification des contributeurs de marge et des missions à arbitrer.");
   pdf.text("Top missions rentables", margin, 118, 14, "F2");
   let y = 142;
   tableHeader(pdf, margin, y, ["Mission", "CA", "Coûts", "Marge", "Taux"], [190, 74, 74, 74, 62]);
@@ -493,7 +493,7 @@ function missionsPage(pdf: Pdf, topMissions: any[], bottomMissions: any[]) {
     y += 24;
   });
 
-  pdf.text("Missions ? surveiller", margin, y + 30, 14, "F2");
+  pdf.text("Missions à surveiller", margin, y + 30, 14, "F2");
   y += 54;
   tableHeader(pdf, margin, y, ["Mission", "Marge", "Taux", "Action recommandée"], [210, 80, 60, 160]);
   y += 24;

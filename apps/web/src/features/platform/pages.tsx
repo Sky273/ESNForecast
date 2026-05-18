@@ -91,7 +91,7 @@ export function ObservabilityPage() {
       <PageHeader title="Observabilité" description="Vue opérationnelle des logs, erreurs, latences, jobs et connecteurs." />
       <InfoPanel title="Lecture opérationnelle">Cet écran aide à diagnostiquer rapidement un incident. Utilise le correlationId, la route et la durée pour relier une erreur utilisateur aux logs applicatifs.</InfoPanel>
       <div className="mb-5 grid gap-3 md:grid-cols-4">
-        <KpiCard label="Logs collectés" value={String(summary?.logs ?? "-")} />
+        <KpiCard label="Logs collectés" value={String(summary?.logs ?? "-")} origin={{ kind: "calculated", label: "Observabilité", details: ["Logs applicatifs collectés"] }} />
                 <KpiCard label="Erreurs ouvertes" value={String(summary?.openErrors ?? "-")} tone={(summary?.openErrors ?? 0) ? "risk" : "good"} origin={{ kind: "calculated", label: "Erreurs" }} />
                 <KpiCard label="Erreurs connecteurs" value={String(summary?.connectorErrors ?? "-")} origin={{ kind: "provider", label: "Connecteurs" }} />
                 <KpiCard label="Snapshots lenteur" value={String(summary?.slowRequests?.length ?? "-")} origin={{ kind: "calculated", label: "Performance" }} />
@@ -204,10 +204,10 @@ export function SystemStatusPage() {
     <>
       <PageHeader title="Statut système" description="État applicatif, base, workers, connecteurs et erreurs récentes." />
       <div className="mb-5 grid gap-3 md:grid-cols-4">
-        <KpiCard label="État global" value={data?.status ?? "-"} tone={data?.status === "operational" ? "good" : "risk"} />
-        <KpiCard label="API" value={data?.api ?? "-"} />
-        <KpiCard label="Jobs en erreur" value={String(data?.failedJobs ?? "-")} tone={(data?.failedJobs ?? 0) ? "risk" : "good"} />
-        <KpiCard label="Erreurs ouvertes" value={String(data?.recentErrors ?? "-")} tone={(data?.recentErrors ?? 0) ? "risk" : "good"} />
+        <KpiCard label="État global" value={data?.status ?? "-"} tone={data?.status === "operational" ? "good" : "risk"} origin={{ kind: "calculated", label: "Santé système" }} />
+        <KpiCard label="API" value={data?.api ?? "-"} origin={{ kind: "calculated", label: "Healthcheck API" }} />
+        <KpiCard label="Jobs en erreur" value={String(data?.failedJobs ?? "-")} tone={(data?.failedJobs ?? 0) ? "risk" : "good"} origin={{ kind: "calculated", label: "Jobs" }} />
+        <KpiCard label="Erreurs ouvertes" value={String(data?.recentErrors ?? "-")} tone={(data?.recentErrors ?? 0) ? "risk" : "good"} origin={{ kind: "calculated", label: "Erreurs" }} />
       </div>
       <Table rows={data?.connectors ?? []} columns={[{ key: "status", label: "Statut" }, { key: "_count", label: "Connecteurs", render: (row) => row._count }]} />
     </>
@@ -224,10 +224,10 @@ export function BackofficeSupportPage() {
     <>
       <PageHeader title="Backoffice support" description="Diagnostic organisation, connecteurs, jobs et erreurs sans exposer les secrets." />
       <div className="mb-5 grid gap-3 md:grid-cols-4">
-        <KpiCard label="Organisations" value={String(organizations?.length ?? "-")} />
-        <KpiCard label="Utilisateurs" value={String(detail?.users ?? "-")} />
-        <KpiCard label="Jobs à traiter" value={String(diagnostics?.failedOrRetryingJobs ?? "-")} tone={(diagnostics?.failedOrRetryingJobs ?? 0) ? "risk" : "good"} />
-        <KpiCard label="Erreurs ouvertes" value={String(diagnostics?.openErrors ?? "-")} tone={(diagnostics?.openErrors ?? 0) ? "risk" : "good"} />
+        <KpiCard label="Organisations" value={String(organizations?.length ?? "-")} origin={{ kind: "manual", label: "Backoffice" }} />
+        <KpiCard label="Utilisateurs" value={String(detail?.users ?? "-")} origin={{ kind: "manual", label: "Backoffice" }} />
+        <KpiCard label="Jobs à traiter" value={String(diagnostics?.failedOrRetryingJobs ?? "-")} tone={(diagnostics?.failedOrRetryingJobs ?? 0) ? "risk" : "good"} origin={{ kind: "calculated", label: "Diagnostic" }} />
+        <KpiCard label="Erreurs ouvertes" value={String(diagnostics?.openErrors ?? "-")} tone={(diagnostics?.openErrors ?? 0) ? "risk" : "good"} origin={{ kind: "calculated", label: "Erreurs" }} />
       </div>
       <Panel title="Organisations">
         <Table rows={organizations ?? []} columns={[{ key: "name", label: "Nom" }, { key: "slug", label: "Slug" }, { key: "createdAt", label: "Création" }]} />
@@ -340,9 +340,9 @@ export function OnboardingPage() {
     <>
       <PageHeader title="Onboarding" description="Checklist de configuration initiale pour rendre le pilotage exploitable." />
       <div className="mb-5 grid gap-3 md:grid-cols-3">
-        <KpiCard label="étapes terminées" value={`${complèted}/${steps.length || 0}`} />
-        <KpiCard label="Banque connectée" value={data?.steps?.bank ? "Oui" : "Non"} tone={data?.steps?.bank ? "good" : "risk"} />
-        <KpiCard label="Premier rapport CODIR" value={data?.steps?.codirReport ? "Oui" : "Non"} />
+        <KpiCard label="étapes terminées" value={`${complèted}/${steps.length || 0}`} origin={{ kind: "calculated", label: "Onboarding" }} />
+        <KpiCard label="Banque connectée" value={data?.steps?.bank ? "Oui" : "Non"} tone={data?.steps?.bank ? "good" : "risk"} origin={{ kind: "provider", label: "Banque" }} />
+        <KpiCard label="Premier rapport CODIR" value={data?.steps?.codirReport ? "Oui" : "Non"} origin={{ kind: "calculated", label: "Rapport" }} />
       </div>
       <Table rows={steps} columns={[{ key: "key", label: "étape" }, { key: "value", label: "Statut", render: (row) => <StatusBadge label={row.value ? "terminée" : "à faire"} tone={row.value ? "good" : "warn"} /> }]} />
     </>

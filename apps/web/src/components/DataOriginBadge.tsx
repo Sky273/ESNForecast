@@ -14,6 +14,7 @@ export type DataOriginDescriptor = {
   provider?: string | null;
   label?: string | null;
   details?: Array<string | null | undefined>;
+  method?: string | null;
 };
 
 type DataOriginBadgeProps = DataOriginDescriptor;
@@ -38,6 +39,11 @@ const labelByKind: Record<DataOriginKind, string> = {
   unknown: "Source inconnue"
 };
 
+const defaultMethodByKind: Partial<Record<DataOriginKind, string>> = {
+  calculated: "Calculé à partir des données applicatives disponibles, du scénario actif et des hypothèses de forecast.",
+  reforecast: "Projection recalculée à partir du réel constaté et des hypothèses restantes."
+};
+
 const legendItems: DataOriginDescriptor[] = [
   { kind: "manual" },
   { kind: "csv" },
@@ -57,11 +63,11 @@ const iconByKind = {
   unknown: Database
 };
 
-export function DataOriginBadge({ kind, provider, label, details = [] }: DataOriginBadgeProps) {
+export function DataOriginBadge({ kind, provider, label, details = [], method }: DataOriginBadgeProps) {
   const normalized = normalizeOriginKind(kind, provider);
   const Icon = iconByKind[normalized];
   const displayLabel = label || (normalized === "provider" && provider ? provider : labelByKind[normalized]);
-  const title = buildOriginTitle(normalized, displayLabel, details);
+  const title = buildOriginTitle(normalized, displayLabel, details, method);
 
   return (
     <span
@@ -117,8 +123,10 @@ export function normalizeOriginKind(kind?: DataOriginKind | string | null, provi
   return "unknown";
 }
 
-function buildOriginTitle(kind: DataOriginKind, label: string, details: Array<string | null | undefined>) {
-  return [`Source : ${labelByKind[kind] === label ? label : `${labelByKind[kind]} (${label})`}`, ...details.filter(Boolean)].join("\n");
+function buildOriginTitle(kind: DataOriginKind, label: string, details: Array<string | null | undefined>, method?: string | null) {
+  const origin = labelByKind[kind] === label ? label : `${labelByKind[kind]} (${label})`;
+  const methodLine = method ?? defaultMethodByKind[kind];
+  return [`Source : ${origin}`, methodLine ? `Méthode : ${methodLine}` : undefined, ...details.filter(Boolean)].filter(Boolean).join("\n");
 }
 
 function formatDate(value: string) {

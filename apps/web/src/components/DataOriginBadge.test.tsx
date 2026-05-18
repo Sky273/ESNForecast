@@ -25,5 +25,14 @@ describe("DataOriginBadge", () => {
     const html = renderToStaticMarkup(<DataOriginLegend compact />);
     expect(html).toContain("Provider");
     expect(html).toContain("Calculé");
+    expect(html).toContain("Méthode");
+  });
+
+  it("explains calculated origins with a short method", () => {
+    const html = renderToStaticMarkup(<DataOriginBadge kind="calculated" label="Écart" details={["Budget 100 EUR", "Réel 80 EUR"]} />);
+    expect(html).toContain("Écart");
+    expect(html).toContain("Méthode");
+    expect(html).toContain("Calculé à partir");
+    expect(html).toContain("Budget 100 EUR");
   });
 });

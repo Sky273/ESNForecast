@@ -12,10 +12,10 @@ La V6 ajoute une couche de pilotage de trajectoire au-dessus du prévisionnel, d
 - **Actual** : réel constaté.
 - **Atterrissage annuel** : estimation de fin d'année probable, calculée avec le réel à date et le forecast restant.
 - **Écart** : difference entre budget, forecast, reforecast et réel.
-- **Cause d?Écart** : explication rattachée à un client, mission, facture, ressource ou transaction.
+- **Cause d'Écart** : explication rattachée à un client, mission, facture, ressource ou transaction.
 - **Plan d'action** : actions correctives rattachées à un objectif ou un Écart.
 - **Pipeline nécessaire** : volume commercial brut requis pour combler le gap de CA selon le taux de conversion.
-- **Staffing budgétaire** : capacit? nécessaire pour produire le chiffre d'affaires budgété.
+- **Staffing budgétaire** : capacité nécessaire pour produire le chiffre d'affaires budgété.
 - **Conditions de réussite** : conditions qui doivent être vraies pour atteindre le budget.
 
 ## Flux de pilotage
@@ -66,4 +66,3 @@ flowchart LR
 ## Limites
 
 La V6 reste un outil de pilotage budgétaire opérationnel. Elle ne remplace pas une comptabilite legale, un data warehouse BI ou une planification RH complète.
-

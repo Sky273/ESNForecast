@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { API_URL, api } from "../../api";
 import { CrudPage } from "../../components/CrudPage";
-import { DataOriginBadge } from "../../components/DataOriginBadge";
+import { DataOriginBadge, DataOriginLegend } from "../../components/DataOriginBadge";
 import { Badge } from "../../components/Format";
 import { InfoPanel } from "../../components/InfoPanel";
 import { KpiCard } from "../../components/KpiCard";
@@ -127,11 +127,12 @@ export function ProviderHealthPage() {
   return (
     <section className="space-y-5">
       <PageTitle title="Santé connecteurs" subtitle="Vue opérationnelle provider, syncs, webhooks, erreurs et rate limits." />
+      <DataOriginLegend items={[{ kind: "provider", label: "Provider" }, { kind: "calculated", label: "Supervision" }]} />
       <div className="grid gap-3 md:grid-cols-4">
-        <KpiCard label="Connectes" value={String(data?.summary?.connected ?? 0)} tone="good" />
-        <KpiCard label="En erreur" value={String(data?.summary?.errors ?? 0)} tone={(data?.summary?.errors ?? 0) > 0 ? "risk" : "good"} />
-        <KpiCard label="Expirés" value={String(data?.summary?.expired ?? 0)} tone={(data?.summary?.expired ?? 0) > 0 ? "risk" : "good"} />
-        <KpiCard label="Deconnectés" value={String(data?.summary?.disconnected ?? 0)} />
+        <KpiCard label="Connectés" value={String(data?.summary?.connected ?? 0)} tone="good" origin={{ kind: "provider", label: "Provider" }} />
+        <KpiCard label="En erreur" value={String(data?.summary?.errors ?? 0)} tone={(data?.summary?.errors ?? 0) > 0 ? "risk" : "good"} origin={{ kind: "calculated", label: "Supervision", details: ["Connecteurs avec erreur active"] }} />
+        <KpiCard label="Expirés" value={String(data?.summary?.expired ?? 0)} tone={(data?.summary?.expired ?? 0) > 0 ? "risk" : "good"} origin={{ kind: "calculated", label: "Supervision", details: ["Consentements expirés"] }} />
+        <KpiCard label="Déconnectés" value={String(data?.summary?.disconnected ?? 0)} origin={{ kind: "calculated", label: "Supervision" }} />
       </div>
       {message ? <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">{message}</div> : null}
       <SimpleTable rows={data?.connectors ?? []} columns={[
