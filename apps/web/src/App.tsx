@@ -29,7 +29,7 @@ import {
 } from "./features/connected-finance";
 import {
   ActualsVariancesPage, AiAnalysisPage, CapacityPage, DocumentsPage, ExecutiveCockpitPage, MonthlyClosePage, MonteCarloPage, PaymentsPage, RealInvoicesPage,
-  ReconciliationPage, SkillsPage, StaffingForecastPage, StrategicRisksPage, TimesheetsPage, V2CrudPage
+  ReconciliationPage, SkillsPage, StaffingForecastPage, StrategicRisksPage, TimesheetsPage, DeliveryCrudPage
 } from "./features/delivery";
 import {
   AdminPage, AlertsPage, AuditPage, BenchPage, BillingPage, CashInPage, CashOutPage, ProfitabilityMissionsPage, ProfitabilityResourcesPage,
@@ -62,7 +62,7 @@ const navGroups: NavGroup[] = [
     items: [
       { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
       { id: "trajectory", label: "Trajectoire", icon: TrendingUp },
-      { id: "executiveV2", label: "Vue direction", icon: Sparkles },
+      { id: "executiveView", label: "Vue direction", icon: Sparkles },
       { id: "treasury", label: "Trésorerie", icon: TrendingUp },
       { id: "connectedFinance", label: "Finance connect\u00e9e", icon: Landmark },
       { id: "actuals", label: "Prévisionnel vs réel", icon: BarChart3 },
@@ -184,7 +184,7 @@ const navGroups: NavGroup[] = [
       { id: "sourcePolicies", label: "Sources de verite", icon: SettingsIcon },
       { id: "duplicates", label: "Doublons", icon: DatabaseBackup },
       { id: "connectorCompliance", label: "Conformité connecteurs", icon: Shield },
-      { id: "consentCompliance", label: "Consentements V4", icon: Shield }
+      { id: "consentCompliance", label: "Consentements providers", icon: Shield }
     ]
   },
   {
@@ -444,7 +444,7 @@ function AppContent() {
           })}
         </nav>
         <div className="shrink-0 border-t border-line px-3 py-2 text-xs text-muted">
-          {compact ? <HeartPulse size={17} className="mx-auto text-emerald-600" /> : <div className="flex items-center justify-between"><span>{t("app.version")}</span><span className="text-emerald-700">{t("app.status.operational")}</span></div>}
+          {compact ? <HeartPulse size={17} className="mx-auto text-emerald-600" /> : <div className="flex items-center justify-between"><span>{t("app.product")}</span><span className="text-emerald-700">{t("app.status.operational")}</span></div>}
         </div>
       </aside>
 
@@ -522,7 +522,7 @@ function renderPage(page: string, scenarioId: string, horizon: number, setHorizo
   if (page === "pricingSettings") return <PricingSettingsPage />;
   if (page === "pricingReport") return <PricingReportPage />;
   if (page === "pricingHistory") return <PricingHistoryPage />;
-  if (page === "executiveV2") return <ExecutiveCockpitPage scenarioId={scenarioId} horizon={horizon} />;
+  if (page === "executiveView") return <ExecutiveCockpitPage scenarioId={scenarioId} horizon={horizon} />;
   if (page === "connectedFinance") return <ConnectedFinanceDashboard scenarioId={scenarioId} horizon={horizon} />;
   if (page === "realConnectors") return <RealConnectorsPage />;
   if (page === "providerConnection") return <ProviderConnectionPage />;
@@ -546,7 +546,7 @@ function renderPage(page: string, scenarioId: string, horizon: number, setHorizo
   if (page === "scenarios") return <ScenariosPage scenarioId={scenarioId} horizon={horizon} />;
   if (page === "simulations") return <SimulationsPage />;
   if (page === "monteCarlo") return <MonteCarloPage scenarioId={scenarioId} horizon={horizon} />;
-  if (page === "offers") return <V2CrudPage kind="offers" />;
+  if (page === "offers") return <DeliveryCrudPage kind="offers" />;
   if (page === "profitabilityMissions") return <ProfitabilityMissionsPage scenarioId={scenarioId} horizon={horizon} />;
   if (page === "assignments") return <Assignments />;
   if (page === "profitabilityResources") return <ProfitabilityResourcesPage scenarioId={scenarioId} horizon={horizon} />;
@@ -570,7 +570,7 @@ function renderPage(page: string, scenarioId: string, horizon: number, setHorizo
     { name: "parentId", label: "Cat\u00e9gorie parente", type: "select", optionsPath: "/financial-categories", optionLabelKey: "name", optionValueKey: "id", placeholder: "Aucune" },
     { name: "isActive", label: "Active", type: "checkbox" }
   ]} columns={[{ key: "name", label: "Cat\u00e9gorie" }, { key: "type", label: "Type" }, { key: "parentId", label: "Parent" }, { key: "isActive", label: "Active" }]} />;
-  if (page === "plannedHires") return <V2CrudPage kind="plannedHires" />;
+  if (page === "plannedHires") return <DeliveryCrudPage kind="plannedHires" />;
   if (page === "strategicRisks") return <StrategicRisksPage scenarioId={scenarioId} horizon={horizon} />;
   if (page === "forecastReliability") return <ForecastReliabilityPage />;
   if (page === "clientPaymentProfiles") return <ClientPaymentProfilesPage />;
@@ -590,15 +590,15 @@ function renderPage(page: string, scenarioId: string, horizon: number, setHorizo
   if (page === "codirReport") return <CodirReportPage scenarioId={scenarioId} horizon={horizon} />;
   if (page === "financialAudit") return <FinancialAuditPage />;
   if (page === "aiAnalysis") return <AiAnalysisPage scenarioId={scenarioId} horizon={horizon} />;
-  if (page === "rules") return <V2CrudPage kind="rules" />;
-  if (page === "notifications") return <V2CrudPage kind="notifications" />;
-  if (page === "workflows") return <V2CrudPage kind="workflows" />;
-  if (page === "webhookSubscriptions") return <V2CrudPage kind="webhooks" />;
-  if (page === "apiKeys") return <V2CrudPage kind="apiKeys" />;
-  if (page === "crmOpportunities") return <V2CrudPage kind="crmOpportunities" />;
-  if (page === "hrAbsences") return <V2CrudPage kind="hrAbsences" />;
+  if (page === "rules") return <DeliveryCrudPage kind="rules" />;
+  if (page === "notifications") return <DeliveryCrudPage kind="notifications" />;
+  if (page === "workflows") return <DeliveryCrudPage kind="workflows" />;
+  if (page === "webhookSubscriptions") return <DeliveryCrudPage kind="webhooks" />;
+  if (page === "apiKeys") return <DeliveryCrudPage kind="apiKeys" />;
+  if (page === "crmOpportunities") return <DeliveryCrudPage kind="crmOpportunities" />;
+  if (page === "hrAbsences") return <DeliveryCrudPage kind="hrAbsences" />;
   if (page === "documents") return <DocumentsPage />;
-  if (page === "connectors") return <V2CrudPage kind="connectors" />;
+  if (page === "connectors") return <DeliveryCrudPage kind="connectors" />;
   if (page === "alerts") return <AlertsPage scenarioId={scenarioId} horizon={horizon} />;
   if (page === "reports") return <ReportsPage scenarioId={scenarioId} horizon={horizon} />;
   if (page === "settings") return <Settings />;

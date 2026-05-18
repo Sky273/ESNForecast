@@ -373,7 +373,7 @@ platformRouter.get("/backups.demo/:id/download", async (req, res, next) => {
   try {
     const backup = await db.backupRun.findUnique({ where: { id: req.params.id } });
     if (!backup) throw new ApiError(404, "NOT_FOUND", "Sauvegarde introuvable.");
-    res.json({ metadata: backup, data: { note: "Export démo V5 sans secrets provider.", generatedAt: new Date().toISOString() } });
+    res.json({ metadata: backup, data: { note: "Export démo sans secrets provider.", generatedAt: new Date().toISOString() } });
   } catch (error) {
     next(error);
   }

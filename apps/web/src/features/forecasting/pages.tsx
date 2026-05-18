@@ -6,12 +6,12 @@ import { Badge, money, percent } from "../../components/Format";
 import { KpiCard } from "../../components/KpiCard";
 import { CrudPage } from "../../components/CrudPage";
 
-type V1Context = { scenarioId: string; horizon: number };
+type ForecastingContext = { scenarioId: string; horizon: number };
 
 export const cashForecastStatusOptions = ["planned", "paid", "late", "cancelled"];
 
-export function TreasuryPage({ scenarioId, horizon }: V1Context) {
-  const { data, error } = useV1Projection(scenarioId, horizon);
+export function TreasuryPage({ scenarioId, horizon }: ForecastingContext) {
+  const { data, error } = useProjection(scenarioId, horizon);
   if (error) return <ErrorState error={error} />;
   if (!data) return <LoadingState />;
   return (
@@ -48,7 +48,7 @@ export function TreasuryPage({ scenarioId, horizon }: V1Context) {
   );
 }
 
-export function ScenariosPage({ scenarioId, horizon }: V1Context) {
+export function ScenariosPage({ scenarioId, horizon }: ForecastingContext) {
   const [rows, setRows] = useState<any[]>([]);
   const [compare, setCompare] = useState<any>(null);
   const [editingId, setEditingId] = useState("");
@@ -150,7 +150,7 @@ export function ScenariosPage({ scenarioId, horizon }: V1Context) {
   );
 }
 
-export function ProfitabilityMissionsPage({ scenarioId, horizon }: V1Context) {
+export function ProfitabilityMissionsPage({ scenarioId, horizon }: ForecastingContext) {
   const { rows } = useEndpoint(`/profitability/missions?scenarioId=${scenarioId}&horizon=${horizon}`);
   return <ProfitabilityTable title="Rentabilité missions" rows={rows} columns={[
     ["title", "Mission"],
@@ -164,7 +164,7 @@ export function ProfitabilityMissionsPage({ scenarioId, horizon }: V1Context) {
   ]} />;
 }
 
-export function ProfitabilityResourcesPage({ scenarioId, horizon }: V1Context) {
+export function ProfitabilityResourcesPage({ scenarioId, horizon }: ForecastingContext) {
   const { rows } = useEndpoint(`/profitability/resources?scenarioId=${scenarioId}&horizon=${horizon}`);
   return <ProfitabilityTable title="Rentabilité ressources" rows={rows} columns={[
     ["name", "Ressource"],
@@ -178,7 +178,7 @@ export function ProfitabilityResourcesPage({ scenarioId, horizon }: V1Context) {
   ]} />;
 }
 
-export function BenchPage({ scenarioId, horizon }: V1Context) {
+export function BenchPage({ scenarioId, horizon }: ForecastingContext) {
   const { data } = useEndpointObject(`/bench?scenarioId=${scenarioId}&horizon=${horizon}`);
   return (
     <section className="space-y-5">
@@ -189,7 +189,7 @@ export function BenchPage({ scenarioId, horizon }: V1Context) {
   );
 }
 
-export function AlertsPage({ scenarioId, horizon }: V1Context) {
+export function AlertsPage({ scenarioId, horizon }: ForecastingContext) {
   const { rows } = useEndpoint(`/alerts?scenarioId=${scenarioId}&horizon=${horizon}`);
   return <ProfitabilityTable title="Alertes" rows={rows} columns={[
     ["severity", "Sévérité", (v: string) => <Badge tone={v === "critical" ? "risk" : v === "warning" ? "warn" : "neutral"}>{v}</Badge>],
@@ -201,7 +201,7 @@ export function AlertsPage({ scenarioId, horizon }: V1Context) {
   ]} />;
 }
 
-export function ReportsPage({ scenarioId, horizon }: V1Context) {
+export function ReportsPage({ scenarioId, horizon }: ForecastingContext) {
   const month = new Date().toISOString().slice(0, 7);
   return (
     <section className="space-y-5">
@@ -299,7 +299,7 @@ function ProfitabilityTable({ title, rows, columns }: { title: string; rows: any
   return <section className="space-y-5"><PageTitle title={title} subtitle="Vue calculée à partir du scénario actif." /><SimpleTable rows={rows} columns={columns} /></section>;
 }
 
-function useV1Projection(scenarioId: string, horizon: number) {
+function useProjection(scenarioId: string, horizon: number) {
   const [data, setData] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {

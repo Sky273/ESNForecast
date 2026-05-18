@@ -6,14 +6,14 @@ import { CrudPage } from "../../components/CrudPage";
 import { Badge, money, percent } from "../../components/Format";
 import { KpiCard } from "../../components/KpiCard";
 
-type V2Context = { scenarioId: string; horizon: number };
+type DeliveryContext = { scenarioId: string; horizon: number };
 
-export function ExecutiveCockpitPage({ scenarioId, horizon }: V2Context) {
+export function ExecutiveCockpitPage({ scenarioId, horizon }: DeliveryContext) {
   const { data } = useObject(`/executive/situation?scenarioId=${scenarioId}&horizon=${horizon}`);
   const months = data?.forecast?.months ?? [];
   return (
     <section className="space-y-5">
-      <PageTitle title="Cockpit direction V2" subtitle="Synthèse prévisionnel, réel, Écarts, risques et capacité." />
+      <PageTitle title="Cockpit direction" subtitle="Synthèse prévisionnel, réel, Écarts, risques et capacité." />
       <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
         <KpiCard label="CA prévisionnel" value={money(data?.summary?.forecastRevenue ?? 0)} />
         <KpiCard label="CA réel" value={money(data?.summary?.actualRevenue ?? 0)} />
@@ -64,7 +64,7 @@ export function TimesheetsPage() {
   ]} columns={[{ key: "year", label: "Année" }, { key: "month", label: "Mois" }, { key: "resourceType", label: "Type" }, { key: "resourceId", label: "Ressource" }, { key: "missionId", label: "Mission" }, { key: "billableDays", label: "Facturables" }, { key: "status", label: "Statut" }]} />;
 }
 
-export function ActualsVariancesPage({ scenarioId, horizon }: V2Context) {
+export function ActualsVariancesPage({ scenarioId, horizon }: DeliveryContext) {
   const { rows: actuals } = useRows("/actuals/monthly");
   const { rows: variances } = useRows(`/variances/monthly?scenarioId=${scenarioId}&horizon=${horizon}`);
   return (
@@ -283,14 +283,14 @@ export function ReconciliationPage() {
   );
 }
 
-export function CapacityPage({ scenarioId, horizon }: V2Context) {
+export function CapacityPage({ scenarioId, horizon }: DeliveryContext) {
   const { rows } = useRows(`/capacity?scenarioId=${scenarioId}&horizon=${horizon}`);
   return <TablePage title="Capacity planning" subtitle="Capacité disponible, besoins par compétence et gaps mensuels." rows={rows} columns={[
     ["month", "Mois"], ["skillLabel", "Compétence"], ["availableFTE", "Dispo FTE"], ["requiredFTE", "Besoin FTE"], ["gapFTE", "Gap"], ["status", "Statut", (value: string) => <Badge tone={value === "shortage" ? "risk" : value === "surplus" ? "warn" : "good"}>{value}</Badge>]
   ]} />;
 }
 
-export function StaffingForecastPage({ scenarioId, horizon }: V2Context) {
+export function StaffingForecastPage({ scenarioId, horizon }: DeliveryContext) {
   const { data } = useObject(`/staffing/forecast?scenarioId=${scenarioId}&horizon=${horizon}`);
   const rows = data?.rows ?? [];
   const summary = data?.summary ?? {};
@@ -382,7 +382,7 @@ export function SkillsPage() {
   );
 }
 
-export function MonteCarloPage({ scenarioId, horizon }: V2Context) {
+export function MonteCarloPage({ scenarioId, horizon }: DeliveryContext) {
   const [data, setData] = useState<any>(null);
   useEffect(() => { if (scenarioId) void api("/monte-carlo/run", { method: "POST", body: JSON.stringify({ scenarioId, horizon, iterations: 500 }) }).then(setData); }, [scenarioId, horizon]);
   return (
@@ -399,14 +399,14 @@ export function MonteCarloPage({ scenarioId, horizon }: V2Context) {
   );
 }
 
-export function StrategicRisksPage({ scenarioId, horizon }: V2Context) {
+export function StrategicRisksPage({ scenarioId, horizon }: DeliveryContext) {
   const { data } = useObject(`/risks/strategic?scenarioId=${scenarioId}&horizon=${horizon}`);
   return <TablePage title="Risques stratégiques" subtitle="Concentration client et dépendances majeures." rows={data?.clientConcentration ?? []} columns={[
     ["clientName", "Client"], ["revenue", "CA", money], ["revenueShare", "Part CA", percent], ["severity", "Sévérité", (value: string) => <Badge tone={value === "critical" ? "risk" : value === "warning" ? "warn" : "neutral"}>{value}</Badge>]
   ]} />;
 }
 
-export function AiAnalysisPage({ scenarioId, horizon }: V2Context) {
+export function AiAnalysisPage({ scenarioId, horizon }: DeliveryContext) {
   const [data, setData] = useState<any>(null);
   useEffect(() => { if (scenarioId) void api("/ai/analyze/scenario", { method: "POST", body: JSON.stringify({ scenarioId, horizon }) }).then(setData); }, [scenarioId, horizon]);
   return (
@@ -422,7 +422,7 @@ export function AiAnalysisPage({ scenarioId, horizon }: V2Context) {
   );
 }
 
-export function V2CrudPage({ kind }: { kind: "plannedHires" | "rules" | "notifications" | "documents" | "offers" | "connectors" | "workflows" | "webhooks" | "apiKeys" | "crmOpportunities" | "hrAbsences" }) {
+export function DeliveryCrudPage({ kind }: { kind: "plannedHires" | "rules" | "notifications" | "documents" | "offers" | "connectors" | "workflows" | "webhooks" | "apiKeys" | "crmOpportunities" | "hrAbsences" }) {
   if (kind === "plannedHires") return <CrudPage title="Recrutements prévisionnels" path="/planned-hires" initial={{ scenarioId: "", title: "", targetRole: "", expectedStartDate: "2026-09-01", expectedMonthlyCost: 5000, expectedEmployerCharges: 2200, expectedFullCost: 7600, expectedTJM: 850, expectedUtilizationRate: 0.8, probability: 0.7, status: "planned" }} fields={[
     { name: "scenarioId", label: "Scénario", type: "select", optionsPath: "/scenarios", optionLabelKey: "name", optionValueKey: "id", placeholder: "Sélectionner un scenario" }, { name: "title", label: "Titre" }, { name: "targetRole", label: "Rôle" }, { name: "expectedStartDate", label: "Début", type: "date" }, { name: "expectedFullCost", label: "Coût complet", type: "number" }, { name: "expectedTJM", label: "TJM attendu", type: "number" }, { name: "expectedUtilizationRate", label: "Occupation", type: "number" }, { name: "status", label: "Statut", type: "select", options: ["planned", "approved", "cancelled", "hired", "delayed"].map((value) => ({ label: value, value })) }
   ]} columns={[{ key: "title", label: "Recrutement" }, { key: "expectedStartDate", label: "Début" }, { key: "expectedFullCost", label: "Coût", render: (row: any) => money(row.expectedFullCost) }, { key: "expectedTJM", label: "TJM", render: (row: any) => money(row.expectedTJM) }, { key: "status", label: "Statut" }]} />;

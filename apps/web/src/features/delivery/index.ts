@@ -13,5 +13,5 @@ export {
   StaffingForecastPage,
   StrategicRisksPage,
   TimesheetsPage,
-  V2CrudPage
+  DeliveryCrudPage
 } from "./pages";

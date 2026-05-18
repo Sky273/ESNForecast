@@ -1,5 +1,5 @@
-import type { Invoice, Payment } from "./v2Types";
-import type { ScenarioProjectionResult } from "./v1Types";
+import type { Invoice, Payment } from "./deliveryTypes";
+import type { ScenarioProjectionResult } from "./forecastTypes";
 
 export type ConnectorType = "accounting" | "banking" | "invoicing" | "crm" | "hr" | "generic_csv";
 export type ConnectorStatus = "inactive" | "connected" | "error" | "expired" | "syncing" | "disconnected";
@@ -90,7 +90,7 @@ export interface CategorizationResult {
   explanation: string;
 }
 
-export interface ReconciliationSuggestionV3 {
+export interface ConnectedReconciliationSuggestion {
   id: string;
   organizationId: string;
   transactionId: string;
@@ -130,7 +130,7 @@ export interface TreasuryActualVsForecastRow {
   reliabilityScore: number;
 }
 
-export interface ReforecastSuggestionV3 {
+export interface ConnectedReforecastSuggestion {
   type: "adjust_cash_balance";
   targetType: "treasury_month";
   targetId: string;
@@ -178,7 +178,7 @@ export interface DataQualityIssue {
   status: "open" | "fixed" | "ignored";
 }
 
-export interface V3FinancialInput {
+export interface ConnectedFinanceInput {
   organizationId: string;
   companyId: string;
   scenarioId: string;
@@ -192,14 +192,14 @@ export interface V3FinancialInput {
   connectors: Connector[];
 }
 
-export interface V3FinancialSituation {
+export interface ConnectedFinanceSituation {
   bankSummary: {
     currentCash: number;
     accounts: number;
     lastBalanceDate?: string;
   };
   treasury: TreasuryActualVsForecastRow[];
-  reconciliationSuggestions: ReconciliationSuggestionV3[];
+  reconciliationSuggestions: ConnectedReconciliationSuggestion[];
   clientPaymentProfiles: ClientPaymentProfile[];
   reliabilityScores: ForecastReliabilityScore[];
   runway: RunwayAnalysis;

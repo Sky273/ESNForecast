@@ -1,13 +1,13 @@
 import type { Client, Mission, MissionAssignment, ResourceType } from "./types";
-import type { ScenarioMonthProjection, ScenarioProjectionResult } from "./v1Types";
+import type { ScenarioMonthProjection, ScenarioProjectionResult } from "./forecastTypes";
 
-export type ResourceTypeV2 = "employee" | "partner_resource" | "freelancer";
+export type DeliveryResourceType = "employee" | "partner_resource" | "freelancer";
 
 export type TimesheetStatus = "draft" | "submitted" | "approved" | "rejected" | "locked";
 
 export interface Timesheet {
   id: string;
-  resourceType: ResourceTypeV2;
+  resourceType: DeliveryResourceType;
   resourceId: string;
   missionId: string;
   month: number;
@@ -68,7 +68,7 @@ export interface MonthlyVariance {
   mainVarianceReasons: string[];
 }
 
-export type V2InvoiceStatus = "draft" | "issued" | "partially_paid" | "paid" | "overdue" | "cancelled";
+export type DeliveryInvoiceStatus = "draft" | "issued" | "partially_paid" | "paid" | "overdue" | "cancelled";
 
 export interface Invoice {
   id: string;
@@ -81,7 +81,7 @@ export interface Invoice {
   amountHT: number;
   vatRate: number;
   amountTTC: number;
-  status: V2InvoiceStatus;
+  status: DeliveryInvoiceStatus;
   paymentDate?: string;
   paidAmount: number;
   source: "manual" | "imported" | "generated_from_timesheet" | "accounting_connector";
@@ -101,7 +101,7 @@ export interface Payment {
 
 export interface ResourceSkill {
   id: string;
-  resourceType: ResourceTypeV2;
+  resourceType: DeliveryResourceType;
   resourceId: string;
   skillId: string;
   level: "junior" | "confirmed" | "senior" | "expert";
@@ -316,7 +316,7 @@ export interface AiExecutiveAnalysis {
   limits: string[];
 }
 
-export interface V2ExecutiveInput {
+export interface DeliveryExecutiveInput {
   scenarioProjection: ScenarioProjectionResult;
   timesheets: Timesheet[];
   monthlyActuals: MonthlyActual[];

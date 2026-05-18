@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { calculateAnnualLanding, calculateRequiredPipeline, classifyBudgetVariance, classifyWhatMustBeTrue } from "./v6BudgetEngine";
+import { calculateAnnualLanding, calculateRequiredPipeline, classifyBudgetVariance, classifyWhatMustBeTrue } from "./budgetEngine";
 
-describe("v6 budget engine", () => {
+describe("Budget engine", () => {
   it("classifies critical negative budget variance", () => {
     const result = classifyBudgetVariance({ budget: 200000, actual: 140000, forecast: 180000 });
     expect(result.variance).toBe(-60000);

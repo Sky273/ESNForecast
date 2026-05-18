@@ -6,7 +6,7 @@ import { KpiCard } from "../../components/KpiCard";
 
 export function RealConnectorsPage() {
   const { rows } = useRows("/providers");
-  return <TablePage title="Connecteurs réels V4" subtitle="Bridge, Powens, Tink, Plaid, Pennylane, Sage et extensions." rows={rows} columns={[
+  return <TablePage title="Catalogue providers" subtitle="Bridge, Powens, Tink, Plaid, Pennylane, Sage et extensions." rows={rows} columns={[
     ["provider", "Provider"],
     ["configStatus", "Configuration", (_value: any, row: any) => <Badge tone={row.configStatus?.ok ? "good" : "warn"}>{row.configStatus?.ok ? "configuré" : "mock/sandbox"}</Badge>],
     ["capabilities", "Données", (_value: any, row: any) => capabilityText(row.capabilities)],
@@ -119,7 +119,7 @@ export function ProviderHealthPage() {
   };
   return (
     <section className="space-y-5">
-      <PageTitle title="Santé connecteurs V4" subtitle="Vue opérationnelle provider, syncs, webhooks, erreurs et rate limits." />
+      <PageTitle title="Santé connecteurs" subtitle="Vue opérationnelle provider, syncs, webhooks, erreurs et rate limits." />
       <div className="grid gap-3 md:grid-cols-4">
         <KpiCard label="Connectes" value={String(data?.summary?.connected ?? 0)} tone="good" />
         <KpiCard label="En erreur" value={String(data?.summary?.errors ?? 0)} tone={(data?.summary?.errors ?? 0) > 0 ? "risk" : "good"} />

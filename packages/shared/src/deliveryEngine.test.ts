@@ -9,10 +9,10 @@ import {
   generateInvoiceFromTimesheet,
   runMonteCarloSimulation,
   runRuleEngine
-} from "./v2Engine";
-import type { V2ExecutiveInput } from "./v2Types";
+} from "./deliveryEngine";
+import type { DeliveryExecutiveInput } from "./deliveryTypes";
 
-const input: V2ExecutiveInput = {
+const input: DeliveryExecutiveInput = {
   scenarioProjection: {
     scenarioId: "reference",
     months: [
@@ -146,7 +146,7 @@ const input: V2ExecutiveInput = {
   plannedHires: []
 };
 
-describe("V2 executive engine", () => {
+describe("Delivery executive engine", () => {
   it("generates a real invoice from an approved timesheet", () => {
     const invoice = generateInvoiceFromTimesheet(input.timesheets[0], input.missions[0], "client-a", 1000);
     expect(invoice.amountHT).toBe(18000);

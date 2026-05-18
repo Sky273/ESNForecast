@@ -6,7 +6,7 @@ import {
   calculateScenarioProjection,
   applySimulationEvents
 } from "./scenarioProjection";
-import type { ScenarioProjectionInput } from "./v1Types";
+import type { ScenarioProjectionInput } from "./forecastTypes";
 
 const baseInput: ScenarioProjectionInput = {
   company: {
@@ -177,7 +177,7 @@ const baseInput: ScenarioProjectionInput = {
   horizonMonths: 6
 };
 
-describe("V1 scenario projection engine", () => {
+describe("Scenario projection engine", () => {
   it("calculates cash-in from invoice expected payment date and probability", () => {
     const cashIn = calculateCashInFromInvoice(baseInput.invoiceForecasts[0]);
     expect(cashIn.expectedDate).toBe("2026-08-14");

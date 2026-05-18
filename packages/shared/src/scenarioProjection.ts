@@ -12,8 +12,8 @@ import type {
   ScenarioMonthProjection,
   ScenarioProjectionInput,
   ScenarioProjectionResult,
-  V1Alert
-} from "./v1Types";
+  ForecastAlert
+} from "./forecastTypes";
 import type { Employee, Mission, MissionAssignment, ProjectionSettings } from "./types";
 
 const round = (value: number) => Math.round((Number.isFinite(value) ? value : 0) * 100) / 100;
@@ -175,7 +175,7 @@ export function calculateBenchCost(input: ScenarioProjectionInput, month: string
 export function calculateScenarioProjection(input: ScenarioProjectionInput): ScenarioProjectionResult {
   const effective = applySimulationEvents(input);
   const months: ScenarioMonthProjection[] = [];
-  const alerts: V1Alert[] = [];
+  const alerts: ForecastAlert[] = [];
   const missionStats = new Map<string, MissionProfitability>();
   const resourceStats = new Map<string, ResourceProfitability>();
   const start = monthStart(effective.startMonth);
@@ -195,7 +195,7 @@ export function calculateScenarioProjection(input: ScenarioProjectionInput): Sce
 
   for (let index = 0; index < effective.horizonMonths; index += 1) {
     const month = formatMonth(addMonths(start, index));
-    const monthAlerts: V1Alert[] = [];
+    const monthAlerts: ForecastAlert[] = [];
     let revenueSigned = 0;
     let revenueExpected = 0;
     let revenueWeighted = 0;
@@ -510,6 +510,6 @@ function fixedCostForMonth(startDate: string, endDate: string | null | undefined
   return isInMonth(startDate, month) ? monthlyAmount : 0;
 }
 
-function makeAlert(type: string, severity: "info" | "warning" | "critical", message: string, month: string, recommendedAction: string): V1Alert {
+function makeAlert(type: string, severity: "info" | "warning" | "critical", message: string, month: string, recommendedAction: string): ForecastAlert {
   return { type, severity, message, month, recommendedAction, status: "new" };
 }

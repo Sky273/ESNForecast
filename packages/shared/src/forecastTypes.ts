@@ -20,7 +20,7 @@ export type CashStatus = "planned" | "paid" | "late" | "cancelled";
 export type AlertStatus = "new" | "seen" | "resolved" | "ignored";
 export type EmployeeCostMode = "full_monthly" | "prorated_by_assignment" | "full_with_analytic_split";
 
-export interface V1ProjectionSettings extends ProjectionSettings {
+export interface ForecastProjectionSettings extends ProjectionSettings {
   defaultSupplierPaymentDelayDays: number;
   initialCash: number;
   criticalCashThreshold: number;
@@ -110,7 +110,7 @@ export interface SimulationEvent {
 export interface ScenarioProjectionInput {
   company: Company;
   scenario: Scenario;
-  settings: V1ProjectionSettings;
+  settings: ForecastProjectionSettings;
   employees: Employee[];
   partners: Partner[];
   partnerResources: PartnerResource[];
@@ -160,10 +160,10 @@ export interface ScenarioMonthProjection {
   externalProducedDays: number;
   internalUtilizationRate: number;
   benchCost: number;
-  alerts: V1Alert[];
+  alerts: ForecastAlert[];
 }
 
-export interface V1Alert extends Omit<ProjectionAlert, "type"> {
+export interface ForecastAlert extends Omit<ProjectionAlert, "type"> {
   type: string;
   recommendedAction?: string;
   status: AlertStatus;
@@ -226,7 +226,7 @@ export interface ScenarioProjectionResult {
   missionProfitability: MissionProfitability[];
   resourceProfitability: ResourceProfitability[];
   cashflow: CashflowMonth[];
-  alerts: V1Alert[];
+  alerts: ForecastAlert[];
   summary: {
     totalRevenueGenerated: number;
     totalRevenueInvoiced: number;

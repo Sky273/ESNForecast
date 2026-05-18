@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  buildV3FinancialSituation,
+  buildConnectedFinanceSituation,
   calculateClientPaymentProfiles,
   calculateForecastReliability,
   calculateRunway,
@@ -8,10 +8,10 @@ import {
   detectFinancialAnomalies,
   generateReforecastSuggestions,
   generateReconciliationSuggestions
-} from "./v3Engine";
-import type { V3FinancialInput } from "./v3Types";
+} from "./connectedFinanceEngine";
+import type { ConnectedFinanceInput } from "./connectedFinanceTypes";
 
-const input: V3FinancialInput = {
+const input: ConnectedFinanceInput = {
   organizationId: "org1",
   companyId: "company1",
   scenarioId: "reference",
@@ -88,7 +88,7 @@ const input: V3FinancialInput = {
   ]
 };
 
-describe("V3 real finance engine", () => {
+describe("Connected finance engine", () => {
   it("categorizes bank transactions with deterministic rules", () => {
     const result = categorizeTransactions(input.bankTransactions, input.categorizationRules);
     expect(result.find((row) => row.transactionId === "tx2")?.categoryId).toBe("cat-urssaf");
@@ -139,8 +139,8 @@ describe("V3 real finance engine", () => {
     expect(anomalies.some((item) => item.type === "duplicate_payment")).toBe(true);
   });
 
-  it("builds an executive V3 situation", () => {
-    const situation = buildV3FinancialSituation(input);
+  it("builds a connected finance situation", () => {
+    const situation = buildConnectedFinanceSituation(input);
     expect(situation.bankSummary.currentCash).toBe(77000);
     expect(situation.reconciliationSuggestions.length).toBeGreaterThan(0);
     expect(situation.dataQualityIssues.some((issue) => issue.type === "uncategorized_transactions")).toBe(true);

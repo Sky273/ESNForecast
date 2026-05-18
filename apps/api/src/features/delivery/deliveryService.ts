@@ -9,12 +9,12 @@ import {
   runMonteCarloSimulation,
   runRuleEngine
 } from "@esn-forecast/shared";
-import type { V2ExecutiveInput } from "@esn-forecast/shared";
+import type { DeliveryExecutiveInput } from "@esn-forecast/shared";
 import { prisma } from "../../db";
 import { buildScenarioProjection } from "../forecasting/projectionService";
 import { serializeDates } from "../../utils/serialize";
 
-export async function buildV2Input(scenarioId?: string, horizon?: number): Promise<V2ExecutiveInput> {
+export async function buildDeliveryInput(scenarioId?: string, horizon?: number): Promise<DeliveryExecutiveInput> {
   const [
     scenarioProjection,
     timesheets,
@@ -67,11 +67,11 @@ export async function buildV2Input(scenarioId?: string, horizon?: number): Promi
 }
 
 export async function buildExecutiveSituation(scenarioId?: string, horizon?: number) {
-  return calculateExecutiveSituation(await buildV2Input(scenarioId, horizon));
+  return calculateExecutiveSituation(await buildDeliveryInput(scenarioId, horizon));
 }
 
 export async function buildVariances(scenarioId?: string, horizon?: number) {
-  const input = await buildV2Input(scenarioId, horizon);
+  const input = await buildDeliveryInput(scenarioId, horizon);
   return input.monthlyActuals
     .map((actual) => {
       const month = `${actual.year}-${String(actual.month).padStart(2, "0")}`;
@@ -83,7 +83,7 @@ export async function buildVariances(scenarioId?: string, horizon?: number) {
 
 export async function buildCapacity(scenarioId?: string, horizon?: number) {
   const [capacity, skills] = await Promise.all([
-    buildV2Input(scenarioId, horizon).then(calculateCapacityPlan),
+    buildDeliveryInput(scenarioId, horizon).then(calculateCapacityPlan),
     prisma.skill.findMany()
   ]);
   const skillsById = new Map(skills.map((skill) => [skill.id, skill]));
@@ -100,7 +100,7 @@ export async function buildCapacity(scenarioId?: string, horizon?: number) {
 
 export async function buildMissionStaffingForecast(scenarioId?: string, horizon?: number) {
   const [input, assignments, skills, employees, partnerResources, freelancers] = await Promise.all([
-    buildV2Input(scenarioId, horizon),
+    buildDeliveryInput(scenarioId, horizon),
     prisma.missionAssignment.findMany(),
     prisma.skill.findMany(),
     prisma.employee.findMany(),
@@ -139,15 +139,15 @@ export async function buildMissionStaffingForecast(scenarioId?: string, horizon?
 }
 
 export async function buildStrategicRisks(scenarioId?: string, horizon?: number) {
-  return analyzeStrategicDependencies(await buildV2Input(scenarioId, horizon));
+  return analyzeStrategicDependencies(await buildDeliveryInput(scenarioId, horizon));
 }
 
 export async function buildRulesEvaluation(scenarioId?: string, horizon?: number) {
-  return runRuleEngine(await buildV2Input(scenarioId, horizon));
+  return runRuleEngine(await buildDeliveryInput(scenarioId, horizon));
 }
 
 export async function buildMonteCarlo(scenarioId?: string, horizon?: number, iterations = 500) {
-  const result = runMonteCarloSimulation(await buildV2Input(scenarioId, horizon), iterations);
+  const result = runMonteCarloSimulation(await buildDeliveryInput(scenarioId, horizon), iterations);
   if (scenarioId) {
     await prisma.monteCarloResult.create({ data: { scenarioId, iterations: result.iterations, result: result as any } });
   }

@@ -212,7 +212,7 @@ pricingRouter.get("/reports/pricing-margin.pdf", async (_req, res, next) => {
     next(error);
   }
 });
-pricingRouter.get("/reports/pricing-margin.demo.pdf", (_req, res) => res.type("application/pdf").send(Buffer.from("PDF démo V7 Pricing Margin")));
+pricingRouter.get("/reports/pricing-margin.demo.pdf", (_req, res) => res.type("application/pdf").send(Buffer.from("PDF démo Pricing Margin")));
 
 pricingRouter.post("/ai/pricing/analyze-mission", async (req, res, next) => { try { const row = toMissionPricingRow(await calculateMissionProfile(req.body?.missionId)); res.json({ facts: row, summary: `Mission ${row.missionTitle}: TJM actuel ${row.currentDailyRate}, recommandé ${row.recommendedDailyRate}.`, guardrail: "Analyse limitée aux données pricing calculées." }); } catch (error) { next(error); } });
 pricingRouter.post("/ai/pricing/generate-renegotiation-argument", async (req, res, next) => { try { const row = toMissionPricingRow(await calculateMissionProfile(req.body?.missionId)); res.json({ argument: `Le cout complet et la marge cible justifient un TJM cible de ${row.recommendedDailyRate} EUR. L'Ecart actuel represente ${row.monthlyImpactAmount} EUR par mois.`, sources: [row.missionId, row.profileId] }); } catch (error) { next(error); } });

@@ -6,7 +6,7 @@ import { CrudPage } from "../../components/CrudPage";
 import { Badge, money, percent } from "../../components/Format";
 import { KpiCard } from "../../components/KpiCard";
 
-type V3Context = { scenarioId: string; horizon: number };
+type ConnectedFinanceContext = { scenarioId: string; horizon: number };
 
 const reconciliationTargetTypes = [
   { value: "invoice", label: "Facture" },
@@ -15,11 +15,11 @@ const reconciliationTargetTypes = [
   { value: "variable_cost", label: "Frais variable" }
 ];
 
-export function ConnectedFinanceDashboard({ scenarioId, horizon }: V3Context) {
+export function ConnectedFinanceDashboard({ scenarioId, horizon }: ConnectedFinanceContext) {
   const { data } = useObject(`/financial/situation?scenarioId=${scenarioId}&horizon=${horizon}`);
   return (
     <section className="space-y-5">
-      <PageTitle title="Dashboard V3 finance connectée" subtitle="Trésorerie bancaire, Écarts, rapprochement, fiabilité, runway et qualité des données." />
+      <PageTitle title="Dashboard finance connectée" subtitle="Trésorerie bancaire, Écarts, rapprochement, fiabilité, runway et qualité des données." />
       <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
         <KpiCard label="Cash bancaire" value={money(data?.bankSummary?.currentCash ?? 0)} />
         <KpiCard label="Comptes actifs" value={String(data?.bankSummary?.accounts ?? 0)} />
@@ -243,7 +243,7 @@ export function ImportedAccountingPage() {
   ]} />;
 }
 
-export function RealTreasuryPage({ scenarioId, horizon }: V3Context) {
+export function RealTreasuryPage({ scenarioId, horizon }: ConnectedFinanceContext) {
   const { rows } = useRows(`/treasury/actual-vs-forecast?scenarioId=${scenarioId}&horizon=${horizon}`);
   return <TablePage title="Trésorerie réelle vs prévisionnelle" subtitle="Solde bancaire, solde prévu, Écart et projection recalibrée." rows={rows} columns={[
     ["month", "Mois"],
@@ -255,7 +255,7 @@ export function RealTreasuryPage({ scenarioId, horizon }: V3Context) {
   ]} />;
 }
 
-export function ReforecastPage({ scenarioId, horizon }: V3Context) {
+export function ReforecastPage({ scenarioId, horizon }: ConnectedFinanceContext) {
   const { rows } = useRows(`/treasury/actual-vs-forecast?scenarioId=${scenarioId}&horizon=${horizon}`);
   const [jobResult, setJobResult] = useState<any>(null);
   const [isRunning, setIsRunning] = useState(false);
@@ -293,7 +293,7 @@ export function ReforecastPage({ scenarioId, horizon }: V3Context) {
   );
 }
 
-export function RunwayPage({ scenarioId, horizon }: V3Context) {
+export function RunwayPage({ scenarioId, horizon }: ConnectedFinanceContext) {
   const { data } = useObject(`/treasury/runway?scenarioId=${scenarioId}&horizon=${horizon}`);
   return (
     <section className="space-y-5">
@@ -436,7 +436,7 @@ export function BankConsentsPage() {
   ]} />;
 }
 
-export function CodirReportPage({ scenarioId, horizon }: V3Context) {
+export function CodirReportPage({ scenarioId, horizon }: ConnectedFinanceContext) {
   const month = new Date().toISOString().slice(0, 7);
   const query = `month=${encodeURIComponent(month)}&scenarioId=${encodeURIComponent(scenarioId)}&horizon=${horizon}`;
   const { data } = useObject(`/reports/codir.json?${query}`);

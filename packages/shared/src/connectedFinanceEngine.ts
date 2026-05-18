@@ -6,14 +6,14 @@ import type {
   DataQualityIssue,
   FinancialAnomaly,
   ForecastReliabilityScore,
-  ReforecastSuggestionV3,
-  ReconciliationSuggestionV3,
+  ConnectedReforecastSuggestion,
+  ConnectedReconciliationSuggestion,
   RunwayAnalysis,
   TreasuryActualVsForecastRow,
-  V3FinancialInput,
-  V3FinancialSituation
-} from "./v3Types";
-import type { Invoice, Payment } from "./v2Types";
+  ConnectedFinanceInput,
+  ConnectedFinanceSituation
+} from "./connectedFinanceTypes";
+import type { Invoice, Payment } from "./deliveryTypes";
 
 export function categorizeTransactions(
   transactions: BankTransaction[],
@@ -41,8 +41,8 @@ export function categorizeTransactions(
   });
 }
 
-export function generateReconciliationSuggestions(input: V3FinancialInput): ReconciliationSuggestionV3[] {
-  const suggestions: ReconciliationSuggestionV3[] = [];
+export function generateReconciliationSuggestions(input: ConnectedFinanceInput): ConnectedReconciliationSuggestion[] {
+  const suggestions: ConnectedReconciliationSuggestion[] = [];
 
   for (const transaction of input.bankTransactions.filter((item) => item.reconciliationStatus === "unreconciled")) {
     if (transaction.direction !== "credit") continue;
@@ -107,7 +107,7 @@ export function calculateClientPaymentProfiles(invoices: Invoice[], payments: Pa
   });
 }
 
-export function calculateForecastReliability(input: V3FinancialInput): ForecastReliabilityScore[] {
+export function calculateForecastReliability(input: ConnectedFinanceInput): ForecastReliabilityScore[] {
   const bankCash = sum(input.bankAccounts.filter((account) => account.isActive), (account) => account.currentBalance);
   const uncategorized = input.bankTransactions.filter((transaction) => transaction.categorizationStatus === "uncategorized").length;
   const unreconciled = input.bankTransactions.filter((transaction) => transaction.reconciliationStatus === "unreconciled").length;
@@ -136,7 +136,7 @@ export function calculateForecastReliability(input: V3FinancialInput): ForecastR
   });
 }
 
-export function calculateTreasuryActualVsForecast(input: V3FinancialInput): TreasuryActualVsForecastRow[] {
+export function calculateTreasuryActualVsForecast(input: ConnectedFinanceInput): TreasuryActualVsForecastRow[] {
   const bankCash = sum(input.bankAccounts.filter((account) => account.isActive), (account) => account.currentBalance);
   const reliability = calculateForecastReliability(input);
   return input.projection.months.map((month, index) => {
@@ -152,7 +152,7 @@ export function calculateTreasuryActualVsForecast(input: V3FinancialInput): Trea
   });
 }
 
-export function generateReforecastSuggestions(input: V3FinancialInput, materialityThreshold = 5000): ReforecastSuggestionV3[] {
+export function generateReforecastSuggestions(input: ConnectedFinanceInput, materialityThreshold = 5000): ConnectedReforecastSuggestion[] {
   return calculateTreasuryActualVsForecast(input)
     .filter((row) => Math.abs(row.variance) > materialityThreshold)
     .map((row) => ({
@@ -174,7 +174,7 @@ export function generateReforecastSuggestions(input: V3FinancialInput, materiali
     }));
 }
 
-export function calculateRunway(input: V3FinancialInput): RunwayAnalysis {
+export function calculateRunway(input: ConnectedFinanceInput): RunwayAnalysis {
   const currentCash = roundCurrency(sum(input.bankAccounts.filter((account) => account.isActive), (account) => account.currentBalance));
   const debits = input.bankTransactions.filter((transaction) => transaction.direction === "debit").map((transaction) => Math.abs(transaction.amount));
   const averageMonthlyBurn = roundCurrency(debits.length ? sum(debits, (value) => value) : Math.max(input.projection.summary.totalCashOut / Math.max(1, input.projection.months.length), 1));
@@ -197,7 +197,7 @@ export function calculateRunway(input: V3FinancialInput): RunwayAnalysis {
   };
 }
 
-export function detectFinancialAnomalies(input: V3FinancialInput): FinancialAnomaly[] {
+export function detectFinancialAnomalies(input: ConnectedFinanceInput): FinancialAnomaly[] {
   const anomalies: FinancialAnomaly[] = [];
   const debitTransactions = input.bankTransactions.filter((item) => item.direction === "debit");
   const duplicatePairs: BankTransaction[][] = [];
@@ -246,7 +246,7 @@ export function detectFinancialAnomalies(input: V3FinancialInput): FinancialAnom
   return anomalies;
 }
 
-export function calculateDataQualityIssues(input: V3FinancialInput): DataQualityIssue[] {
+export function calculateDataQualityIssues(input: ConnectedFinanceInput): DataQualityIssue[] {
   const issues: DataQualityIssue[] = [];
   const uncategorized = input.bankTransactions.filter((transaction) => transaction.categorizationStatus === "uncategorized");
   const unreconciled = input.bankTransactions.filter((transaction) => transaction.reconciliationStatus === "unreconciled");
@@ -294,7 +294,7 @@ export function calculateDataQualityIssues(input: V3FinancialInput): DataQuality
   return issues;
 }
 
-export function buildV3FinancialSituation(input: V3FinancialInput): V3FinancialSituation {
+export function buildConnectedFinanceSituation(input: ConnectedFinanceInput): ConnectedFinanceSituation {
   const activeAccounts = input.bankAccounts.filter((account) => account.isActive);
   const currentCash = roundCurrency(sum(activeAccounts, (account) => account.currentBalance));
   const connectorHealth = {

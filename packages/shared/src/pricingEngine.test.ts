@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { calculateFloorRate, calculateMissionPricing, calculateRecommendedRate, calculateRenegotiationPriority, roundDailyRate, simulatePricing } from "./v7PricingEngine";
+import { calculateFloorRate, calculateMissionPricing, calculateRecommendedRate, calculateRenegotiationPriority, roundDailyRate, simulatePricing } from "./pricingEngine";
 
-describe("v7 pricing engine", () => {
+describe("Pricing engine", () => {
   it("calculates floor and recommended daily rates with rounding", () => {
     expect(calculateFloorRate(450, 0.2, "nearest_10")).toBe(570);
     expect(calculateRecommendedRate(450, 0.3, "nearest_10")).toBe(650);

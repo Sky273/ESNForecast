@@ -247,7 +247,7 @@ budgetRouter.post("/rolling-forecasts/generate", async (req, res, next) => {
     const budget = await getReferenceBudget(year, req.body?.sourceBudgetId);
     const forecast = await db.rollingForecast.create({ data: { organizationId: organization.id, companyId: company.id, name: req.body?.name ?? `Rolling forecast ${year}`, baseMonth: req.body?.baseMonth ?? `${year}-07`, horizonMonths: Number(req.body?.horizonMonths ?? 12), sourceBudgetId: budget.id, status: "active", generatedBy: "finance" } });
     const budgetLines = await db.budgetLine.findMany({ where: { budgetId: budget.id } });
-    await db.rollingForecastLine.createMany({ data: budgetLines.map((line: any) => ({ rollingForecastId: forecast.id, year: line.year, month: line.month, category: line.category, amount: line.month <= 6 ? line.amount * 0.92 : line.amount * 0.96, source: line.month <= 6 ? "actual" : "reforecast", confidenceScore: line.month <= 6 ? 0.95 : 0.72, comment: "Genere V6 depuis budget et réel partiel" })) });
+    await db.rollingForecastLine.createMany({ data: budgetLines.map((line: any) => ({ rollingForecastId: forecast.id, year: line.year, month: line.month, category: line.category, amount: line.month <= 6 ? line.amount * 0.92 : line.amount * 0.96, source: line.month <= 6 ? "actual" : "reforecast", confidenceScore: line.month <= 6 ? 0.95 : 0.72, comment: "Généré depuis budget et réel partiel" })) });
     res.status(201).json(forecast);
   } catch (error) {
     next(error);
@@ -551,7 +551,7 @@ budgetRouter.get("/reports/budget-forecast-actual.demo.csv", (_req, res) => {
   res.type("text/csv").send("section,metric,value\nlanding,status,generated\n");
 });
 budgetRouter.get("/reports/budget-forecast-actual.demo.pdf", (_req, res) => {
-  res.type("application/pdf").send(Buffer.from("PDF démo V6 Budget Forecast Actual"));
+  res.type("application/pdf").send(Buffer.from("PDF démo Budget Forecast Actual"));
 });
 
 budgetRouter.get("/reports/budget-forecast-actual.csv", async (req, res, next) => {

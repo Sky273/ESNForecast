@@ -1,5 +1,5 @@
 import {
-  buildV3FinancialSituation,
+  buildConnectedFinanceSituation,
   calculateClientPaymentProfiles,
   calculateDataQualityIssues,
   calculateForecastReliability,
@@ -9,12 +9,12 @@ import {
   generateReconciliationSuggestions
 } from "@esn-forecast/shared";
 import { Prisma } from "@prisma/client";
-import type { V3FinancialInput } from "@esn-forecast/shared";
+import type { ConnectedFinanceInput } from "@esn-forecast/shared";
 import { prisma } from "../../db";
 import { serializeDates } from "../../utils/serialize";
 import { buildScenarioProjection } from "../forecasting/projectionService";
 
-export async function buildV3Input(scenarioId?: string, horizon?: number): Promise<V3FinancialInput> {
+export async function buildConnectedFinanceInput(scenarioId?: string, horizon?: number): Promise<ConnectedFinanceInput> {
   const [organization, company, scenario, projection, bankAccounts, bankTransactions, invoices, payments, categories, rules, connectors] =
     await Promise.all([
       prisma.organization.findFirst(),
@@ -45,8 +45,8 @@ export async function buildV3Input(scenarioId?: string, horizon?: number): Promi
   };
 }
 
-export async function buildV3Situation(scenarioId?: string, horizon?: number) {
-  return buildV3FinancialSituation(await buildV3Input(scenarioId, horizon));
+export async function buildConnectedFinanceOverview(scenarioId?: string, horizon?: number) {
+  return buildConnectedFinanceSituation(await buildConnectedFinanceInput(scenarioId, horizon));
 }
 
 export async function runReforecastJob(options: {
@@ -60,7 +60,7 @@ export async function runReforecastJob(options: {
 } = {}) {
   const startedAt = new Date();
   const threshold = Number(options.materialityThreshold ?? 5000);
-  const input = await buildV3Input(options.scenarioId, options.horizon);
+  const input = await buildConnectedFinanceInput(options.scenarioId, options.horizon);
   const inputSummary = {
     scenarioId: input.scenarioId,
     horizon: options.horizon,
@@ -162,7 +162,7 @@ export async function runReforecastJob(options: {
 }
 
 export async function evaluateBankCategorization() {
-  const input = await buildV3Input();
+  const input = await buildConnectedFinanceInput();
   const results = categorizeTransactions(input.bankTransactions, input.categorizationRules);
   for (const result of results.filter((row) => row.categoryId)) {
     await prisma.bankTransaction.update({
@@ -191,7 +191,7 @@ export async function evaluateBankCategorization() {
 }
 
 export async function refreshReconciliationSuggestions() {
-  const input = await buildV3Input();
+  const input = await buildConnectedFinanceInput();
   const suggestions = generateReconciliationSuggestions(input);
   await prisma.reconciliationSuggestion.deleteMany({ where: { organizationId: input.organizationId, status: "pending" } });
   for (const suggestion of suggestions) {
@@ -211,7 +211,7 @@ export async function refreshReconciliationSuggestions() {
 }
 
 export async function recalculateClientPaymentProfiles() {
-  const input = await buildV3Input();
+  const input = await buildConnectedFinanceInput();
   const profiles = calculateClientPaymentProfiles(input.invoices, input.payments);
   for (const profile of profiles) {
     await prisma.clientPaymentProfile.upsert({
@@ -224,7 +224,7 @@ export async function recalculateClientPaymentProfiles() {
 }
 
 export async function recalculateForecastReliability(scenarioId?: string, horizon?: number) {
-  const input = await buildV3Input(scenarioId, horizon);
+  const input = await buildConnectedFinanceInput(scenarioId, horizon);
   const scores = calculateForecastReliability(input);
   for (const score of scores) {
     await prisma.forecastReliabilityScore.upsert({
@@ -237,8 +237,8 @@ export async function recalculateForecastReliability(scenarioId?: string, horizo
 }
 
 export async function detectAndStoreAnomalies() {
-  const input = await buildV3Input();
-  const anomalies = buildV3FinancialSituation(input).anomalies;
+  const input = await buildConnectedFinanceInput();
+  const anomalies = buildConnectedFinanceSituation(input).anomalies;
   await prisma.financialAnomaly.deleteMany({ where: { organizationId: input.organizationId, status: "new" } });
   for (const anomaly of anomalies) {
     await prisma.financialAnomaly.create({ data: { ...anomaly } });
@@ -247,7 +247,7 @@ export async function detectAndStoreAnomalies() {
 }
 
 export async function recalculateDataQuality() {
-  const input = await buildV3Input();
+  const input = await buildConnectedFinanceInput();
   const issues = calculateDataQualityIssues(input);
   await prisma.dataQualityIssue.deleteMany({ where: { organizationId: input.organizationId, status: "open" } });
   for (const issue of issues) {
@@ -257,12 +257,12 @@ export async function recalculateDataQuality() {
 }
 
 export async function buildRunway(scenarioId?: string, horizon?: number) {
-  return calculateRunway(await buildV3Input(scenarioId, horizon));
+  return calculateRunway(await buildConnectedFinanceInput(scenarioId, horizon));
 }
 
 export async function generateCodirReport(month: string, scenarioId?: string, horizon?: number) {
-  const input = await buildV3Input(scenarioId, horizon);
-  const situation = buildV3FinancialSituation(input);
+  const input = await buildConnectedFinanceInput(scenarioId, horizon);
+  const situation = buildConnectedFinanceSituation(input);
   const payload = {
     month,
     generatedAt: new Date().toISOString(),

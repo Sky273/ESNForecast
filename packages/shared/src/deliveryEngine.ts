@@ -1,5 +1,5 @@
 import type { Client, Mission, MissionAssignment, ResourceType } from "./types";
-import type { ScenarioMonthProjection } from "./v1Types";
+import type { ScenarioMonthProjection } from "./forecastTypes";
 import type {
   AiExecutiveAnalysis,
   BusinessRule,
@@ -16,8 +16,8 @@ import type {
   StaffingForecastResult,
   StrategicDependencyResult,
   Timesheet,
-  V2ExecutiveInput
-} from "./v2Types";
+  DeliveryExecutiveInput
+} from "./deliveryTypes";
 
 const EPSILON = 0.000001;
 
@@ -81,7 +81,7 @@ export function calculateMonthlyVariance(forecast: ScenarioMonthProjection, actu
   };
 }
 
-export function calculateCapacityPlan(input: V2ExecutiveInput): CapacityPlanRow[] {
+export function calculateCapacityPlan(input: DeliveryExecutiveInput): CapacityPlanRow[] {
   const months = input.scenarioProjection.months.map((month) => month.month);
   const rows: CapacityPlanRow[] = [];
 
@@ -179,7 +179,7 @@ export function buildStaffingForecast(input: StaffingForecastInput): StaffingFor
   };
 }
 
-export function runMonteCarloSimulation(input: V2ExecutiveInput, iterations: number): MonteCarloResult {
+export function runMonteCarloSimulation(input: DeliveryExecutiveInput, iterations: number): MonteCarloResult {
   const safeIterations = Math.max(1, Math.floor(iterations));
   const seed = hashString(input.scenarioProjection.scenarioId || "reference");
   const months = input.scenarioProjection.months.map((month) => {
@@ -218,7 +218,7 @@ export function runMonteCarloSimulation(input: V2ExecutiveInput, iterations: num
   };
 }
 
-export function runRuleEngine(input: V2ExecutiveInput): RuleAlert[] {
+export function runRuleEngine(input: DeliveryExecutiveInput): RuleAlert[] {
   const alerts: RuleAlert[] = [];
 
   for (const rule of input.businessRules.filter((item) => item.isActive)) {
@@ -240,7 +240,7 @@ export function runRuleEngine(input: V2ExecutiveInput): RuleAlert[] {
   return alerts;
 }
 
-export function analyzeStrategicDependencies(input: V2ExecutiveInput): StrategicDependencyResult {
+export function analyzeStrategicDependencies(input: DeliveryExecutiveInput): StrategicDependencyResult {
   const revenueByClient = new Map<string, number>();
 
   for (const mission of input.missions) {
@@ -272,7 +272,7 @@ export function analyzeStrategicDependencies(input: V2ExecutiveInput): Strategic
   };
 }
 
-export function calculateExecutiveSituation(input: V2ExecutiveInput): ExecutiveSituation {
+export function calculateExecutiveSituation(input: DeliveryExecutiveInput): ExecutiveSituation {
   const variances = input.monthlyActuals
     .map((actual) => {
       const monthKey = `${actual.year}-${String(actual.month).padStart(2, "0")}`;

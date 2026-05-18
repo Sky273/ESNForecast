@@ -2,7 +2,7 @@ import { Router } from "express";
 import { prisma } from "../../db";
 import {
   buildRunway,
-  buildV3Situation,
+  buildConnectedFinanceOverview,
   detectAndStoreAnomalies,
   evaluateBankCategorization,
   generateCodirReport,
@@ -70,7 +70,7 @@ connectedFinanceRouter.use("/reforecast/suggestions", crud("reforecastSuggestion
 
 connectedFinanceRouter.get("/financial/situation", async (req, res, next) => {
   try {
-    res.json(await buildV3Situation(stringParam(req.query.scenarioId), numberParam(req.query.horizon)));
+    res.json(await buildConnectedFinanceOverview(stringParam(req.query.scenarioId), numberParam(req.query.horizon)));
   } catch (error) {
     next(error);
   }
@@ -506,7 +506,7 @@ connectedFinanceRouter.post("/forecast-reliability/recalculate", async (req, res
 
 connectedFinanceRouter.get("/treasury/actual-vs-forecast", async (req, res, next) => {
   try {
-    res.json((await buildV3Situation(stringParam(req.query.scenarioId), numberParam(req.query.horizon))).treasury);
+    res.json((await buildConnectedFinanceOverview(stringParam(req.query.scenarioId), numberParam(req.query.horizon))).treasury);
   } catch (error) {
     next(error);
   }
@@ -520,7 +520,7 @@ connectedFinanceRouter.get("/treasury/runway", async (req, res, next) => {
 });
 connectedFinanceRouter.get("/treasury/recalibrated", async (req, res, next) => {
   try {
-    res.json((await buildV3Situation(stringParam(req.query.scenarioId), numberParam(req.query.horizon))).treasury);
+    res.json((await buildConnectedFinanceOverview(stringParam(req.query.scenarioId), numberParam(req.query.horizon))).treasury);
   } catch (error) {
     next(error);
   }
@@ -592,7 +592,7 @@ connectedFinanceRouter.post("/reports/codir/generate", async (req, res, next) =>
 
 connectedFinanceRouter.post("/ai/analyze/cash-variance", async (req, res, next) => {
   try {
-    const situation = await buildV3Situation(req.body.scenarioId, req.body.horizon);
+    const situation = await buildConnectedFinanceOverview(req.body.scenarioId, req.body.horizon);
     res.json({ answer: "Les écarts cash sont calculés à partir du solde bancaire réel et de la projection.", sourceFacts: situation.treasury, recommendations: situation.runway.recommendedActions });
   } catch (error) {
     next(error);
@@ -600,7 +600,7 @@ connectedFinanceRouter.post("/ai/analyze/cash-variance", async (req, res, next) 
 });
 connectedFinanceRouter.post("/ai/analyze/connector-health", async (_req, res, next) => {
   try {
-    const situation = await buildV3Situation();
+    const situation = await buildConnectedFinanceOverview();
     res.json({ answer: "état des connecteurs calcule sans exposer de secret.", connectorHealth: situation.connectorHealth });
   } catch (error) {
     next(error);
@@ -623,7 +623,7 @@ connectedFinanceRouter.post("/ai/create-reconciliation-draft", async (_req, res,
 });
 connectedFinanceRouter.post("/ai/create-reforecast-draft", async (req, res, next) => {
   try {
-    const situation = await buildV3Situation(req.body.scenarioId, req.body.horizon);
+    const situation = await buildConnectedFinanceOverview(req.body.scenarioId, req.body.horizon);
     res.status(201).json({ drafts: situation.treasury.filter((row) => Math.abs(row.variance) > 5000) });
   } catch (error) {
     next(error);
