@@ -138,7 +138,7 @@ const navGroups: NavGroup[] = [
     icon: Euro,
     items: [
       { id: "realInvoices", label: "Factures", icon: Receipt },
-      { id: "billing", label: "Facturation pr\u00e9visionnelle", icon: Receipt },
+      { id: "billing", label: "Facturation prévisionnelle", icon: Receipt },
       { id: "payments", label: "Paiements", icon: Euro },
       { id: "cashIn", label: "Encaissements", icon: TrendingUp },
       { id: "cashOut", label: "Décaissements", icon: Euro },
