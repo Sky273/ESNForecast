@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { DataOriginBadge, inferOriginFromRow, normalizeOriginKind } from "./DataOriginBadge";
+import { DataOriginBadge, DataOriginLegend, inferOriginFromRow, normalizeOriginKind } from "./DataOriginBadge";
 
 describe("DataOriginBadge", () => {
   it("normalizes provider and mock origins", () => {
@@ -19,5 +19,11 @@ describe("DataOriginBadge", () => {
   it("renders a readable badge", () => {
     const html = renderToStaticMarkup(<DataOriginBadge kind="manual" />);
     expect(html).toContain("Saisie");
+  });
+
+  it("renders the shared legend", () => {
+    const html = renderToStaticMarkup(<DataOriginLegend compact />);
+    expect(html).toContain("Provider");
+    expect(html).toContain("Calculé");
   });
 });

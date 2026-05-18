@@ -1,7 +1,7 @@
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { FormEvent, ReactNode, useEffect, useMemo, useState } from "react";
 import { api } from "../../api";
-import { DataOriginBadge } from "../../components/DataOriginBadge";
+import { DataOriginBadge, DataOriginLegend } from "../../components/DataOriginBadge";
 import { InfoPanel } from "../../components/InfoPanel";
 import { KpiCard } from "../../components/KpiCard";
 import { PageHeader, StatusBadge } from "../../components/PageHeader";
@@ -81,20 +81,21 @@ export function PricingDashboardPage() {
   return (
     <>
       <PageHeader title="Dashboard pricing" description="Pilotage des TJM, marges mission, gains potentiels et priorités de renégociation." actions={<button className="rounded-md bg-brand px-3 py-2 text-sm font-medium text-white" onClick={recalculate}>Recalculer</button>} />
+      <DataOriginLegend items={[{ kind: "calculated", label: "Pricing" }, { kind: "manual", label: "Param?tres" }, { kind: "manual", label: "D?cisions" }]} />
       <InfoPanel title="Lecture des indicateurs">Les TJM plancher et recommandés sont calculés à partir des coûts complets, des paramètres pricing et des affectations connues sur chaque mission. Les gains représentent le potentiel de correction si les missions passent au TJM cible.</InfoPanel>
       <div className="mb-5 grid gap-3 md:grid-cols-6">
         <KpiCard label="Missions analysées" value={data?.missionsAnalyzed ?? 0} />
-        <KpiCard label="Missions saines" value={data?.healthyMissions ?? 0} tone="good" />
+                <KpiCard label="Missions saines" value={data?.healthyMissions ?? 0} tone="good" origin={{ kind: "calculated", label: "Pricing" }} />
         <KpiCard label="Sous-margées" value={data?.underpricedMissions ?? 0} tone={(data?.underpricedMissions ?? 0) ? "risk" : "good"} />
         <KpiCard label="à renégocier" value={data?.renegotiationCandidates ?? 0} tone={(data?.renegotiationCandidates ?? 0) ? "default" : "good"} />
-        <KpiCard label="Gain mensuel" value={money(data?.potentialMonthlyGain)} />
-        <KpiCard label="Gain annuel" value={money(data?.potentialAnnualGain)} />
+                <KpiCard label="Gain mensuel" value={money(data?.potentialMonthlyGain)} origin={{ kind: "calculated", label: "Pricing" }} />
+                <KpiCard label="Gain annuel" value={money(data?.potentialAnnualGain)} origin={{ kind: "calculated", label: "Pricing" }} />
       </div>
       <div className="mb-5 grid gap-4 xl:grid-cols-[0.8fr_1.2fr]">
         <div className="rounded-lg border border-line bg-white p-4">
           <h2 className="mb-4 font-semibold">Répartition pricing</h2>
           <div className="h-64">
-            <ResponsiveContainer><BarChart data={chart}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="label" /><YAxis allowDecimals={false} /><Tooltip /><Bar dataKey="value" fill="#0f766e" /></BarChart></ResponsiveContainer>
+            <ResponsiveContainer><BarChart data={chart}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="label" /><YAxis allowDecimals={false} /><Tooltip formatter={(value, name) => [String(value), `${String(name)} - Calcul?`]} /><Bar dataKey="value" fill="#0f766e" /></BarChart></ResponsiveContainer>
           </div>
         </div>
         <div>

@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { API_URL, api } from "../../api";
-import { DataOriginBadge } from "../../components/DataOriginBadge";
+import { DataOriginBadge, DataOriginLegend } from "../../components/DataOriginBadge";
 import { InfoPanel } from "../../components/InfoPanel";
 import { KpiCard } from "../../components/KpiCard";
 import { PageHeader, StatusBadge } from "../../components/PageHeader";
@@ -92,9 +92,9 @@ export function ObservabilityPage() {
       <InfoPanel title="Lecture opérationnelle">Cet écran aide à diagnostiquer rapidement un incident. Utilise le correlationId, la route et la durée pour relier une erreur utilisateur aux logs applicatifs.</InfoPanel>
       <div className="mb-5 grid gap-3 md:grid-cols-4">
         <KpiCard label="Logs collectés" value={String(summary?.logs ?? "-")} />
-        <KpiCard label="Erreurs ouvertes" value={String(summary?.openErrors ?? "-")} tone={(summary?.openErrors ?? 0) ? "risk" : "good"} />
-        <KpiCard label="Erreurs connecteurs" value={String(summary?.connectorErrors ?? "-")} />
-        <KpiCard label="Snapshots lenteur" value={String(summary?.slowRequests?.length ?? "-")} />
+                <KpiCard label="Erreurs ouvertes" value={String(summary?.openErrors ?? "-")} tone={(summary?.openErrors ?? 0) ? "risk" : "good"} origin={{ kind: "calculated", label: "Erreurs" }} />
+                <KpiCard label="Erreurs connecteurs" value={String(summary?.connectorErrors ?? "-")} origin={{ kind: "provider", label: "Connecteurs" }} />
+                <KpiCard label="Snapshots lenteur" value={String(summary?.slowRequests?.length ?? "-")} origin={{ kind: "calculated", label: "Performance" }} />
       </div>
       <Panel title="Erreurs récentes">
         <Table rows={errors ?? []} columns={[

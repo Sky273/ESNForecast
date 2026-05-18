@@ -6,7 +6,7 @@ import { CrudPage } from "../../components/CrudPage";
 import { Badge, money, percent } from "../../components/Format";
 import { InfoPanel } from "../../components/InfoPanel";
 import { KpiCard } from "../../components/KpiCard";
-import { DataOriginBadge } from "../../components/DataOriginBadge";
+import { DataOriginBadge, DataOriginLegend } from "../../components/DataOriginBadge";
 
 type DeliveryContext = { scenarioId: string; horizon: number };
 
@@ -21,7 +21,7 @@ export function ExecutiveCockpitPage({ scenarioId, horizon }: DeliveryContext) {
         <KpiCard label="CA réel" value={money(data?.summary?.actualRevenue ?? 0)} />
         <KpiCard label="Écart CA" value={money(data?.summary?.revenueVariance ?? 0)} tone={(data?.summary?.revenueVariance ?? 0) < 0 ? "risk" : "good"} />
         <KpiCard label="Trésorerie finale" value={money(data?.summary?.finalClosingCash ?? 0)} />
-        <KpiCard label="Alertes critiques" value={String(data?.summary?.criticalAlerts ?? 0)} tone={(data?.summary?.criticalAlerts ?? 0) > 0 ? "risk" : "good"} />
+                <KpiCard label="Alertes critiques" value={String(data?.summary?.criticalAlerts ?? 0)} tone={(data?.summary?.criticalAlerts ?? 0) > 0 ? "risk" : "good"} origin={{ kind: "calculated", label: "Alertes" }} />
         <KpiCard label="Gaps capacité" value={String(data?.summary?.capacityShortages ?? 0)} tone={(data?.summary?.capacityShortages ?? 0) > 0 ? "risk" : "good"} />
       </div>
       <div className="grid gap-4 xl:grid-cols-2">
@@ -30,7 +30,7 @@ export function ExecutiveCockpitPage({ scenarioId, horizon }: DeliveryContext) {
             <CartesianGrid stroke="#e5e7eb" />
             <XAxis dataKey="month" />
             <YAxis tickFormatter={(value) => `${Math.round(Number(value) / 1000)}k`} />
-            <Tooltip formatter={(value) => money(Number(value))} />
+            <Tooltip formatter={(value, name) => [money(Number(value)), `${String(name)} - Calcul?`]} />
             <Legend />
             <Line dataKey="revenueGenerated" name="CA généré" stroke="#0f766e" strokeWidth={2} />
             <Line dataKey="totalCosts" name="Coûts" stroke="#b42318" strokeWidth={2} />
@@ -42,7 +42,7 @@ export function ExecutiveCockpitPage({ scenarioId, horizon }: DeliveryContext) {
             <CartesianGrid stroke="#e5e7eb" />
             <XAxis dataKey="month" />
             <YAxis tickFormatter={(value) => `${Math.round(Number(value) / 1000)}k`} />
-            <Tooltip formatter={(value) => money(Number(value))} />
+            <Tooltip formatter={(value, name) => [money(Number(value)), `${String(name)} - Calcul?`]} />
             <Legend />
             <Bar dataKey="revenueVariance" name="Écart CA" fill="#0f766e" />
             <Bar dataKey="costsVariance" name="Écart coûts" fill="#b42318" />

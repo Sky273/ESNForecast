@@ -9,12 +9,14 @@ export type DataOriginKind =
   | "mock"
   | "unknown";
 
-type DataOriginBadgeProps = {
+export type DataOriginDescriptor = {
   kind?: DataOriginKind | string | null;
   provider?: string | null;
   label?: string | null;
   details?: Array<string | null | undefined>;
 };
+
+type DataOriginBadgeProps = DataOriginDescriptor;
 
 const toneByKind: Record<DataOriginKind, string> = {
   manual: "border-slate-200 bg-slate-50 text-slate-700",
@@ -35,6 +37,15 @@ const labelByKind: Record<DataOriginKind, string> = {
   mock: "Démo",
   unknown: "Source inconnue"
 };
+
+const legendItems: DataOriginDescriptor[] = [
+  { kind: "manual" },
+  { kind: "csv" },
+  { kind: "provider" },
+  { kind: "calculated" },
+  { kind: "reforecast" },
+  { kind: "mock" }
+];
 
 const iconByKind = {
   manual: Pencil,
@@ -61,6 +72,15 @@ export function DataOriginBadge({ kind, provider, label, details = [] }: DataOri
       <Icon size={12} />
       {displayLabel}
     </span>
+  );
+}
+
+export function DataOriginLegend({ items = legendItems, compact = false }: { items?: DataOriginDescriptor[]; compact?: boolean }) {
+  return (
+    <div className={`flex flex-wrap items-center gap-2 ${compact ? "" : "rounded-lg border border-line bg-white px-3 py-2"}`}>
+      {!compact ? <span className="text-xs font-medium uppercase tracking-wide text-muted">Origine des données</span> : null}
+      {items.map((item, index) => <DataOriginBadge key={`${item.kind}-${item.label ?? ""}-${index}`} {...item} />)}
+    </div>
   );
 }
 

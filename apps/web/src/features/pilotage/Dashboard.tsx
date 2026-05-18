@@ -3,6 +3,7 @@ import { Bar, BarChart, CartesianGrid, Cell, Line, LineChart, Pie, PieChart, Res
 import { useProjection } from "../../hooks/useApi";
 import { Badge, money, percent } from "../../components/Format";
 import { KpiCard } from "../../components/KpiCard";
+import { DataOriginLegend } from "../../components/DataOriginBadge";
 
 export function Dashboard({ horizon, setHorizon }: { horizon: number; setHorizon: (value: number) => void }) {
   const { projection, loading, error } = useProjection(horizon);
@@ -28,14 +29,15 @@ export function Dashboard({ horizon, setHorizon }: { horizon: number; setHorizon
           {[3, 6, 12, 24].map((value) => <option key={value} value={value}>Horizon {value} mois</option>)}
         </select>
       </div>
+      <DataOriginLegend items={[{ kind: "calculated", label: "Projection" }, { kind: "manual", label: "Hypoth?ses" }, { kind: "provider", label: "R?el synchronis?" }]} />
 
       <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
-        <KpiCard label="CA du mois" value={money(current.revenue.total)} sub={`${money(current.revenue.weighted)} pondéré`} />
-        <KpiCard label="Coûts du mois" value={money(current.costs.total)} />
-        <KpiCard label="Solde mensuel" value={money(current.balance.monthly)} tone={current.balance.monthly < 0 ? "risk" : "good"} />
-        <KpiCard label="Solde cumulé" value={money(current.balance.cumulative)} tone={current.balance.cumulative < 0 ? "risk" : "good"} />
-        <KpiCard label="Marge brute" value={money(current.margins.gross)} sub={percent(current.margins.rate)} />
-        <KpiCard label="Jours vendus" value={String(current.activity.soldDays)} sub={`Utilisation interne ${percent(current.activity.internalUtilizationRate)}`} />
+                <KpiCard label="CA du mois" value={money(current.revenue.total)} sub={`${money(current.revenue.weighted)} pond?r?`} origin={{ kind: "calculated", label: "Projection", details: ["Missions, probabilit? et sc?nario actif"] }} />
+                <KpiCard label="Co?ts du mois" value={money(current.costs.total)} origin={{ kind: "calculated", label: "Projection", details: ["Ressources, co?ts fixes et co?ts variables"] }} />
+                <KpiCard label="Solde mensuel" value={money(current.balance.monthly)} tone={current.balance.monthly < 0 ? "risk" : "good"} origin={{ kind: "calculated", label: "Projection" }} />
+                <KpiCard label="Solde cumul?" value={money(current.balance.cumulative)} tone={current.balance.cumulative < 0 ? "risk" : "good"} origin={{ kind: "calculated", label: "Projection" }} />
+                <KpiCard label="Marge brute" value={money(current.margins.gross)} sub={percent(current.margins.rate)} origin={{ kind: "calculated", label: "Projection" }} />
+                <KpiCard label="Jours vendus" value={String(current.activity.soldDays)} sub={`Utilisation interne ${percent(current.activity.internalUtilizationRate)}`} origin={{ kind: "calculated", label: "Planning" }} />
       </div>
 
       <div className="grid gap-5 xl:grid-cols-[1.5fr_1fr]">
@@ -47,7 +49,7 @@ export function Dashboard({ horizon, setHorizon }: { horizon: number; setHorizon
                 <CartesianGrid stroke="#e5e7eb" />
                 <XAxis dataKey="month" />
                 <YAxis tickFormatter={(value) => `${Math.round(Number(value) / 1000)}k`} />
-                <Tooltip formatter={(value) => money(Number(value))} />
+                <Tooltip formatter={(value, name) => [money(Number(value)), `${String(name)} - Calcul?`]} />
                 <Line type="monotone" dataKey="revenue.total" name="Revenus" stroke="#0f766e" strokeWidth={2} />
                 <Line type="monotone" dataKey="costs.total" name="Coûts" stroke="#b42318" strokeWidth={2} />
                 <Line type="monotone" dataKey="balance.cumulative" name="Solde cumulé" stroke="#2563eb" strokeWidth={2} />
@@ -63,7 +65,7 @@ export function Dashboard({ horizon, setHorizon }: { horizon: number; setHorizon
                 <Pie data={costBreakdown} dataKey="value" nameKey="name" innerRadius={60} outerRadius={105}>
                   {["#0f766e", "#2563eb", "#7c3aed", "#f59e0b", "#b42318"].map((color) => <Cell key={color} fill={color} />)}
                 </Pie>
-                <Tooltip formatter={(value) => money(Number(value))} />
+                <Tooltip formatter={(value, name) => [money(Number(value)), `${String(name)} - Calcul?`]} />
               </PieChart>
             </ResponsiveContainer>
           </div>
@@ -78,7 +80,7 @@ export function Dashboard({ horizon, setHorizon }: { horizon: number; setHorizon
               <CartesianGrid stroke="#e5e7eb" />
               <XAxis dataKey="month" />
               <YAxis tickFormatter={(value) => `${Math.round(Number(value) / 1000)}k`} />
-              <Tooltip formatter={(value) => money(Number(value))} />
+              <Tooltip formatter={(value, name) => [money(Number(value)), `${String(name)} - Calcul?`]} />
               <Bar dataKey="balance.monthly" name="Solde mensuel" fill="#0f766e" />
             </BarChart>
           </ResponsiveContainer>
